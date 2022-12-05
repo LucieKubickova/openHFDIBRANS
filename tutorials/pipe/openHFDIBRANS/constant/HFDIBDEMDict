@@ -1,0 +1,45 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      HFDIBDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+interpolationSchemes
+{
+  U			cellPointFace;
+  UTan  	cellPointFace;
+  UNorm		cellPointFace;
+  nut 		cellPointFace;
+  k			cellPointFace;
+  ek		cellPointFace;
+  omega		cellPointFace;
+  epsilon	cellPointFace;
+  grad(U)	cellPointFace;
+}
+
+surfaceThreshold    1e-4;
+sdBasedLambda       true;
+interfaceSpan       1.0;
+saveIntInfo         true;
+useWallFunctions    true;
+gradCoeff           0.0;
+
+wallFunctions
+{
+	nut		nutkWallFunction;
+	k		kLowReWallFunction;
+	omega	omegaWallFunction;
+	epsilon	epsilonWallFunction;
+}
+
+// ************************************************************************* //

@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# to know, where you are, in space-time
+cd $(dirname $0)
+date "+%d/%m/%Y %T"
+
+# set openFoam environment
+source /opt/openfoam6/etc/bashrc
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# create base mesh 
+runApplication blockMesh
+
+# run checkMesh
+runApplication checkMesh -meshQuality -allGeometry -allTopology
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# generate lambda field
+runApplication createLambdaPipeV1 0.31262575
+#~ runApplication createLambdaPipeV1 0.65
+
+# create new patch from boundary faces inside lambda
+runApplication createPatch -overwrite -dict system/createPatchDictNewPatch
+
+# correct the lambda field based on the new boundary
+python rewriteLambdaBoundary.py
+runApplication correctLambdaBoundary
+
+# create files for postprocessing
+paraFoam -touch
+
+# get the solver application
+application=`getApplication`
+
+# run the application
+runApplication $application
+
+# postprocessing
+runApplication readAndWriteVelocity

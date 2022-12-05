@@ -1,0 +1,20 @@
+#!/bin/bash
+
+cwd=$(echo $PWD)
+
+cd $cwd/src
+./Allwclean
+
+cd $cwd/applications/utilities/correctLambdaBoundary
+./Allwclean
+
+cd $cwd/applications/utilities/createLambdaPipe
+./Allwclean
+
+cd $cwd/applications/utilities/readAndWriteTurbulenceFields
+./Allwclean
+
+cd $cwd/applications/solvers/simpleHFDIBFoam
+./Allwclean
+
+cd $cwd

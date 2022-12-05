@@ -1,0 +1,9 @@
+
+ibDirichletBCs/ibDirichletBCs.C
+ibInterpolation/ibInterpolation.C
+openHFDIBRANS.C
+MomentumTransportModels/momentumTransportModels/HFDIBmomentumTransportModel.C
+MomentumTransportModels/incompressible/incompressibleHFDIBMomentumTransportModel.C
+MomentumTransportModels/incompressible/kinematicMomentumTransportModels/kinematicHFDIBMomentumTransportModels.C
+
+LIB = $(FOAM_USER_LIBBIN)/libHFDIBRANS
