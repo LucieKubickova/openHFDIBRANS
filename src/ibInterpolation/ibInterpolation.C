@@ -42,7 +42,9 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    DynamicList<label>& boundaryFaces,
+    List<bool>& isWallCell
 )
 :
 mesh_(mesh),
@@ -75,6 +77,8 @@ surfTan_
 ),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+boundaryFaces_(boundaryFaces),
+isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -425,8 +429,19 @@ void ibInterpolation::findBoundaryCells
 (
 )
 {
+    // get label of wallInsideLambda patch and starting and ending face index
+    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    label startIL = mesh_.boundary()[patchIL].start();
+    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
+
+    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
+    label startIW = mesh_.boundary()[patchIW].start();
+    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
+
+    // preparation
     Tuple2<label,label> toAppend;
 
+    // loop over cells
     forAll(mesh_.cellCells(), cellI)
     {
         bool toInclude(false);
@@ -464,6 +479,22 @@ void ibInterpolation::findBoundaryCells
             //~ }
         }
 
+        // check whether the cell is adjecent to a regular wall
+        if (toInclude)
+        {
+            forAll(mesh_.cells()[cellI], f)
+            {
+                // get face label
+                label faceI = mesh_.cells()[cellI][f];
+
+                if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
+                {
+                    toInclude = false;
+                }
+            }
+        }
+
+        // add the cell
         if (toInclude)
         {
             if (vertex == -1)
@@ -493,20 +524,105 @@ void ibInterpolation::findBoundaryCells
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::createSurface
+void ibInterpolation::areWallCells
 (
-    volScalarField& surface
+)
+{
+    // get label of wallInsideLambda patch and starting and ending face index
+    label patchI = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    label startI = mesh_.boundary()[patchI].start();
+    label endI = startI + mesh_.boundary()[patchI].Cf().size();
+
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // initialize value
+        isWallCell_[bCell] = false;
+
+        // check whether the cell is adjecent to a regular wall
+        forAll(mesh_.cells()[cellI], f)
+        {
+            // get face label
+            label faceI = mesh_.cells()[cellI][f];
+
+            if (faceI >= startI and faceI < endI)
+            {
+                isWallCell_[bCell] = true;
+                break;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::findBoundaryFaces
+(
+)
+{
+    forAll(mesh_.cellCells(), cellI)
+    {
+        label sharedFace = -1;
+
+        if (body_[cellI] >= 0.5)
+        {
+            forAll(mesh_.cellCells()[cellI], nCell)
+            {
+                // get the cell label of the neighbor
+                label nI = mesh_.cellCells()[cellI][nCell];
+
+                if (body_[nI] < 0.5)
+                {
+                    // find the shared face
+                    forAll(mesh_.cells()[cellI], iFace)
+                    {
+                        forAll(mesh_.cells()[nI], oFace)
+                        {
+                            if (iFace == oFace)
+                            {
+                                sharedFace = mesh_.cells()[cellI][iFace];
+                                break;
+
+                            }
+                        }
+
+                        if (sharedFace > -1)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                if (sharedFace > -1)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (sharedFace > -1)
+        {
+            boundaryFaces_.append(sharedFace);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::createOuterSurface
+(
+    volScalarField& outSurface
 )
 {
     // reset field
-    surface *= 0.0;
+    outSurface *= 0.0;
 
     // find in-solid cells
     forAll(body_, cellI)
     {
         if (body_[cellI] >= 0.5)
         {
-            surface[cellI] = 1.0;
+            outSurface[cellI] = 1.0;
         }
     }
 
@@ -514,9 +630,33 @@ void ibInterpolation::createSurface
     forAll(boundaryCells_, bCell)
     {
         label cellI = boundaryCells_[bCell].first();
-        surface[cellI] = 1.0;
+        outSurface[cellI] = 1.0;
     }
+
+    //~ outSurface.write();
 }
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::createInnerSurface
+(
+    volScalarField& inSurface
+)
+{
+    // reset field
+    inSurface *= 0.0;
+
+    // find in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            inSurface[cellI] = 1.0;
+        }
+    }
+
+    //~ inSurface.write();
+}
+
 //---------------------------------------------------------------------------//
 void ibInterpolation::calculateSurfNorm
 (
@@ -621,7 +761,7 @@ void ibInterpolation::calculateDistToBoundary
             toSave.second() = ds;
         }
 
-        else
+        else if (body_[inCellI] < 1.0)
         {
             ds = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
             toSave.second() = ds;
@@ -629,6 +769,30 @@ void ibInterpolation::calculateDistToBoundary
             surfPoint = mesh_.C()[inCellI];
             surfPoint += surfNorm_[inCellI]*ds;
             ds = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
+            toSave.first() = ds;
+
+        }
+
+        else
+        {
+            // find the shared faces
+            label faceI;
+
+            forAll(mesh_.cells()[inCellI], fI)
+            {
+                faceI = mesh_.cells()[inCellI][fI];
+
+                if (mesh_.faceOwner()[faceI] == outCellI or mesh_.faceNeighbour()[faceI] == outCellI)
+                {
+                    break;
+                }
+            }
+
+            // compute ds as a distance from the cell centers to the center of the shared face
+            ds = mag(mesh_.C()[inCellI] - mesh_.Cf()[faceI]);
+            toSave.second() = ds;
+
+            ds = mag(mesh_.C()[outCellI] - mesh_.Cf()[faceI]);
             toSave.first() = ds;
         }
 

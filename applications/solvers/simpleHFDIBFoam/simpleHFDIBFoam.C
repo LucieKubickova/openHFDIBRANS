@@ -66,9 +66,6 @@ int main(int argc, char *argv[])
     // save lambda gradient
     gradLambda = fvc::grad(lambda)*dimensionedScalar("tmp",dimLength,1.0);
 
-    // whether to use wall functions or rather not
-	word startTime(runTime.timeName());
-
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda, simulationType);
     Ui *= 0.0;
@@ -80,11 +77,7 @@ int main(int argc, char *argv[])
 
         // --- Pressure-velocity SIMPLE corrector
         #include "UEqn.H"
-
-        for (label nCorr = 0; nCorr < 20; nCorr++)
-        {
-            #include "pEqn.H"
-        }
+        #include "pEqn.H"
 
         laminarTransport.correct();
         turbulence->correct(HFDIBRANS);

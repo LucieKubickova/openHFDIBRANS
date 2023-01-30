@@ -40,12 +40,16 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     word simulationType,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    DynamicList<label>& boundaryFaces,
+    List<bool>& isWallCell
 )
 :
 mesh_(mesh),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+boundaryFaces_(boundaryFaces),
+isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -94,6 +98,27 @@ void ibDirichletBCs::calcYPlusLam
     for (int i=0; i<10; i++)
     {
         yPlusLam_ = Foam::log(max(E_*yPlusLam_, 1))/kappa_;
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::pAtIB
+(
+    List<scalar>& pIB,
+    word BCType,
+    const volScalarField& p
+)
+{
+    if (BCType == "zeroGradient")
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // copy pressure from outer cell to the inner cell
+            pIB[bCell] = p[cellI];
+        }
     }
 }
 
@@ -150,7 +175,7 @@ void ibDirichletBCs::kAtIB
 
     else
     {
-        FatalError << kWF_ << " not implemented" << exit(FatalError);
+        FatalError << kWF_ << " condition for k not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -227,12 +252,39 @@ void ibDirichletBCs::omegaGAtIB
                     GIB[bCell] = sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
                 }
             }
+
+            if (isWallCell_[bCell])
+            {
+                omegaIB[bCell] *= 2.0; // provisorial solution
+                GIB[bCell] *= 2.0;
+            }
         }
     }
 
     else
     {
-        FatalError << omegaWF_ << " not implemented" << exit(FatalError);
+        FatalError << omegaWF_ << " condition for omega and G not implemented at the IB" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::phiAtIB
+(
+    List<scalar>& phiIB,
+    word BCType
+)
+{
+    if (BCType == "noFlux")
+    {
+        forAll(boundaryFaces_, bFace)
+        {
+            phiIB[bFace] = 0.0;
+        }
+    }
+
+    else
+    {
+        FatalError << BCType << " condition for flux not implemented at the IB" << exit(FatalError);
     }
 }
 

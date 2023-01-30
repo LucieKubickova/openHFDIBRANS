@@ -9,8 +9,7 @@
       |_|                                        and D iscrete E lement M ethod
 -------------------------------------------------------------------------------
 License
-
-    openHFDIB-DEM is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+openHFDIB-DEM is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -100,6 +99,8 @@ class ibInterpolation
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    DynamicList<label>& boundaryFaces_;
+    List<bool>& isWallCell_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -114,33 +115,54 @@ class ibInterpolation
     Type polynom(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, label bCell);
 
     template <typename Type, typename volTypeField>
-    Type logarithm(volTypeField& phi, interpolation<Type>& interpPhi, scalar& dirichletVal, scalar& logScale, label bCell);
+    Type logarithm(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, scalar& logScale, label bCell);
+
+    template <typename Type, typename volTypeField>
+    Type constant(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, label bCell);
 
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, DynamicList<label>& boundaryFaces_, List<bool>& isWallCell);
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();
 
     // Public methods --------------------------------------------------
     
-    // compute imposed field
+    // -- interpolation approaches
+    // polynomial interpolation
     template <typename Type, typename volTypeField>
     void polynomialInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
 
+    // logarithmic interpolation
     template <typename Type, typename volTypeField>
     void logarithmicInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales);
 
+    // polynomial/logarithmic interpolation, decision based on local yPlus value
     template <typename Type, typename volTypeField>
     void polySwitchLogInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, List<scalar>& yPlusi, scalar yPlusLam);
 
+    // polynomial/constant interpolation, decision based on local yPlus value
+    template <typename Type, typename volTypeField>
+    void polySwitchConsInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, List<scalar>& yPlusi, scalar yPlusLam);
+
+    // copy values from phi to phii
+    template <typename Type, typename volTypeField>
+    void noInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
+
+    // linear interpolation to inner cells
+    template <typename Type, typename volTypeField>
+    void linearInInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
+
     // TODO: blended interpolation
     
-    // cell identification
+    // identification
     void findBoundaryCells();
-    void createSurface(volScalarField& surface);
+    void areWallCells();
+    void findBoundaryFaces();
+    void createOuterSurface(volScalarField& outSurface);
+    void createInnerSurface(volScalarField& inSurface);
 
     // surface distance calculation
     void calculateDistToBoundary();

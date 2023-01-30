@@ -87,7 +87,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::matrixManipulate
 
     forAll(lambda_, cellI)
     {
-        if (HFDIBRANS.surface()[cellI] == 1.0)
+        if (HFDIBRANS.outSurface()[cellI] == 1.0)
         {
             cells.append(cellI);
             phis.append(phi[cellI]);
@@ -350,13 +350,19 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     kEqn.relax();
     fvOptions.constrain(kEqn);
 
-    for (label i = 0; i < 10; i++)
+    for (label nCorr = 0; nCorr < HFDIBRANS.maxKEqnIters(); nCorr++)
     {
-        kQ_ = HFDIBRANS.surface()*(kEqn.A()*ki_ - kEqn.H());
+        kQ_ = HFDIBRANS.outSurface()*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
+        if (max(HFDIBRANS.outSurface()*(ki_ - k_)).value() < HFDIBRANS.tolKEqn())
+        {
+            Info << "HFDIBRAS: k converged to ki within max tolerance " << HFDIBRANS.tolKEqn() << endl;
+            break;
+        }
+
         // apply correction
-        k_ += 1.0*HFDIBRANS.surface()*(ki_ - k_);
+        k_ += 1.0*HFDIBRANS.outSurface()*(ki_ - k_);
     }
 
     fvOptions.correct(k_);
@@ -369,7 +375,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 template<class BasicMomentumTransportModel>
 void HFDIBKOmega<BasicMomentumTransportModel>::correct()
 {
-    Info << "Not implemented" << endl;
+    Info << "HFDIBKOmega::correct() not implemented" << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -84,7 +84,6 @@ volVectorField gradLambda
     dimensionedVector("gradLambda",dimless,vector(0.0,0.0,0.0))
 );
 
-
 #include "createPhi.H"
 
 label pRefCell = 0;
@@ -118,15 +117,3 @@ turbulenceProperties.lookup("simulationType") >> simulationType;
 
 #include "createMRF.H"
 #include "createFvOptions.H"
-
-IOdictionary HFDIBDEMDict
-(
-    IOobject
-    (
-        "HFDIBDEMDict",
-        runTime.constant(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE
-    )
-);

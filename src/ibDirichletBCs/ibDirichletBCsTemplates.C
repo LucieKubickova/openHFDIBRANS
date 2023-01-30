@@ -82,12 +82,17 @@ void ibDirichletBCs::UAtIB
             {
                 UIB[bCell] = yPlus*uTau*ibOne(UIB[bCell]);
             }
+
+            if (isWallCell_[bCell])
+            {
+                UIB[bCell] = ibZero(UIB[bCell]); // provisorial solution
+            }
         }
     }
 
     else
     {
-        FatalError << "Dirichlet BCs at the IB for " << simulationType_ << " not implemented" << exit(FatalError);
+        FatalError << BCType << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 

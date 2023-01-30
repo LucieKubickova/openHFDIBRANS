@@ -87,6 +87,8 @@ class ibDirichletBCs
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    DynamicList<label>& boundaryFaces_;
+    List<bool>& isWallCell_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -139,19 +141,26 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, DynamicList<label>& boundaryFaces, List<bool>& isWallCell);
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();
 
     // Public methods --------------------------------------------------
     
-    // compute imposed fields
+    // velocity boudnary condition
     template <typename Type>
     void UAtIB(List<Type>& UIB, word BCType, const volScalarField& k, const volScalarField& nu);
 
+    // pressure boundary condition
+    void pAtIB(List<scalar>& pIB, word BCType, const volScalarField& p);
+
+    // turbulence fields boundary conditions
     void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
     void kAtIB(List<scalar>& kIB, volScalarField& k, volScalarField& nu);
+
+    // flux boundary condition
+    void phiAtIB(List<scalar>& phiIB, word BCType);
 
     // return the log scales for velocity
     List<scalar>& getULogScales()

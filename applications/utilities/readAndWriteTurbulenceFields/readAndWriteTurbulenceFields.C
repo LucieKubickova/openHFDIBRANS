@@ -48,22 +48,6 @@ int main(int argc, char *argv[])
         mesh
     );
 
-    // NOT USED NOW
-    // read the epsilon field
-    //~ Info << "Reading field epsilon\n" << endl;
-    //~ volScalarField epsilon
-    //~ (
-        //~ IOobject
-        //~ (
-            //~ "epsilon",
-            //~ runTime.timeName(),
-            //~ mesh,
-            //~ IOobject::READ_IF_PRESENT,
-            //~ IOobject::NO_WRITE
-        //~ ),
-        //~ mesh
-    //~ );
-
     // read the k field
     Info << "Reading field k\n" << endl;
     volScalarField k
@@ -94,20 +78,20 @@ int main(int argc, char *argv[])
         mesh
     );
 
-    // read the nut field
-    Info << "Reading field G\n" << endl;
-    volScalarField::Internal G
-    (
-        IOobject
-        (
-            "G",
-            runTime.timeName(),
-            mesh,
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh
-    );
+    //~ // read the nut field
+    //~ Info << "Reading field G\n" << endl;
+    //~ volScalarField::Internal G
+    //~ (
+        //~ IOobject
+        //~ (
+            //~ "G",
+            //~ runTime.timeName(),
+            //~ mesh,
+            //~ IOobject::READ_IF_PRESENT,
+            //~ IOobject::NO_WRITE
+        //~ ),
+        //~ mesh
+    //~ );
 
     // prepare space to save
     word saveDir = mesh.time().rootPath() + "/" + mesh.time().globalCaseName() + "/postProcessing/readAndWriteTurbulenceFields";
@@ -119,7 +103,8 @@ int main(int argc, char *argv[])
 
     autoPtr<OFstream> outFilePtr;
     outFilePtr.reset(new OFstream(saveDir/fileName));
-    outFilePtr() << "x,y,z,omega,G,k,nut" << endl;
+    //~ outFilePtr() << "cellI,x,y,z,omega,G,k,nut" << endl;
+    outFilePtr() << "cellI,x,y,z,omega,k,nut" << endl;
 
     // save data
     forAll(mesh.C(), cellI)
@@ -128,11 +113,19 @@ int main(int argc, char *argv[])
         scalar y = mesh.C()[cellI].y();
         scalar z = mesh.C()[cellI].z();
         scalar omegai = omega[cellI];
-        scalar Gi = G[cellI];
+        //~ scalar Gi = G[cellI];
         scalar ki = k[cellI];
         scalar nuti = nut[cellI];
 
-        outFilePtr() << x << "," << y << "," << z << "," << omegai << "," << Gi << "," << ki << "," << nuti << endl;
+        outFilePtr() << cellI 
+            << "," << x 
+            << "," << y 
+            << "," << z 
+            << "," << omegai 
+            //~ << "," << Gi 
+            << "," << ki 
+            << "," << nuti 
+            << endl;
     }
 
     Info << "End\n" << endl;

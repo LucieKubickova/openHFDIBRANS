@@ -59,7 +59,8 @@ class openHFDIBRANS
 
     // lambda related
     const volScalarField& body_;
-    volScalarField surface_;
+    volScalarField outSurface_;
+    volScalarField inSurface_;
 
     // turbulence related
     word simulationType_;
@@ -67,9 +68,23 @@ class openHFDIBRANS
     // dictionaries
     IOdictionary HFDIBDEMDict_;
 
+    // interpolation types
+    word UInterpType_;
+
+    // tolerances for solvers
+    scalar tolUEqn_;
+    scalar tolKEqn_;
+
+    // maximum number of iterations for solvers
+    scalar maxUEqnIters_;
+    scalar maxPEqnIters_;
+    scalar maxKEqnIters_;
+
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
     List<Tuple2<scalar,scalar>> boundaryDists_;
+    DynamicList<label> boundaryFaces_;
+    List<bool> isWallCell_;
 
     // interpolation class
     ibInterpolation ibInterpolation_;
@@ -95,13 +110,52 @@ class openHFDIBRANS
     void computeUi(volVectorField& U, volVectorField& Ui, const volScalarField& k, const volScalarField& nu);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
 
-    // correct fields
+    // correct values
+    void correctP(volScalarField& p);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
 
-    // return the surface field
-    volScalarField& surface()
+    // evalute max error in pressure boundary condition
+    scalar maxErrorInPBC(volScalarField& p);
+
+    // correct flux
+    void correctPhi(surfaceScalarField& phi);
+
+    // return maximum tolarences for solvers
+    scalar tolUEqn()
     {
-        return surface_;
+        return tolUEqn_;
+    }
+
+    scalar tolKEqn()
+    {
+        return tolKEqn_;
+    }
+
+    // return number of iterations for solvers
+    scalar maxUEqnIters()
+    {
+        return maxUEqnIters_;
+    }
+
+    scalar maxPEqnIters()
+    {
+        return maxPEqnIters_;
+    }
+
+    scalar maxKEqnIters()
+    {
+        return maxKEqnIters_;
+    }
+
+    // return the surface fields
+    volScalarField& outSurface()
+    {
+        return outSurface_;
+    }
+
+    volScalarField& inSurface()
+    {
+        return inSurface_;
     }
 
     // return the surface threshold

@@ -42,7 +42,8 @@ openHFDIBRANS::openHFDIBRANS
 ) :
 mesh_(mesh),
 body_(body),
-surface_("surface", body),
+outSurface_("outSurface", body),
+inSurface_("inSurface", body),
 simulationType_(simulationType),
 HFDIBDEMDict_
 (
@@ -55,22 +56,41 @@ HFDIBDEMDict_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
-ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_)
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, boundaryFaces_, isWallCell_),
+ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_, boundaryFaces_, isWallCell_)
 {
     // read HFDIBDEM dictionary
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
 
+    // interpolation types
+    HFDIBDEMDict_.lookup("UInterpType") >> UInterpType_;
+
+    // simple algorithm settings
+    dictionary HFDIBSimpleDict = HFDIBDEMDict_.subDict("simple");
+    tolUEqn_ = readScalar(HFDIBSimpleDict.lookup("tolUEqn"));
+    tolKEqn_ = readScalar(HFDIBSimpleDict.lookup("tolKEqn"));
+    maxUEqnIters_ = readScalar(HFDIBSimpleDict.lookup("maxUEqnIters"));
+    maxPEqnIters_ = readScalar(HFDIBSimpleDict.lookup("maxPEqnIters"));
+    maxKEqnIters_ = readScalar(HFDIBSimpleDict.lookup("maxKEqnIters"));
+
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
+
+    // identify boundary faces
+    ibInterpolation_.findBoundaryFaces();
+
+    // check whether boundary cells are adjecent to regular walls
+    isWallCell_.setSize(boundaryCells_.size());
+    ibInterpolation_.areWallCells();
 
     // correct ibDirichletBCs lists
     ibDirichletBCs_.correctLists();
 
-    // create surface field
-    ibInterpolation_.createSurface(surface_);
+    // create surface fields
+    ibInterpolation_.createOuterSurface(outSurface_);
+    ibInterpolation_.createInnerSurface(inSurface_);
 
-    // compute distance to the surface
+    // compute distance to the immersed boundary
     boundaryDists_.setSize(boundaryCells_.size());
     ibInterpolation_.calculateDistToBoundary();
 
@@ -127,7 +147,7 @@ void openHFDIBRANS::computeUi
         ibInterpolation_.polynomialInterp<vector, volVectorField>(U, Ui, UIB);
     }
 
-    else if (simulationType_ == "HFDIBRAS")
+    else if (simulationType_ == "HFDIBRAS" and UInterpType_ == "outer")
     {
         // calculate surface tangents
         ibInterpolation_.calculateSurfTans(U);
@@ -157,19 +177,129 @@ void openHFDIBRANS::computeUi
 
         // switch interpolation only for tangential velocity component
         ibInterpolation_.polySwitchLogInterp<scalar, volScalarField>(UTan, UTani, UTanIB, logScales, yPlusi, yPlusLam);
+        //~ ibInterpolation_.polySwitchConsInterp<scalar, volScalarField>(UTan, UTani, UTanIB, logScales, yPlusi, yPlusLam); // nope, does not work
+        //~ ibInterpolation_.noInterp<scalar, volScalarField>(UTan, UTani, UTanIB); // nope, blows up
 
         // polynomial interpolation for normal velocity component
         ibInterpolation_.polynomialInterp<scalar, volScalarField>(UNorm, UNormi, UNormIB);
-        // TODO: blendedInterp
+
+        // TODO: blended interpolation
+        // TODO: interpolation inside?
 
         // construct the Ui field from UTani and UNormi
         Ui = UTani*ibInterpolation_.getSurfTan() + UNormi*ibInterpolation_.getSurfNorm();
+
+        // correct boundary cells adjecent to regular walls
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            if (isWallCell_[bCell])
+            {
+                Ui[cellI] = vector::zero; // provisorial solution
+            }
+        }
+    }
+
+    else if (simulationType_ == "HFDIBRAS" and UInterpType_ == "inner")
+    {
+        // calculate surface tangents
+        ibInterpolation_.calculateSurfTans(U);
+
+        // calculate values at the immersed boundary
+        List<scalar> UTanIB;
+        List<scalar> UNormIB;
+
+        UTanIB.setSize(boundaryCells_.size());
+        UNormIB.setSize(boundaryCells_.size());
+
+        ibDirichletBCs_.UAtIB<scalar>(UTanIB, "slip", k, nu);
+        ibDirichletBCs_.UAtIB<scalar>(UNormIB, "noSlip", k, nu);
+
+        // construct UIB from normal and tangential components
+        List<vector> UIB;
+        UIB.setSize(boundaryCells_.size());
+
+        forAll(boundaryCells_, bCell)
+        {
+            // get the cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get normal and tangential direction vectors
+            vector tan = ibInterpolation_.getSurfTan()[cellI];
+            vector norm = ibInterpolation_.getSurfNorm()[cellI];
+
+            // construct the value at the boundary
+            //~ UIB[bCell] = UTanIB[bCell]*tan + UNormIB[bCell]*norm;
+            UIB[bCell] = vector::zero;
+        }
+
+        // copy values of U to Ui in the outer cells
+        ibInterpolation_.noInterp<vector, volVectorField>(U, Ui, UIB);
+
+        // linear interpolation to inner cells
+        ibInterpolation_.linearInInterp<vector, volVectorField>(U, Ui, UIB);
     }
 
     else
     {
         FatalError << "Interpolation for " << simulationType_ << " not implemented" << exit(FatalError);
     }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctP
+(
+    volScalarField& p
+)
+{
+    // prepare lists
+    List<scalar> pIB;
+    pIB.setSize(boundaryCells_.size());
+
+    // compute values at the immersed boundary
+    ibDirichletBCs_.pAtIB(pIB, "zeroGradient", p);
+
+    // correct pressure
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].second();
+
+        // assign pressure value
+        p[cellI] = pIB[bCell];
+    }
+}
+
+//---------------------------------------------------------------------------//
+scalar openHFDIBRANS::maxErrorInPBC
+(
+    volScalarField& p
+)
+{
+    // prepare Lists
+    List<scalar> errorInP;
+    errorInP.setSize(boundaryCells_.size());
+
+    // compute error in pressure boundary condition
+    forAll(boundaryCells_, bCell)
+    {
+        // get label of the outer cell
+        label outerCellI = boundaryCells_[bCell].first();
+
+        // get label of the inner cell
+        label innerCellI = boundaryCells_[bCell].second();
+
+        // evaluate the error
+        errorInP[bCell] = mag(p[outerCellI] - p[innerCellI]);
+    }
+
+    // evaluate the max value
+    scalar maxError = max(errorInP);
+
+    // return
+    return maxError;
 }
 
 //---------------------------------------------------------------------------//
@@ -194,7 +324,10 @@ void openHFDIBRANS::computeKi
 
     // switch interpolation
     ibInterpolation_.polySwitchLogInterp<scalar, volScalarField>(k, ki, kIB, logScales, yPlusi, yPlusLam);
-    // TODO: blendedInterp
+    //~ ibInterpolation_.polySwitchConsInterp<scalar, volScalarField>(k, ki, kIB, logScales, yPlusi, yPlusLam); // nope, does not work
+
+    // TODO: blended interpolation
+    // TODO: interpolate inside?
 }
 
 //---------------------------------------------------------------------------//
@@ -228,12 +361,13 @@ void openHFDIBRANS::correctOmegaG
         G[cellI] = GIB[bCell];
     }
 
-    // assign the values in in-solid cells
-    scalar inOmega = max(omega).value();
+    // calculate maximum omega
+    scalar inOmega = max(omegaIB); // internal patch fields for walls should be included as well
 
-    forAll(surface_, cellI)
+    // assign the values in in-solid cells
+    forAll(outSurface_, cellI)
     {
-        if (surface_[cellI] == 1.0)
+        if (outSurface_[cellI] == 1.0)
         {
             if (body_[cellI] >= 0.5)
             {
@@ -241,6 +375,30 @@ void openHFDIBRANS::correctOmegaG
                 G[cellI] = 0.0;
             }
         }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctPhi
+(
+    surfaceScalarField& phi
+)
+{
+    // prepare lists
+    List<scalar> phiIB;
+    phiIB.setSize(boundaryFaces_.size());
+
+    // calculate values at the immersed boundary
+    ibDirichletBCs_.phiAtIB(phiIB, "noFlux");
+
+    // assign values to faces forming the immersed boundary
+    forAll(boundaryFaces_, bFace)
+    {
+        // get face label
+        label faceI = boundaryFaces_[bFace];
+
+        // assign the values
+        phi[faceI] = phiIB[bFace];
     }
 }
 
