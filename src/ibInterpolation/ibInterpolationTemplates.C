@@ -164,20 +164,6 @@ Type ibInterpolation::logarithm
 
 //--------------------------------------------------------------------------//
 template <typename Type, typename volTypeField>
-Type ibInterpolation::constant
-(
-    volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    Type& dirichletVal,
-    label bCell
-)
-{
-    // return the set value
-    return dirichletVal;
-}
-
-//--------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
 void ibInterpolation::polynomialInterp
 (
     volTypeField& phi,
@@ -233,7 +219,7 @@ void ibInterpolation::polySwitchLogInterp
     volTypeField& phii,
     List<Type>& dirichletVals,
     List<scalar>& logScales,
-    List<scalar>& yPlusi,
+    volScalarField& yPlusi,
     scalar yPlusLam
 )
 {
@@ -248,7 +234,7 @@ void ibInterpolation::polySwitchLogInterp
         label cellI = boundaryCells_[bCell].first();
 
         // switch based on yPlus value
-        if (yPlusi[bCell] > yPlusLam)
+        if (yPlusi[cellI] > yPlusLam)
         {
             // logarithmic interpolation
             phii[cellI] = logarithm<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], logScales[bCell], bCell);
@@ -259,92 +245,6 @@ void ibInterpolation::polySwitchLogInterp
             // polynomial interpolation
             phii[cellI] = polynom<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], bCell);
         }
-    }
-}
-
-//---------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-void ibInterpolation::polySwitchConsInterp
-(
-    volTypeField& phi,
-    volTypeField& phii,
-    List<Type>& dirichletVals,
-    List<scalar>& logScales,
-    List<scalar>& yPlusi,
-    scalar yPlusLam
-)
-{
-    // create interpolator
-    autoPtr<interpolation<Type>> interpPhi =
-                   interpolation<Type>::New(HFDIBInterpDict_, phi);
-
-    // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
-
-        // switch based on yPlus value
-        if (yPlusi[bCell] > yPlusLam)
-        {
-            // no interpolation
-            phii[cellI] = constant<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], bCell);
-        }
-
-        else
-        {
-            // polynomial interpolation
-            phii[cellI] = polynom<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], bCell);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-void ibInterpolation::noInterp
-(
-    volTypeField& phi,
-    volTypeField& phii,
-    List<Type>& dirichletVals
-)
-{
-    // assign the values from phi to phii
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
-
-        // assign
-        phii[cellI] = phi[cellI];
-    }
-}
-
-//---------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-void ibInterpolation::linearInInterp
-(
-    volTypeField& phi,
-    volTypeField& phii,
-    List<Type>& dirichletVals
-)
-{
-    // interpolate to inner cells
-    forAll(boundaryCells_, bCell)
-    {
-        // get the cells labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
-
-        // get the distances to the surface
-        scalar dsOut = boundaryDists_[bCell].first();
-        scalar dsIn = -1*boundaryDists_[bCell].second();
-
-        // evaluate gradient of phi at the outer side of the surface
-        Type gradient = (phii[outCellI] - dirichletVals[bCell])/dsOut;
-
-        // linear interpolation
-        //~ phii[inCellI] = gradCoeff_*gradient*dsIn + dirichletVals[bCell];
-        phii[inCellI] = gradient*dsIn + dirichletVals[bCell];
     }
 }
 

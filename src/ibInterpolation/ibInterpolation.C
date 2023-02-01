@@ -43,8 +43,7 @@ ibInterpolation::ibInterpolation
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
     List<Tuple2<scalar,scalar>>& boundaryDists,
-    DynamicList<label>& boundaryFaces,
-    List<bool>& isWallCell
+    List<Tuple2<bool,label>>& isWallCell
 )
 :
 mesh_(mesh),
@@ -62,22 +61,8 @@ surfNorm_
     mesh_,
     dimensionedVector("zero", dimless/dimLength, vector::zero)
 ),
-surfTan_
-(
-    IOobject
-    (
-        "surfTan",
-        mesh_.time().timeName(),
-        mesh_,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh_,
-    dimensionedVector("zero", dimless, vector::zero)
-),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
-boundaryFaces_(boundaryFaces),
 isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
@@ -479,7 +464,7 @@ void ibInterpolation::findBoundaryCells
             //~ }
         }
 
-        // check whether the cell is adjecent to a regular wall
+        // check whether the cell is adjecent to a regular wall -- taken care of by correction of surface normals
         if (toInclude)
         {
             forAll(mesh_.cells()[cellI], f)
@@ -529,17 +514,22 @@ void ibInterpolation::areWallCells
 )
 {
     // get label of wallInsideLambda patch and starting and ending face index
-    label patchI = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    label startI = mesh_.boundary()[patchI].start();
-    label endI = startI + mesh_.boundary()[patchI].Cf().size();
+    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    label startIL = mesh_.boundary()[patchIL].start();
+    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
+
+    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
+    label startIW = mesh_.boundary()[patchIW].start();
+    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
 
     forAll(boundaryCells_, bCell)
     {
         // get cell label
         label cellI = boundaryCells_[bCell].first();
 
-        // initialize value
-        isWallCell_[bCell] = false;
+        // initialize values
+        isWallCell_[bCell].first() = false;
+        isWallCell_[bCell].second() = -1;
 
         // check whether the cell is adjecent to a regular wall
         forAll(mesh_.cells()[cellI], f)
@@ -547,9 +537,10 @@ void ibInterpolation::areWallCells
             // get face label
             label faceI = mesh_.cells()[cellI][f];
 
-            if (faceI >= startI and faceI < endI)
+            if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
             {
-                isWallCell_[bCell] = true;
+                isWallCell_[bCell].first() = true;
+                isWallCell_[bCell].second() = faceI;
                 break;
             }
         }
@@ -557,104 +548,60 @@ void ibInterpolation::areWallCells
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::findBoundaryFaces
+void ibInterpolation::setUpSurface
 (
-)
-{
-    forAll(mesh_.cellCells(), cellI)
-    {
-        label sharedFace = -1;
-
-        if (body_[cellI] >= 0.5)
-        {
-            forAll(mesh_.cellCells()[cellI], nCell)
-            {
-                // get the cell label of the neighbor
-                label nI = mesh_.cellCells()[cellI][nCell];
-
-                if (body_[nI] < 0.5)
-                {
-                    // find the shared face
-                    forAll(mesh_.cells()[cellI], iFace)
-                    {
-                        forAll(mesh_.cells()[nI], oFace)
-                        {
-                            if (iFace == oFace)
-                            {
-                                sharedFace = mesh_.cells()[cellI][iFace];
-                                break;
-
-                            }
-                        }
-
-                        if (sharedFace > -1)
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                if (sharedFace > -1)
-                {
-                    break;
-                }
-            }
-        }
-
-        if (sharedFace > -1)
-        {
-            boundaryFaces_.append(sharedFace);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-void ibInterpolation::createOuterSurface
-(
-    volScalarField& outSurface
+    volScalarField& surface,
+    scalar boundaryValue
 )
 {
     // reset field
-    outSurface *= 0.0;
+    surface *= 0.0;
 
     // find in-solid cells
     forAll(body_, cellI)
     {
         if (body_[cellI] >= 0.5)
         {
-            outSurface[cellI] = 1.0;
+            surface[cellI] = 1.0;
         }
     }
 
     // find boundary cells
     forAll(boundaryCells_, bCell)
     {
+        // get the cell label
         label cellI = boundaryCells_[bCell].first();
-        outSurface[cellI] = 1.0;
-    }
 
-    //~ outSurface.write();
+        // set the surface value
+        surface[cellI] = boundaryValue;
+    }
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::createInnerSurface
+void ibInterpolation::updateSwitchSurface
 (
-    volScalarField& inSurface
+    volScalarField& surface,
+    volScalarField& yPlusi,
+    scalar yPlusLam
 )
 {
-    // reset field
-    inSurface *= 0.0;
-
-    // find in-solid cells
-    forAll(body_, cellI)
+    // update surface based on yPlus value
+    forAll(boundaryCells_, bCell)
     {
-        if (body_[cellI] >= 0.5)
+        // get the cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // set the surface value
+        if (yPlusi[cellI] <= yPlusLam)
         {
-            inSurface[cellI] = 1.0;
+            surface[cellI] = 1.0;
+        }
+
+        else
+        {
+            surface[cellI] = 0.0;
         }
     }
-
-    //~ inSurface.write();
 }
 
 //---------------------------------------------------------------------------//
@@ -675,64 +622,32 @@ void ibInterpolation::correctSurfNorm
 (
 )
 {
-    // correct surface normals
+    // correct surface normals in cells adjecent to regural walls
     forAll(boundaryCells_, bCell)
     {
-        // get the cell label
-        label cellI = boundaryCells_[bCell].first();
-
-        // set the same surface normal to all interpolation points
-        forAll(intInfoList_[bCell].intCells_, iCell)
+        if (isWallCell_[bCell].first())
         {
-            // get the cell label
-            label iCellI = intInfoList_[bCell].intCells_[iCell];
+            // get label of the wall face and the boundary cell
+            label faceI = isWallCell_[bCell].second();
+            label cellI = boundaryCells_[bCell].first();
 
-            // set the surface normal
-            surfNorm_[iCellI] = surfNorm_[cellI];
+            // get the wall normal
+            vector wallNorm = -1*mesh_.Sf()[faceI];
+            wallNorm /= mag(wallNorm);
+
+            // get distances from wall and surface
+            scalar wallDist = mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]);
+            scalar surfDist = boundaryDists_[bCell].first();
+
+            // compute weights
+            scalar ww = 1 - wallDist/(wallDist + surfDist);
+            scalar sw = 1 - surfDist/(wallDist + surfDist);
+
+            // compute new surface normal
+            //~ surfNorm_[cellI] = ww*wallNorm + sw*surfNorm_[cellI];
+            //~ surfNorm_[cellI] /= mag(surfNorm_[cellI]);
         }
     }
-}
-
-//---------------------------------------------------------------------------//
-void ibInterpolation::calculateSurfTans
-(
-    volVectorField& U
-)
-{
-    // stabilisation
-    dimensionedScalar deltaN("deltaN", dimLength/dimTime, SMALL);
-
-    // reset the surface tangential field
-    surfTan_ = U/(mag(U) + deltaN);
-
-    // create interpolator
-    autoPtr<interpolation<vector>> interpU = interpolation<vector>::New(HFDIBInterpDict_, U);
-
-    // correct the tangents for boundary cells and their interpolation cells
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
-
-        // get velocity in the first interpolation point
-        vector UP1 = interpU->interpolate(intInfoList_[bCell].intPoints_[1], intInfoList_[bCell].intCells_[0]);
-
-        // compute the tangential direction
-        surfTan_[cellI] = UP1 - (UP1 & surfNorm_[cellI])*surfNorm_[cellI];
-
-        // set the same surface tangent to all interpolation points
-        forAll(intInfoList_[bCell].intCells_, iCell)
-        {
-            // get the cell label
-            label iCellI = intInfoList_[bCell].intCells_[iCell];
-
-            // set the surface tangent
-            surfTan_[iCellI] = surfTan_[cellI];
-        }
-    }
-
-    // unify the field
-    surfTan_ /= (mag(surfTan_) + SMALL);
 }
 
 //---------------------------------------------------------------------------//

@@ -71,7 +71,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
 lnInclude/interpolationInfo.H \
 lnInclude/ibInterpolationTemplates.C \
-lnInclude/ibDirichletBCsTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pTraits.H \
@@ -893,7 +892,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
 lnInclude/interpolationInfo.H :
 lnInclude/ibInterpolationTemplates.C :
-lnInclude/ibDirichletBCsTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pTraits.H :

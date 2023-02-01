@@ -545,7 +545,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
 ../../../src/lnInclude/interpolationInfo.H \
 ../../../src/lnInclude/ibInterpolationTemplates.C \
-../../../src/lnInclude/ibDirichletBCsTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/functionNameI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/variableI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/verbatimStringI.H \
@@ -1418,7 +1417,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
 ../../../src/lnInclude/interpolationInfo.H :
 ../../../src/lnInclude/ibInterpolationTemplates.C :
-../../../src/lnInclude/ibDirichletBCsTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/functionNameI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/variableI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/verbatimStringI.H :

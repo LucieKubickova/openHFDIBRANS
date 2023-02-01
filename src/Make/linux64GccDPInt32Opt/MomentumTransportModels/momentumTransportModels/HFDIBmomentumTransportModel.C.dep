@@ -109,7 +109,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
 lnInclude/interpolationInfo.H \
 lnInclude/ibInterpolationTemplates.C \
-lnInclude/ibDirichletBCsTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DimensionedScalarField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.H \
@@ -932,7 +931,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
 lnInclude/interpolationInfo.H :
 lnInclude/ibInterpolationTemplates.C :
-lnInclude/ibDirichletBCsTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DimensionedScalarField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.H :

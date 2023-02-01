@@ -63,11 +63,10 @@ int main(int argc, char *argv[])
 
     Info << "\nStarting time loop\n" << endl;
 
-    // save lambda gradient
-    gradLambda = fvc::grad(lambda)*dimensionedScalar("tmp",dimLength,1.0);
-
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda, simulationType);
+    HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
+
     Ui *= 0.0;
     Ui.correctBoundaryConditions();
 

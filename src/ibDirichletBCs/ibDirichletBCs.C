@@ -41,14 +41,12 @@ ibDirichletBCs::ibDirichletBCs
     word simulationType,
     DynamicList<Tuple2<label,label>>& boundaryCells,
     List<Tuple2<scalar,scalar>>& boundaryDists,
-    DynamicList<label>& boundaryFaces,
-    List<bool>& isWallCell
+    List<Tuple2<bool,label>>& isWallCell
 )
 :
 mesh_(mesh),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
-boundaryFaces_(boundaryFaces),
 isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
@@ -62,16 +60,25 @@ HFDIBDEMDict_
     )
 ),
 simulationType_(simulationType),
+yPlusi_
+(
+    IOobject
+    (
+        "yPlusi",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, -1.0)
+),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
 Ceps2_(1.9),
 beta1_(0.075)
 {
-    // prepare list to save yPlus in boundary cells
-    yPlusi_.setSize(boundaryCells_.size());
-    ULogScales_.setSize(boundaryCells_.size());
-
     // ONLY FOR KOMEGA MODELS FOR NOW
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     HFDIBBCsDict_.lookup("k") >> kWF_;
@@ -102,23 +109,23 @@ void ibDirichletBCs::calcYPlusLam
 }
 
 //---------------------------------------------------------------------------//
-void ibDirichletBCs::pAtIB
+void ibDirichletBCs::UAtIB
 (
-    List<scalar>& pIB,
-    word BCType,
-    const volScalarField& p
+    List<vector>& UIB,
+    word BCType
 )
 {
-    if (BCType == "zeroGradient")
+    if (simulationType_ == "laminar" or BCType == "noSlip")
     {
-        forAll(boundaryCells_, bCell)
+        forAll(UIB, bCell)
         {
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
-
-            // copy pressure from outer cell to the inner cell
-            pIB[bCell] = p[cellI];
+            UIB[bCell] = ibZero(UIB[bCell]);
         }
+    }
+
+    else
+    {
+        FatalError << BCType << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -147,8 +154,7 @@ void ibDirichletBCs::kAtIB
             scalar yPlus = uTau*ds/nu[cellI];
 
             // saves for later interpolation
-            yPlusi_[bCell] = yPlus;
-            kLogScales_[bCell] = uTau/nu[cellI];
+            yPlusi_[cellI] = yPlus;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -195,68 +201,110 @@ void ibDirichletBCs::omegaGAtIB
         // blending switch
         bool blended(false); // should be an option
 
+        // load near wall dist
+        nearWallDist yWall(mesh_);
+
         forAll(boundaryCells_, bCell)
         {
+            // reset fields
+            omegaIB[bCell] *= 0.0;
+            GIB[bCell] *= 0.0;
+
             // get cell label
             label cellI = boundaryCells_[bCell].first();
 
-            // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
+            // prepare list of distances and weights
+            List<scalar> distances;
+            List<scalar> weights;
 
-            // compute magnitude of snGrad of U at the surface
-            vector zeroU = vector::zero;
-            vector snGradU = (zeroU - U[cellI])/ds;
-            scalar magGradUWall = mag(snGradU);
-
-            // compute local Reynolds number
-            scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
-            
-            // compute normalized variables
-            const scalar yPlus = Cmu25_*Rey;
-            const scalar uPlus = (1/kappa_)*Foam::log(E_*yPlus);
-
-            // save yPlus
-            yPlusi_[bCell] = yPlus;
-
-            // compute the values at the surface
-            if (blended)
+            if (isWallCell_[bCell].first())
             {
-                const scalar lamFrac = Foam::exp(-Rey/11);
-                const scalar turbFrac = 1 - lamFrac;
+                // set size of dss
+                distances.setSize(2);
+                weights.setSize(2);
 
-                const scalar uStar = Foam::sqrt
-                (
-                    lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
-                );
+                // get face label
+                label faceI = isWallCell_[bCell].second();
 
-                const scalar omegaVis = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
-                const scalar omegaLog = uStar/(Cmu5_*kappa_*ds);
+                // get patch label
+                label patchI = mesh_.boundaryMesh().whichPatch(faceI);
 
-                omegaIB[bCell] = lamFrac*omegaVis + turbFrac*omegaLog;
-                GIB[bCell] = lamFrac*G[cellI] + turbFrac*sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
+                // get local face label
+                label lfaceI = mesh_.boundaryMesh()[patchI].whichFace(faceI);
+
+                // get near wall distance
+                distances[1] = yWall[patchI][lfaceI];
             }
 
             else
             {
-                if (yPlus < yPlusLam_)
+                // set size of dss
+                distances.setSize(1);
+                weights.setSize(1);
+            }
+
+            // get distance to the surface
+            distances[0] = boundaryDists_[bCell].first();
+
+            // calculate weights
+            forAll(weights, wI)
+            {
+                weights[wI] = 1.0/weights.size();
+            }
+
+            // loop over walls and surfaces
+            forAll(distances, dsI)
+            {
+                // get distance and weight
+                scalar ds = distances[dsI];
+                scalar w = weights[dsI];
+
+                // compute magnitude of snGrad of U at the surface
+                vector zeroU = vector::zero;
+                vector snGradU = (zeroU - U[cellI])/ds;
+                scalar magGradUWall = mag(snGradU);
+
+                // compute local Reynolds number
+                scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+                
+                // compute normalized variables
+                const scalar yPlus = Cmu25_*Rey;
+                const scalar uPlus = (1/kappa_)*Foam::log(E_*yPlus);
+
+                // compute the values at the surface
+                if (blended)
                 {
-                    omegaIB[bCell] = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
-                    GIB[bCell] = G[cellI];
+                    const scalar lamFrac = Foam::exp(-Rey/11);
+                    const scalar turbFrac = 1 - lamFrac;
+
+                    const scalar uStar = Foam::sqrt
+                    (
+                        lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
+                    );
+
+                    const scalar omegaVis = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
+                    const scalar omegaLog = uStar/(Cmu5_*kappa_*ds);
+
+                    omegaIB[bCell] += w*(lamFrac*omegaVis + turbFrac*omegaLog);
+                    GIB[bCell] += w*(lamFrac*G[cellI] + turbFrac*sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus));
                 }
 
                 else
                 {
-                    const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
+                    if (yPlus < yPlusLam_)
+                    {
+                        omegaIB[bCell] += w*(6*nu[cellI]/(beta1_*Foam::sqr(ds)));
+                        GIB[bCell] += w*(G[cellI]);
+                    }
 
-                    omegaIB[bCell] = uStar/(Cmu5_*kappa_*ds);
-                    GIB[bCell] = sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
+                    else
+                    {
+                        const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
+
+                        omegaIB[bCell] += w*(uStar/(Cmu5_*kappa_*ds));
+                        GIB[bCell] += w*(sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus));
+                    }
                 }
-            }
-
-            if (isWallCell_[bCell])
-            {
-                omegaIB[bCell] *= 2.0; // provisorial solution
-                GIB[bCell] *= 2.0;
             }
         }
     }
@@ -264,27 +312,6 @@ void ibDirichletBCs::omegaGAtIB
     else
     {
         FatalError << omegaWF_ << " condition for omega and G not implemented at the IB" << exit(FatalError);
-    }
-}
-
-//---------------------------------------------------------------------------//
-void ibDirichletBCs::phiAtIB
-(
-    List<scalar>& phiIB,
-    word BCType
-)
-{
-    if (BCType == "noFlux")
-    {
-        forAll(boundaryFaces_, bFace)
-        {
-            phiIB[bFace] = 0.0;
-        }
-    }
-
-    else
-    {
-        FatalError << BCType << " condition for flux not implemented at the IB" << exit(FatalError);
     }
 }
 

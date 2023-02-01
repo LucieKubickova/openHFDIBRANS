@@ -71,6 +71,7 @@ Contributors
 #include "cellSet.H"
 #include "addToRunTimeSelectionTable.H"
 #include "PstreamReduceOps.H"
+#include "nearWallDist.H"
 
 using namespace Foam;
 
@@ -87,8 +88,7 @@ class ibDirichletBCs
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
-    DynamicList<label>& boundaryFaces_;
-    List<bool>& isWallCell_;
+    List<Tuple2<bool,label>>& isWallCell_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -98,9 +98,7 @@ class ibDirichletBCs
     word simulationType_;
 
     // saves
-    List<scalar> yPlusi_;
-    List<scalar> ULogScales_;
-    List<scalar> kLogScales_;
+    volScalarField yPlusi_;
 
     // RAS wall function names
     word kWF_;
@@ -141,41 +139,22 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, DynamicList<label>& boundaryFaces, List<bool>& isWallCell);
+    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, List<Tuple2<bool,label>>& isWallCell);
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();
 
     // Public methods --------------------------------------------------
     
-    // velocity boudnary condition
-    template <typename Type>
-    void UAtIB(List<Type>& UIB, word BCType, const volScalarField& k, const volScalarField& nu);
-
-    // pressure boundary condition
-    void pAtIB(List<scalar>& pIB, word BCType, const volScalarField& p);
+    // velocity boundary condition
+    void UAtIB(List<vector>& UIB, word BCType);
 
     // turbulence fields boundary conditions
     void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
     void kAtIB(List<scalar>& kIB, volScalarField& k, volScalarField& nu);
 
-    // flux boundary condition
-    void phiAtIB(List<scalar>& phiIB, word BCType);
-
-    // return the log scales for velocity
-    List<scalar>& getULogScales()
-    {
-        return ULogScales_;
-    }
-
-    // return the log scales for turbulent kinetic energy
-    List<scalar>& getkLogScales()
-    {
-        return kLogScales_;
-    }
-
     // return the immersed yPlus field
-    List<scalar>& getYPlusi()
+    volScalarField& getYPlusi()
     {
         return yPlusi_;
     }
@@ -185,20 +164,7 @@ class ibDirichletBCs
     {
         return yPlusLam_;
     }
-
-    // correct lists
-    void correctLists()
-    {
-        yPlusi_.setSize(boundaryCells_.size());
-        ULogScales_.setSize(boundaryCells_.size());
-        kLogScales_.setSize(boundaryCells_.size());
-    }
 };
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-#ifdef NoRepository
-    #include "ibDirichletBCsTemplates.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

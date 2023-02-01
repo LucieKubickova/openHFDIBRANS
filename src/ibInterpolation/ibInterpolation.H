@@ -92,15 +92,13 @@ class ibInterpolation
     // lambda related things
     const volScalarField& body_;
     volVectorField surfNorm_;
-    volVectorField surfTan_;
     scalar thrSurf_;
     scalar intSpan_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
-    DynamicList<label>& boundaryFaces_;
-    List<bool>& isWallCell_;
+    List<Tuple2<bool,label>>& isWallCell_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -110,20 +108,17 @@ class ibInterpolation
     dictionary HFDIBInterpDict_;
 
     // private functions
-    // peace-wise interpolation
+    // interpolation functions
     template <typename Type, typename volTypeField>
     Type polynom(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, label bCell);
 
     template <typename Type, typename volTypeField>
     Type logarithm(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, scalar& logScale, label bCell);
 
-    template <typename Type, typename volTypeField>
-    Type constant(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, label bCell);
-
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, DynamicList<label>& boundaryFaces_, List<bool>& isWallCell);
+    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, List<Tuple2<bool,label>>& isWallCell);
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();
@@ -141,28 +136,18 @@ class ibInterpolation
 
     // polynomial/logarithmic interpolation, decision based on local yPlus value
     template <typename Type, typename volTypeField>
-    void polySwitchLogInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, List<scalar>& yPlusi, scalar yPlusLam);
-
-    // polynomial/constant interpolation, decision based on local yPlus value
-    template <typename Type, typename volTypeField>
-    void polySwitchConsInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, List<scalar>& yPlusi, scalar yPlusLam);
-
-    // copy values from phi to phii
-    template <typename Type, typename volTypeField>
-    void noInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
-
-    // linear interpolation to inner cells
-    template <typename Type, typename volTypeField>
-    void linearInInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
+    void polySwitchLogInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, volScalarField& yPlusi, scalar yPlusLam);
 
     // TODO: blended interpolation
     
     // identification
     void findBoundaryCells();
     void areWallCells();
-    void findBoundaryFaces();
-    void createOuterSurface(volScalarField& outSurface);
-    void createInnerSurface(volScalarField& inSurface);
+
+    // surface creation
+    void setUpSurface(volScalarField& surface, scalar boundaryVal);
+    void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
+    // TODO: blended surface
 
     // surface distance calculation
     void calculateDistToBoundary();
@@ -170,8 +155,7 @@ class ibInterpolation
     // calculate interpolation points
     void calculateInterpolationPoints();
 
-    // calculate surface directions
-    void calculateSurfTans(volVectorField& U);
+    // surface normals
     void calculateSurfNorm();
     void correctSurfNorm();
 
@@ -182,24 +166,6 @@ class ibInterpolation
     void saveInterpolationInfo(word outDir, word fileName);
     void saveBoundaryCells();
     void saveCellSet(List<label>& listToSave, word fileName);
-
-    // return the surface threshold
-    scalar getSurfaceThreshold()
-    {
-        return thrSurf_;
-    }
-
-    // return the surface normals field
-    volVectorField& getSurfNorm()
-    {
-        return surfNorm_;
-    }
-
-    // return the surface tangents field
-    volVectorField& getSurfTan()
-    {
-        return surfTan_;
-    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -93,16 +93,23 @@ protected:
             volScalarField k_;
             volScalarField omega_;
 	        volScalarField lambda_;
+            volScalarField surface_;
 	        volScalarField ki_;
             volScalarField kQ_;
 	        volScalarField nu_;
+
+        // Dictionaries
+
+            IOdictionary HFDIBDEMDict_;
+            word surfaceType_;
+            scalar boundaryValue_;
 
     // Protected Member Functions
 
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
         virtual tmp<fvScalarMatrix> omegaSource() const;
-        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, scalar threshold, openHFDIBRANS& HFDIBRANS);
+        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, scalar threshold);
 
 
 public:

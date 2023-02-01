@@ -1,4 +1,4 @@
-Info<< "Reading field p\n" << endl;
+Info << "Reading field p\n" << endl;
 volScalarField p
 (
     IOobject
@@ -12,7 +12,7 @@ volScalarField p
     mesh
 );
 
-Info<< "Reading field U\n" << endl;
+Info << "Reading field U\n" << endl;
 volVectorField U
 (
     IOobject
@@ -26,7 +26,7 @@ volVectorField U
     mesh
 );
 
-Info<< "Creating field Ui\n" << endl;
+Info << "Creating field Ui\n" << endl;
 volVectorField Ui
 (
     IOobject
@@ -40,7 +40,7 @@ volVectorField Ui
     U
 );
 
-Info<< "Reading field lambda\n" << endl;
+Info << "Reading field lambda\n" << endl;
 volScalarField lambda
 (
     IOobject
@@ -55,7 +55,22 @@ volScalarField lambda
     dimensionedScalar("zero",dimless,0)
 );
 
-Info<< "Reading field f\n" << endl;
+Info << "Creating field surface\n" << endl;
+volScalarField surface
+(
+    IOobject
+    (
+        "SIMPLE::surface",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero",dimless,0)
+);
+
+Info << "Reading field f\n" << endl;
 volVectorField f
 (
     IOobject
@@ -67,21 +82,6 @@ volVectorField f
         IOobject::AUTO_WRITE
     ),
     mesh
-);
-
-Info<< "Reading field gradLambda\n" << endl;
-volVectorField gradLambda
-(
-    IOobject
-    (
-        "gradLambda",
-        runTime.timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh,
-    dimensionedVector("gradLambda",dimless,vector(0.0,0.0,0.0))
 );
 
 #include "createPhi.H"
@@ -114,6 +114,23 @@ IOdictionary turbulenceProperties
 
 word simulationType;
 turbulenceProperties.lookup("simulationType") >> simulationType;
+
+IOdictionary HFDIBDEMDict
+(
+    IOobject
+    (
+        "HFDIBDEMDict",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+);
+
+dictionary HFDIBSimpleDict = HFDIBDEMDict.subDict("SIMPLE");
+word surfaceType;
+HFDIBSimpleDict.lookup("surfaceType") >> surfaceType;
+scalar boundaryVal = readScalar(HFDIBSimpleDict.lookup("boundaryValue"));
 
 #include "createMRF.H"
 #include "createFvOptions.H"

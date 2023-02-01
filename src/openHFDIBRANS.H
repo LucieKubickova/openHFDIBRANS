@@ -59,8 +59,6 @@ class openHFDIBRANS
 
     // lambda related
     const volScalarField& body_;
-    volScalarField outSurface_;
-    volScalarField inSurface_;
 
     // turbulence related
     word simulationType_;
@@ -68,23 +66,18 @@ class openHFDIBRANS
     // dictionaries
     IOdictionary HFDIBDEMDict_;
 
-    // interpolation types
-    word UInterpType_;
-
     // tolerances for solvers
     scalar tolUEqn_;
     scalar tolKEqn_;
 
     // maximum number of iterations for solvers
     scalar maxUEqnIters_;
-    scalar maxPEqnIters_;
     scalar maxKEqnIters_;
 
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
     List<Tuple2<scalar,scalar>> boundaryDists_;
-    DynamicList<label> boundaryFaces_;
-    List<bool> isWallCell_;
+    List<Tuple2<bool,label>> isWallCell_;
 
     // interpolation class
     ibInterpolation ibInterpolation_;
@@ -107,18 +100,15 @@ class openHFDIBRANS
     // Public methods --------------------------------------------------
     
     // compute imposed fields
-    void computeUi(volVectorField& U, volVectorField& Ui, const volScalarField& k, const volScalarField& nu);
+    void computeUi(volVectorField& U, volVectorField& Ui);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
 
     // correct values
-    void correctP(volScalarField& p);
-    void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
+    void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 
-    // evalute max error in pressure boundary condition
-    scalar maxErrorInPBC(volScalarField& p);
-
-    // correct flux
-    void correctPhi(surfaceScalarField& phi);
+    // create and return surface field
+    void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
+    void updateSurface(volScalarField& surface, word surfType);
 
     // return maximum tolarences for solvers
     scalar tolUEqn()
@@ -137,31 +127,9 @@ class openHFDIBRANS
         return maxUEqnIters_;
     }
 
-    scalar maxPEqnIters()
-    {
-        return maxPEqnIters_;
-    }
-
     scalar maxKEqnIters()
     {
         return maxKEqnIters_;
-    }
-
-    // return the surface fields
-    volScalarField& outSurface()
-    {
-        return outSurface_;
-    }
-
-    volScalarField& inSurface()
-    {
-        return inSurface_;
-    }
-
-    // return the surface threshold
-    scalar getSurfaceThreshold()
-    {
-        return ibInterpolation_.getSurfaceThreshold();
     }
 };
 
