@@ -34,19 +34,68 @@ namespace Foam
 namespace HFDIBRASModels
 {
 
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+// * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-void HFDIBKOmega<BasicMomentumTransportModel>::correctNut()
+tmp<volScalarField> HFDIBRealizableKE<BasicMomentumTransportModel>::rCmu
+(
+    const volTensorField& gradU,
+    const volScalarField& S2,
+    const volScalarField& magS
+)
 {
-    this->nut_ = k_/omega_;
-    this->nut_.correctBoundaryConditions(); // here nutWallFunctions are used
+    tmp<volSymmTensorField> tS = dev(symm(gradU));
+    const volSymmTensorField& S = tS();
+
+    volScalarField W
+    (
+        (2*sqrt(2.0))*((S&S)&&S)
+       /(
+            magS*S2
+          + dimensionedScalar(dimensionSet(0, 0, -3, 0, 0), small)
+        )
+    );
+
+    tS.clear();
+
+    volScalarField phis
+    (
+        (1.0/3.0)*acos(min(max(sqrt(6.0)*W, -scalar(1)), scalar(1)))
+    );
+    volScalarField As(sqrt(6.0)*cos(phis));
+    volScalarField Us(sqrt(S2/2.0 + magSqr(skew(gradU))));
+
+    return 1.0/(A0_ + As*Us*k_/epsilon_);
+}
+
+
+template<class BasicMomentumTransportModel>
+void HFDIBRealizableKE<BasicMomentumTransportModel>::correctNut
+(
+    const volTensorField& gradU,
+    const volScalarField& S2,
+    const volScalarField& magS
+)
+{
+    this->nut_ = rCmu(gradU, S2, magS)*sqr(k_)/epsilon_;
+    this->nut_.correctBoundaryConditions();
     fv::options::New(this->mesh_).correct(this->nut_);
 }
 
 
 template<class BasicMomentumTransportModel>
-tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::kSource() const
+void HFDIBRealizableKE<BasicMomentumTransportModel>::correctNut()
+{
+    tmp<volTensorField> tgradU = fvc::grad(this->U_);
+    volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(tgradU()))));
+    volScalarField magS(modelName("magS"), sqrt(S2));
+
+    correctNut(tgradU(), S2, magS);
+}
+
+
+template<class BasicMomentumTransportModel>
+tmp<fvScalarMatrix> HFDIBRealizableKE<BasicMomentumTransportModel>::kSource() const
 {
     return tmp<fvScalarMatrix>
     (
@@ -61,20 +110,22 @@ tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::kSource() const
 
 
 template<class BasicMomentumTransportModel>
-tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::omegaSource() const
+tmp<fvScalarMatrix>
+HFDIBRealizableKE<BasicMomentumTransportModel>::epsilonSource() const
 {
     return tmp<fvScalarMatrix>
     (
         new fvScalarMatrix
         (
-            omega_,
-            dimVolume*this->rho_.dimensions()*omega_.dimensions()/dimTime
+            epsilon_,
+            dimVolume*this->rho_.dimensions()*epsilon_.dimensions()
+            /dimTime
         )
     );
 }
 
 template<class BasicMomentumTransportModel>
-void HFDIBKOmega<BasicMomentumTransportModel>::matrixManipulate
+void HFDIBRealizableKE<BasicMomentumTransportModel>::matrixManipulate
 (
     fvScalarMatrix& eqn,
     volScalarField& phi,
@@ -102,7 +153,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::matrixManipulate
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
+HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
 (
     const alphaField& alpha,
     const rhoField& rho,
@@ -123,57 +174,47 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         phi,
         transport
     ),
-
-    Cmu_
+    A0_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "betaStar",
+            "A0",
             this->coeffDict_,
-            0.09
+            4.0
         )
     ),
-    beta_
+    C2_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "beta",
+            "C2",
             this->coeffDict_,
-            0.072
+            1.9
         )
     ),
-    gamma_
+    sigmak_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "gamma",
+            "sigmak",
             this->coeffDict_,
-            0.52
+            1.0
         )
     ),
-    alphaK_
+    sigmaEps_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
-            "alphaK",
+            "sigmaEps",
             this->coeffDict_,
-            0.5
-        )
-    ),
-    alphaOmega_
-    (
-        dimensioned<scalar>::lookupOrAddToDict
-        (
-            "alphaOmega",
-            this->coeffDict_,
-            0.5
+            1.2
         )
     ),
     k_
     (
         IOobject
         (
-            IOobject::groupName("k", alphaRhoPhi.group()),
+            "k",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
@@ -181,11 +222,11 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         ),
         this->mesh_
     ),
-    omega_
+    epsilon_
     (
         IOobject
         (
-            IOobject::groupName("omega", alphaRhoPhi.group()),
+            "epsilon",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
@@ -195,21 +236,21 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     ),
     lambda_
     (
-    	IOobject
-	    (
-	        "lambda",
+        IOobject
+        (
+            "lambda",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
             IOobject::NO_WRITE
-	    ),
-	    this->mesh_
+        ),
+        this->mesh_
     ),
     surface_
     (
         IOobject
         (
-            "HFDIBKOmega::surface",
+            "HFDIBRealizableKE::surface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -222,7 +263,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     (
         IOobject
         (
-	        "ki",
+            "ki",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -235,7 +276,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     (
         IOobject
         (
-	        "kQ",
+            "kQ",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::READ_IF_PRESENT,
@@ -257,13 +298,13 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     )
 {
     // read HFDIBDEM dictionary
-    dictionary HFDIBKOmegaDict = HFDIBDEMDict_.subDict("HFDIBKOmega");
-    HFDIBKOmegaDict.lookup("surfaceType") >> surfaceType_;
-    boundaryValue_ = readScalar(HFDIBKOmegaDict.lookup("boundaryValue"));
+    dictionary HFDIBRealizableKEDict = HFDIBDEMDict_.subDict("HFDIBRealizableKE");
+    HFDIBRealizableKEDict.lookup("surfaceType") >> surfaceType_;
+    boundaryValue_ = readScalar(HFDIBRealizableKEDict.lookup("boundaryValue"));
 
     // bound
     bound(k_, this->kMin_);
-    bound(omega_, this->omegaMin_);
+    bound(epsilon_, this->epsilonMin_);
 
     if (type == typeName)
     {
@@ -274,15 +315,14 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-bool HFDIBKOmega<BasicMomentumTransportModel>::read()
+bool HFDIBRealizableKE<BasicMomentumTransportModel>::read()
 {
     if (eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::read())
     {
-        Cmu_.readIfPresent(this->coeffDict());
-        beta_.readIfPresent(this->coeffDict());
-        gamma_.readIfPresent(this->coeffDict());
-        alphaK_.readIfPresent(this->coeffDict());
-        alphaOmega_.readIfPresent(this->coeffDict());
+        A0_.readIfPresent(this->coeffDict());
+        C2_.readIfPresent(this->coeffDict());
+        sigmak_.readIfPresent(this->coeffDict());
+        sigmaEps_.readIfPresent(this->coeffDict());
 
         return true;
     }
@@ -293,7 +333,7 @@ bool HFDIBKOmega<BasicMomentumTransportModel>::read()
 }
 
 template<class BasicMomentumTransportModel>
-void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
+void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 {
     if (!this->turbulence_)
     {
@@ -315,63 +355,76 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     volScalarField::Internal divU
     (
+        modelName("divU"),
         fvc::div(fvc::absolute(this->phi(), U))().v()
     );
 
     tmp<volTensorField> tgradU = fvc::grad(U);
+    volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(tgradU()))));
+    volScalarField magS(modelName("magS"), sqrt(S2));
+
+    volScalarField::Internal eta(modelName("eta"), magS()*k_()/epsilon_());
+    volScalarField::Internal C1
+    (
+        modelName("C1"),
+        max(eta/(scalar(5) + eta), scalar(0.43))
+    );
+
     volScalarField::Internal G
     (
         this->GName(),
         nut.v()*(dev(twoSymm(tgradU().v())) && tgradU().v())
     );
-    tgradU.clear();
 
-    // Update omega and G at the wall
-    omega_.boundaryFieldRef().updateCoeffs();
+    // Update epsilon and G at the wall
+    epsilon_.boundaryFieldRef().updateCoeffs();
+    
+    // HFDIB: correct epsilon and G
+    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, nut, surface_);
 
-    // HFDIB: correct omega and G
-    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, surface_);
-
-    // Turbulence specific dissipation rate equation
-    tmp<fvScalarMatrix> omegaEqn
+    // Dissipation equation
+    tmp<fvScalarMatrix> epsEqn
     (
-        fvm::ddt(alpha, rho, omega_) // tohle je nula
-      + fvm::div(alphaRhoPhi, omega_) // az na upravovane bunky stejne
-      - fvm::laplacian(alpha*rho*DomegaEff(), omega_) // bez korekce nut dobre v ramci vypoctu wall functions
+        fvm::ddt(alpha, rho, epsilon_)
+      + fvm::div(alphaRhoPhi, epsilon_)
+      - fvm::laplacian(alpha*rho*DepsilonEff(), epsilon_)
      ==
-        omegaSource() // tohle je nula
-      + gamma_*alpha()*rho()*G*omega_()/k_() // tohle je dobre
-      - fvm::Sp(beta_*alpha()*rho()*omega_(), omega_) // tohle je dobre v ramci vypoctu wall functions
-      - fvm::SuSp(((2.0/3.0)*gamma_)*alpha()*rho()*divU, omega_) // tohle je stejny, pro stejny divU, juch
-      + fvOptions(alpha, rho, omega_) // tohle je nula
+        C1*alpha()*rho()*magS()*epsilon_()
+      - fvm::Sp
+        (
+            C2_*alpha()*rho()*epsilon_()/(k_() + sqrt(this->nu()()*epsilon_())),
+            epsilon_
+        )
+      + epsilonSource()
+      + fvOptions(alpha, rho, epsilon_)
     );
 
-    omegaEqn.ref().relax();
-    fvOptions.constrain(omegaEqn.ref());
-    omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
+    epsEqn.ref().relax();
+    fvOptions.constrain(epsEqn.ref());
+    epsEqn.ref().boundaryManipulate(epsilon_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, 1e-4);
+    matrixManipulate(epsEqn.ref(), epsilon_, 1e-4);
 
-    solve(omegaEqn);
-    fvOptions.correct(omega_);
-    bound(omega_, this->omegaMin_);
+    solve(epsEqn);
+    fvOptions.correct(epsilon_);
+    bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
-            
+
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
     (
-        fvm::ddt(alpha, rho, k_) // nula
-      + fvm::div(alphaRhoPhi, k_) // dobre az na posledni radu bunek logicky
-      - fvm::laplacian(alpha*rho*DkEff(), k_) // dobre az na predposledni a posledni radu bunek
+        fvm::ddt(alpha, rho, k_)
+      + fvm::div(alphaRhoPhi, k_)
+      - fvm::laplacian(alpha*rho*DkEff(), k_)
      ==
-      kSource() // proste nula
-      + alpha()*rho()*G // tohle vypada dobre
-      - fvm::Sp(Cmu_*alpha()*rho()*omega_(), k_) // tohle je spravne v ramci spravnosti omega
-      - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_) // tohle je spravne se spravnym divU
-      + fvOptions(alpha, rho, k_) // nula
+        alpha()*rho()*G
+      - fvm::SuSp(2.0/3.0*alpha()*rho()*divU, k_)
+      - fvm::Sp(alpha()*rho()*epsilon_()/k_(), k_)
+      + kSource()
+      + fvOptions(alpha, rho, k_)
     );
 
     kEqn.relax();
@@ -391,17 +444,17 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
         // apply correction
         k_ += 1.0*surface_*(ki_ - k_);
     }
-
+    
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    
-    correctNut();
+
+    correctNut(tgradU(), S2, magS);
 }
 
 template<class BasicMomentumTransportModel>
-void HFDIBKOmega<BasicMomentumTransportModel>::correct()
+void HFDIBRealizableKE<BasicMomentumTransportModel>::correct()
 {
-    Info << "HFDIBKOmega::correct() not implemented" << endl;
+    Info << "HFDIBRealizableKE::correct() not implemented" << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -410,4 +463,3 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct()
 } // End namespace Foam
 
 // ************************************************************************* //
-

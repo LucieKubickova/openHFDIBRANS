@@ -22,38 +22,49 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::HFDIBRASModels::HFDIBKOmega
+    Foam::HFDIBRASModels::HFDIBKEpsilon
 
 Description
-    Standard high Reynolds-number k-omega turbulence model for
-    incompressible and compressible flows.
+    Standard k-epsilon turbulence model for incompressible and compressible
+    flows including rapid distortion theory (RDT) based compression term.
 
-    References:
+    Reference:
     \verbatim
-        Wilcox, D. C. (1998).
-        Turbulence modeling for CFD
-        (Vol. 2, pp. 103-217). La Canada, CA: DCW industries.
+        Standard model:
+            Launder, B. E., & Spalding, D. B. (1972).
+            Lectures in mathematical models of turbulence.
+
+            Launder, B. E., & Spalding, D. B. (1974).
+            The numerical computation of turbulent flows.
+            Computer methods in applied mechanics and engineering,
+            3(2), 269-289.
+
+        For the RDT-based compression term:
+            El Tahry, S. H. (1983).
+            k-epsilon equation for compressible reciprocating engine flows.
+            Journal of Energy, 7(4), 345-353.
     \endverbatim
 
     The default model coefficients are
     \verbatim
-        HFDIBKOmegaCoeffs
+        HFDIBKEpsilonCoeffs
         {
-            Cmu         0.09;  // Equivalent to betaStar
-            alpha       0.52;
-            beta        0.072;
-            alphak      0.5;
-            alphaOmega  0.5;
+            Cmu         0.09;
+            C1          1.44;
+            C2          1.92;
+            C3          -0.33;
+            sigmak      1.0;
+            sigmaEps    1.3;
         }
     \endverbatim
 
 SourceFiles
-    HFDIBKOmega.C
+    HFDIBKEpsilon.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef HFDIBKOmega_H
-#define HFDIBKOmega_H
+#ifndef HFDIBKEpsilon_H
+#define HFDIBKEpsilon_H
 
 #include "HFDIBRASModel.H"
 #include "eddyViscosity.H"
@@ -66,11 +77,11 @@ namespace HFDIBRASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBKOmega Declaration
+                           Class HFDIBKEpsilon Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicMomentumTransportModel>
-class HFDIBKOmega
+class HFDIBKEpsilon
 :
     public eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>
 {
@@ -82,21 +93,21 @@ protected:
         // Model coefficients
 
             dimensionedScalar Cmu_;
-            dimensionedScalar beta_;
-            dimensionedScalar gamma_;
-            dimensionedScalar alphaK_;
-            dimensionedScalar alphaOmega_;
-
+            dimensionedScalar C1_;
+            dimensionedScalar C2_;
+            dimensionedScalar C3_;
+            dimensionedScalar sigmak_;
+            dimensionedScalar sigmaEps_;
 
         // Fields
 
             volScalarField k_;
-            volScalarField omega_;
-	        volScalarField lambda_;
+            volScalarField epsilon_;
+            volScalarField lambda_;
             volScalarField surface_;
-	        volScalarField ki_;
+            volScalarField ki_;
             volScalarField kQ_;
-	        volScalarField nu_;
+            volScalarField nu_;
 
         // Dictionaries
 
@@ -108,7 +119,7 @@ protected:
 
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
-        virtual tmp<fvScalarMatrix> omegaSource() const;
+        virtual tmp<fvScalarMatrix> epsilonSource() const;
         virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, scalar threshold);
 
 
@@ -120,13 +131,12 @@ public:
 
 
     //- Runtime type information
-    TypeName("HFDIBKOmega");
-
+    TypeName("HFDIBKEpsilon");
 
     // Constructors
 
         //- Construct from components
-        HFDIBKOmega
+        HFDIBKEpsilon
         (
             const alphaField& alpha,
             const rhoField& rho,
@@ -137,15 +147,18 @@ public:
             const word& type = typeName
         );
 
+        //- Disallow default bitwise copy construction
+        HFDIBKEpsilon(const HFDIBKEpsilon&) = delete;
+
 
     //- Destructor
-    virtual ~HFDIBKOmega()
+    virtual ~HFDIBKEpsilon()
     {}
 
 
     // Member Functions
 
-        //- Read HFDIBRASProperties dictionary
+        //- Re-read model coefficients if they have changed
         virtual bool read();
 
         //- Return the effective diffusivity for k
@@ -154,17 +167,17 @@ public:
             return volScalarField::New
             (
                 "DkEff",
-                alphaK_*this->nut_ + this->nu()
+                (this->nut_/sigmak_ + this->nu())
             );
         }
 
-        //- Return the effective diffusivity for omega
-        tmp<volScalarField> DomegaEff() const
+        //- Return the effective diffusivity for epsilon
+        tmp<volScalarField> DepsilonEff() const
         {
             return volScalarField::New
             (
-                "DomegaEff",
-                alphaOmega_*this->nut_ + this->nu()
+                "DepsilonEff",
+                (this->nut_/sigmaEps_ + this->nu())
             );
         }
 
@@ -174,21 +187,10 @@ public:
             return k_;
         }
 
-        //- Return the turbulence specific dissipation rate
-        virtual tmp<volScalarField> omega() const
-        {
-            return omega_;
-        }
-
         //- Return the turbulence kinetic energy dissipation rate
         virtual tmp<volScalarField> epsilon() const
         {
-            return volScalarField::New
-            (
-                "epsilon",
-                Cmu_*k_*omega_,
-                omega_.boundaryField().types()
-            );
+            return epsilon_;
         }
 
         //- Solve the turbulence equations and correct the turbulence viscosity
@@ -196,6 +198,11 @@ public:
 
         //- second image of the correct function to accept arguments
         virtual void correct(openHFDIBRANS& HFDIBRANS);
+
+    // Member Operators
+
+        //- Disallow default bitwise assignment
+        void operator=(const HFDIBKEpsilon&) = delete;
 };
 
 
@@ -207,7 +214,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "HFDIBKOmega.C"
+    #include "HFDIBKEpsilon.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

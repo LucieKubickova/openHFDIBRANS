@@ -83,8 +83,10 @@ beta1_(0.075)
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     HFDIBBCsDict_.lookup("k") >> kWF_;
     HFDIBBCsDict_.lookup("omega") >> omegaWF_;
+    HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
 
     // compute turbulence parameters
+    Cmu75_ = Foam::pow(Cmu_, 0.75);
     Cmu25_ = pow025(Cmu_);
     Cmu5_ = Foam::sqrt(Cmu_);
     calcYPlusLam();
@@ -314,5 +316,110 @@ void ibDirichletBCs::omegaGAtIB
         FatalError << omegaWF_ << " condition for omega and G not implemented at the IB" << exit(FatalError);
     }
 }
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::epsilonGAtIB
+(
+    List<scalar>& epsilonIB,
+    List<scalar>& GIB,
+    volScalarField::Internal& G,
+    const volVectorField& U,
+    volScalarField& k,
+    volScalarField& nu,
+    volScalarField& nut
+)
+{
+    if (epsilonWF_ == "epsilonWallFunction")
+    {
+        // load near wall dist
+        nearWallDist yWall(mesh_);
+
+        forAll(boundaryCells_, bCell)
+        {
+            // reset fields
+            epsilonIB[bCell] *= 0.0;
+            GIB[bCell] *= 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // prepare list of distances and weights
+            List<scalar> distances;
+            List<scalar> weights;
+
+            if (isWallCell_[bCell].first())
+            {
+                // set size of dss
+                distances.setSize(2);
+                weights.setSize(2);
+
+                // get face label
+                label faceI = isWallCell_[bCell].second();
+
+                // get patch label
+                label patchI = mesh_.boundaryMesh().whichPatch(faceI);
+
+                // get local face label
+                label lfaceI = mesh_.boundaryMesh()[patchI].whichFace(faceI);
+
+                // get near wall distance
+                distances[1] = yWall[patchI][lfaceI];
+            }
+
+            else
+            {
+                // set size of dss
+                distances.setSize(1);
+                weights.setSize(1);
+            }
+
+            // get distance to the surface
+            distances[0] = boundaryDists_[bCell].first();
+
+            // calculate weights
+            forAll(weights, wI)
+            {
+                weights[wI] = 1.0/weights.size();
+            }
+
+            // loop over walls and surfaces
+            forAll(distances, dsI)
+            {
+                // get distance and weight
+                scalar ds = distances[dsI];
+                scalar w = weights[dsI];
+
+                // compute magnitude of snGrad of U at the surface
+                vector zeroU = vector::zero;
+                vector snGradU = (zeroU - U[cellI])/ds;
+                scalar magGradUWall = mag(snGradU);
+
+                // compute local Reynolds number
+                scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+
+                // compute normalized variables
+                const scalar yPlus = Cmu25_*Rey;
+
+                if (yPlus > yPlusLam_)
+                {
+                    epsilonIB[bCell] += w*Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
+                    GIB[bCell] += w*(nut[cellI] + nu[cellI])*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
+                }
+
+                else
+                {
+                    epsilonIB[bCell] += w*2.0*k[cellI]*nu[cellI]/sqr(ds);
+                    GIB[bCell] += w*(G[cellI]); // NOTE: not sure about this
+                }
+            }
+        }
+    }
+
+    else
+    {
+        FatalError << epsilonWF_ << " condition for epsilon and G not implemented at the IB" << exit(FatalError);
+    }
+}
+
 
 // ************************************************************************* //

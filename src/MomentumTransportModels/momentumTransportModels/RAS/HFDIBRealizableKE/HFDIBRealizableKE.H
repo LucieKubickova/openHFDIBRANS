@@ -22,38 +22,43 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::HFDIBRASModels::HFDIBKOmega
+    Foam::HFDIBRASModels::HFDIBRealizableKE
 
 Description
-    Standard high Reynolds-number k-omega turbulence model for
-    incompressible and compressible flows.
+    Realizable k-epsilon turbulence model for incompressible and compressible
+    flows.
 
     References:
     \verbatim
-        Wilcox, D. C. (1998).
-        Turbulence modeling for CFD
-        (Vol. 2, pp. 103-217). La Canada, CA: DCW industries.
+        Shih, T. H., Liou, W. W., Shabbir, A., Yang, Z., & Zhu, J. (1994).
+        A new k-epsilon eddy viscosity model for high Reynolds number
+        turbulent flows: Model development and validation.
+        NASA STI/Recon Technical Report N, 95, 11442.
+
+        Shih, T. H., Liou, W. W., Shabbir, A., Yang, Z., & Zhu, J. (1995).
+        A New k-epsilon Eddy Viscosity Model for High Reynolds Number
+        Turbulent Flows.
+        Computers and Fluids, 24(3), 227-238.
     \endverbatim
 
     The default model coefficients are
     \verbatim
-        HFDIBKOmegaCoeffs
+        HFDIBRealizableKECoeffs
         {
-            Cmu         0.09;  // Equivalent to betaStar
-            alpha       0.52;
-            beta        0.072;
-            alphak      0.5;
-            alphaOmega  0.5;
+            A0          4.0;
+            C2          1.9;
+            sigmak      1.0;
+            sigmaEps    1.2;
         }
     \endverbatim
 
 SourceFiles
-    HFDIBKOmega.C
+    HFDIBRealizableKE.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef HFDIBKOmega_H
-#define HFDIBKOmega_H
+#ifndef HFDIBRealizableKE_H
+#define HFDIBRealizableKE_H
 
 #include "HFDIBRASModel.H"
 #include "eddyViscosity.H"
@@ -66,14 +71,18 @@ namespace HFDIBRASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBKOmega Declaration
+                        Class HFDIBRealizableKE Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicMomentumTransportModel>
-class HFDIBKOmega
+class HFDIBRealizableKE
 :
     public eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>
 {
+    // Private Member Functions
+
+        using IOobject::modelName;
+
 
 protected:
 
@@ -81,22 +90,21 @@ protected:
 
         // Model coefficients
 
-            dimensionedScalar Cmu_;
-            dimensionedScalar beta_;
-            dimensionedScalar gamma_;
-            dimensionedScalar alphaK_;
-            dimensionedScalar alphaOmega_;
+            dimensionedScalar A0_;
+            dimensionedScalar C2_;
+            dimensionedScalar sigmak_;
+            dimensionedScalar sigmaEps_;
 
 
         // Fields
 
             volScalarField k_;
-            volScalarField omega_;
-	        volScalarField lambda_;
+            volScalarField epsilon_;
+            volScalarField lambda_;
             volScalarField surface_;
-	        volScalarField ki_;
+            volScalarField ki_;
             volScalarField kQ_;
-	        volScalarField nu_;
+            volScalarField nu_;
 
         // Dictionaries
 
@@ -106,9 +114,23 @@ protected:
 
     // Protected Member Functions
 
+        tmp<volScalarField> rCmu
+        (
+            const volTensorField& gradU,
+            const volScalarField& S2,
+            const volScalarField& magS
+        );
+
+        virtual void correctNut
+        (
+            const volTensorField& gradU,
+            const volScalarField& S2,
+            const volScalarField& magS
+        );
+
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
-        virtual tmp<fvScalarMatrix> omegaSource() const;
+        virtual tmp<fvScalarMatrix> epsilonSource() const;
         virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, scalar threshold);
 
 
@@ -120,13 +142,12 @@ public:
 
 
     //- Runtime type information
-    TypeName("HFDIBKOmega");
-
+    TypeName("HFDIBRealizableKE");
 
     // Constructors
 
         //- Construct from components
-        HFDIBKOmega
+        HFDIBRealizableKE
         (
             const alphaField& alpha,
             const rhoField& rho,
@@ -139,13 +160,13 @@ public:
 
 
     //- Destructor
-    virtual ~HFDIBKOmega()
+    virtual ~HFDIBRealizableKE()
     {}
 
 
     // Member Functions
 
-        //- Read HFDIBRASProperties dictionary
+        //- Re-read model coefficients if they have changed
         virtual bool read();
 
         //- Return the effective diffusivity for k
@@ -154,17 +175,17 @@ public:
             return volScalarField::New
             (
                 "DkEff",
-                alphaK_*this->nut_ + this->nu()
+                (this->nut_/sigmak_ + this->nu())
             );
         }
 
-        //- Return the effective diffusivity for omega
-        tmp<volScalarField> DomegaEff() const
+        //- Return the effective diffusivity for epsilon
+        tmp<volScalarField> DepsilonEff() const
         {
             return volScalarField::New
             (
-                "DomegaEff",
-                alphaOmega_*this->nut_ + this->nu()
+                "DepsilonEff",
+                (this->nut_/sigmaEps_ + this->nu())
             );
         }
 
@@ -174,21 +195,10 @@ public:
             return k_;
         }
 
-        //- Return the turbulence specific dissipation rate
-        virtual tmp<volScalarField> omega() const
-        {
-            return omega_;
-        }
-
         //- Return the turbulence kinetic energy dissipation rate
         virtual tmp<volScalarField> epsilon() const
         {
-            return volScalarField::New
-            (
-                "epsilon",
-                Cmu_*k_*omega_,
-                omega_.boundaryField().types()
-            );
+            return epsilon_;
         }
 
         //- Solve the turbulence equations and correct the turbulence viscosity
@@ -196,6 +206,7 @@ public:
 
         //- second image of the correct function to accept arguments
         virtual void correct(openHFDIBRANS& HFDIBRANS);
+
 };
 
 
@@ -207,7 +218,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "HFDIBKOmega.C"
+    #include "HFDIBRealizableKE.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2013-2020 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2016-2020 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,34 +23,54 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "kinematicHFDIBMomentumTransportModels.H"
+#include "kOmegaSST.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makeBaseHFDIBMomentumTransportModel
+namespace Foam
+{
+namespace RASModels
+{
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+template<class BasicMomentumTransportModel>
+kOmegaSST<BasicMomentumTransportModel>::kOmegaSST
 (
-    geometricOneField,
-    geometricOneField,
-    incompressibleHFDIBMomentumTransportModel,
-    IncompressibleHFDIBMomentumTransportModel,
-    transportModel
-);
+    const alphaField& alpha,
+    const rhoField& rho,
+    const volVectorField& U,
+    const surfaceScalarField& alphaRhoPhi,
+    const surfaceScalarField& phi,
+    const transportModel& transport,
+    const word& type
+)
+:
+    Foam::kOmegaSST
+    <
+        eddyViscosity<RASModel<BasicMomentumTransportModel>>,
+        BasicMomentumTransportModel
+    >
+    (
+        type,
+        alpha,
+        rho,
+        U,
+        alphaRhoPhi,
+        phi,
+        transport
+    )
+{
+    if (type == typeName)
+    {
+        this->printCoeffs(type);
+    }
+}
 
 
-// -------------------------------------------------------------------------- //
-// RAS models
-// -------------------------------------------------------------------------- //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "../../momentumTransportModels/lnInclude/HFDIBKOmega.H"
-makeHFDIBRASModel(HFDIBKOmega);
-
-#include "../../momentumTransportModels/lnInclude/HFDIBKOmegaSST.H"
-makeHFDIBRASModel(HFDIBKOmegaSST);
-
-#include "../../momentumTransportModels/lnInclude/HFDIBKEpsilon.H"
-makeHFDIBRASModel(HFDIBKEpsilon);
-
-#include "../../momentumTransportModels/lnInclude/HFDIBRealizableKE.H"
-makeHFDIBRASModel(HFDIBRealizableKE);
+} // End namespace RASModels
+} // End namespace Foam
 
 // ************************************************************************* //

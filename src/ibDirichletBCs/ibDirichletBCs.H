@@ -103,6 +103,7 @@ class ibDirichletBCs
     // RAS wall function names
     word kWF_;
     word omegaWF_;
+    word epsilonWF_;
 
     // RAS parameters
     const scalar kappa_;
@@ -110,6 +111,7 @@ class ibDirichletBCs
     const scalar Cmu_;
     const scalar Ceps2_;
     const scalar beta1_;
+    scalar Cmu75_;
     scalar Cmu25_;
     scalar Cmu5_;
     scalar yPlusLam_;
@@ -150,8 +152,9 @@ class ibDirichletBCs
     void UAtIB(List<vector>& UIB, word BCType);
 
     // turbulence fields boundary conditions
-    void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
     void kAtIB(List<scalar>& kIB, volScalarField& k, volScalarField& nu);
+    void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
+    void epsilonGAtIB(List<scalar>& epsilonIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& nut);
 
     // return the immersed yPlus field
     volScalarField& getYPlusi()

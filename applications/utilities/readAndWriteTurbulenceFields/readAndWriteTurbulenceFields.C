@@ -33,16 +33,16 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createMesh.H"
 
-    // read the omega field
-    Info << "Reading field omega\n" << endl;
-    volScalarField omega
+    // read the nut field
+    Info << "Reading field nut\n" << endl;
+    volScalarField nut
     (
         IOobject
         (
-            "omega",
+            "nut",
             runTime.timeName(),
             mesh,
-            IOobject::READ_IF_PRESENT,
+            IOobject::MUST_READ,
             IOobject::NO_WRITE
         ),
         mesh
@@ -63,35 +63,37 @@ int main(int argc, char *argv[])
         mesh
     );
 
-    // read the nut field
-    Info << "Reading field nut\n" << endl;
-    volScalarField nut
+    // read the omega field if present
+    Info << "Reading field omega\n" << endl;
+    volScalarField omega
     (
         IOobject
         (
-            "nut",
+            "omega",
             runTime.timeName(),
             mesh,
-            IOobject::MUST_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::NO_WRITE
         ),
-        mesh
+        mesh,
+        0.0
     );
 
-    //~ // read the nut field
-    //~ Info << "Reading field G\n" << endl;
-    //~ volScalarField::Internal G
-    //~ (
-        //~ IOobject
-        //~ (
-            //~ "G",
-            //~ runTime.timeName(),
-            //~ mesh,
-            //~ IOobject::READ_IF_PRESENT,
-            //~ IOobject::NO_WRITE
-        //~ ),
-        //~ mesh
-    //~ );
+    // read the epsilon field if present
+    Info << "Reading field epsilon\n" << endl;
+    volScalarField epsilon
+    (
+        IOobject
+        (
+            "epsilon",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        0.0
+    );
 
     // prepare space to save
     word saveDir = mesh.time().rootPath() + "/" + mesh.time().globalCaseName() + "/postProcessing/readAndWriteTurbulenceFields";
@@ -103,8 +105,7 @@ int main(int argc, char *argv[])
 
     autoPtr<OFstream> outFilePtr;
     outFilePtr.reset(new OFstream(saveDir/fileName));
-    //~ outFilePtr() << "cellI,x,y,z,omega,G,k,nut" << endl;
-    outFilePtr() << "cellI,x,y,z,omega,k,nut" << endl;
+    outFilePtr() << "cellI,x,y,z,nut,k,omega,epsilon" << endl;
 
     // save data
     forAll(mesh.C(), cellI)
@@ -112,19 +113,19 @@ int main(int argc, char *argv[])
         scalar x = mesh.C()[cellI].x();
         scalar y = mesh.C()[cellI].y();
         scalar z = mesh.C()[cellI].z();
-        scalar omegai = omega[cellI];
-        //~ scalar Gi = G[cellI];
-        scalar ki = k[cellI];
         scalar nuti = nut[cellI];
+        scalar ki = k[cellI];
+        scalar omegai = omega[cellI];
+        scalar epsiloni = epsilon[cellI];
 
         outFilePtr() << cellI 
             << "," << x 
             << "," << y 
             << "," << z 
-            << "," << omegai 
-            //~ << "," << Gi 
-            << "," << ki 
             << "," << nuti 
+            << "," << ki 
+            << "," << omegai 
+            << "," << epsiloni
             << endl;
     }
 

@@ -237,6 +237,56 @@ void openHFDIBRANS::correctOmegaG
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::correctEpsilonG
+(
+    volScalarField& epsilon,
+    volScalarField::Internal& G,
+    const volVectorField& U,
+    volScalarField& k,
+    volScalarField& nu,
+    volScalarField& nut,
+    volScalarField& surface
+)
+{
+    // prepare lists
+    List<scalar> epsilonIB;
+    List<scalar> GIB;
+
+    epsilonIB.setSize(boundaryCells_.size());
+    GIB.setSize(boundaryCells_.size());
+
+    // calculate values at the immersed boundary
+    ibDirichletBCs_.epsilonGAtIB(epsilonIB, GIB, G, U, k, nu, nut);
+
+    // assign the values for boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // assign
+        epsilon[cellI] = epsilonIB[bCell];
+        G[cellI] = GIB[bCell];
+    }
+
+    // calculate maximum epsilon
+    scalar inEpsilon = max(epsilonIB); // internal patch fields for walls should be included as well
+
+    // assign the values in in-solid cells
+    forAll(surface, cellI)
+    {
+        if (surface[cellI] == 1.0)
+        {
+            if (body_[cellI] >= 0.5)
+            {
+                epsilon[cellI] = inEpsilon;
+                G[cellI] = 0.0;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::createBaseSurface
 (
     volScalarField& surface,
