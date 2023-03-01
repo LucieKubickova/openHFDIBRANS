@@ -127,10 +127,12 @@ IOdictionary HFDIBDEMDict
     )
 );
 
-dictionary HFDIBSimpleDict = HFDIBDEMDict.subDict("SIMPLE");
+dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
 word surfaceType;
-HFDIBSimpleDict.lookup("surfaceType") >> surfaceType;
-scalar boundaryVal = readScalar(HFDIBSimpleDict.lookup("boundaryValue"));
+HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
+scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
+scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
+scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
 
 #include "createMRF.H"
 #include "createFvOptions.H"

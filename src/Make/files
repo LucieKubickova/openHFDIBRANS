@@ -1,5 +1,10 @@
 
 ibDirichletBCs/ibDirichletBCs.C
+ibInterpolation/ibScheme/ibScheme.C
+ibInterpolation/ibScheme/constantScheme/constantScheme.C
+ibInterpolation/ibScheme/linearScheme/linearScheme.C
+ibInterpolation/ibScheme/quadraticScheme/quadraticScheme.C
+ibInterpolation/ibScheme/logarithmicScheme/logarithmicScheme.C
 ibInterpolation/ibInterpolation.C
 openHFDIBRANS.C
 MomentumTransportModels/momentumTransportModels/HFDIBmomentumTransportModel.C

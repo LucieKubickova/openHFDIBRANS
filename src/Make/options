@@ -9,7 +9,8 @@ EXE_INC = \
     -I$(LIB_SRC)/fvOptions/lnInclude \
     -I$(LIB_SRC)/triSurface/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
-    -I./MomentumTransportModels/momentumTransportModels/lnInclude
+    -I./MomentumTransportModels/momentumTransportModels/lnInclude \
+    -I./ibInterpolation/ibScheme
 
 EXE_LIBS = \
     -lincompressibleMomentumTransportModels \

@@ -534,6 +534,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldFieldI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/scalarField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/dimensionSets.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchFieldNew.C \
+../../../src/lnInclude/ibScheme.H \
+../../../src/lnInclude/constantScheme.H \
+../../../src/lnInclude/linearScheme.H \
+../../../src/lnInclude/quadraticScheme.H \
+../../../src/lnInclude/logarithmicScheme.H \
+../../../src/lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCell.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SVD.H \
@@ -543,8 +549,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/coordinateSystems.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
-../../../src/lnInclude/interpolationInfo.H \
-../../../src/lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/functionNameI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/variableI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/verbatimStringI.H \
@@ -676,6 +680,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/cyclicPolyPatch.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldReuseFunctions.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H \
+../../../src/lnInclude/interpolationInfo.H \
+../../../src/lnInclude/constantSchemeTemplates.C \
+../../../src/lnInclude/linearSchemeTemplates.C \
+../../../src/lnInclude/quadraticSchemeTemplates.C \
+../../../src/lnInclude/logarithmicSchemeTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolation.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/cellPointWeight.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPointI.H \
@@ -1406,6 +1415,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldFieldI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/scalarField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/dimensionSets.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchFieldNew.C :
+../../../src/lnInclude/ibScheme.H :
+../../../src/lnInclude/constantScheme.H :
+../../../src/lnInclude/linearScheme.H :
+../../../src/lnInclude/quadraticScheme.H :
+../../../src/lnInclude/logarithmicScheme.H :
+../../../src/lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCell.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/SVD.H :
@@ -1415,8 +1430,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/coordinateSystems.H :
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H :
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
-../../../src/lnInclude/interpolationInfo.H :
-../../../src/lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/functionNameI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/variableI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/verbatimStringI.H :
@@ -1548,6 +1561,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/cyclicPolyPatch.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldReuseFunctions.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H :
+../../../src/lnInclude/interpolationInfo.H :
+../../../src/lnInclude/constantSchemeTemplates.C :
+../../../src/lnInclude/linearSchemeTemplates.C :
+../../../src/lnInclude/quadraticSchemeTemplates.C :
+../../../src/lnInclude/logarithmicSchemeTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolation.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/cellPointWeight.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPointI.H :

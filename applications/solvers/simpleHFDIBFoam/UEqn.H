@@ -18,14 +18,14 @@ HFDIBRANS.updateSurface(surface, surfaceType);
 
 if (simple.momentumPredictor())
 {
-    for (label nCorr = 0; nCorr < HFDIBRANS.maxUEqnIters(); nCorr++)
+    for (label nCorr = 0; nCorr < maxUEqnIters; nCorr++)
     {
         f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
         solve(UEqn == -fvc::grad(p) + f);
 
-        if (max(mag(surface*(Ui - U))).value() < HFDIBRANS.tolUEqn())
+        if (max(mag(surface*(Ui - U))).value() < tolUEqn)
         {
-            Info << "HFDIBRAS: U converged to Ui within max tolerance " << HFDIBRANS.tolUEqn() << endl;
+            Info << "HFDIBRAS: U converged to Ui within max tolerance " << tolUEqn << endl;
             break;
         }
 

@@ -266,10 +266,12 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
         )
     )
 {
-    // read HFDIBDEM dictionary
-    dictionary HFDIBKEpsilonDict = HFDIBDEMDict_.subDict("HFDIBKEpsilon");
-    HFDIBKEpsilonDict.lookup("surfaceType") >> surfaceType_;
-    boundaryValue_ = readScalar(HFDIBKEpsilonDict.lookup("boundaryValue"));
+    // read dictionaries
+    dictionary HFDIBRASDict = this->HFDIBRASDict_;
+    HFDIBRASDict.lookup("surfaceType") >> surfaceType_;
+    boundaryValue_ = readScalar(HFDIBRASDict.lookup("boundaryValue"));
+    tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
+    maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 
     // bound
     bound(k_, this->kMin_);
@@ -326,14 +328,14 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     volScalarField::Internal divU
     (
-        fvc::div(fvc::absolute(this->phi(), U))().v()
+        fvc::div(fvc::absolute(this->phi(), U))()
     );
 
     tmp<volTensorField> tgradU = fvc::grad(U);
     volScalarField::Internal G
     (
         this->GName(),
-        nut.v()*(dev(twoSymm(tgradU().v())) && tgradU().v())
+        nut()*(dev(twoSymm(tgradU().v())) && tgradU().v())
     );
     tgradU.clear();
 
@@ -388,14 +390,14 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     kEqn.relax();
     fvOptions.constrain(kEqn);
 
-    for (label nCorr = 0; nCorr < HFDIBRANS.maxKEqnIters(); nCorr++)
+    for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
         kQ_ = surface_*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
-        if (max(surface_*(ki_ - k_)).value() < HFDIBRANS.tolKEqn())
+        if (max(surface_*(ki_ - k_)).value() < tolKEqn_)
         {
-            Info << "HFDIBRAS: k converged to ki within max tolerance " << HFDIBRANS.tolKEqn() << endl;
+            Info << "HFDIBRAS: k converged to ki within max tolerance " << tolKEqn_ << endl;
             break;
         }
 

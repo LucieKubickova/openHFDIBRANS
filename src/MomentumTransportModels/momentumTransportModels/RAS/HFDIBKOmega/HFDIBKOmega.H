@@ -69,10 +69,10 @@ namespace HFDIBRASModels
                            Class HFDIBKOmega Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class BasicMomentumTransportModel>
+template<class BasicHFDIBMomentumTransportModel>
 class HFDIBKOmega
 :
-    public eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>
+    public eddyViscosity<HFDIBRASModel<BasicHFDIBMomentumTransportModel>>
 {
 
 protected:
@@ -101,8 +101,12 @@ protected:
         // Dictionaries
 
             IOdictionary HFDIBDEMDict_;
+
+        // Equations settings
             word surfaceType_;
             scalar boundaryValue_;
+            scalar tolKEqn_;
+            label maxKEqnIters_;
 
     // Protected Member Functions
 
@@ -114,9 +118,9 @@ protected:
 
 public:
 
-    typedef typename BasicMomentumTransportModel::alphaField alphaField;
-    typedef typename BasicMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicMomentumTransportModel::transportModel transportModel;
+    typedef typename BasicHFDIBMomentumTransportModel::alphaField alphaField;
+    typedef typename BasicHFDIBMomentumTransportModel::rhoField rhoField;
+    typedef typename BasicHFDIBMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information

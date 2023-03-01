@@ -87,6 +87,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/dimensionSets.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/floatScalar.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/doubleScalar.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/longDoubleScalar.H \
+./ibInterpolation/ibScheme/ibScheme.H \
+lnInclude/constantScheme.H \
+lnInclude/linearScheme.H \
+lnInclude/quadraticScheme.H \
+lnInclude/logarithmicScheme.H \
+lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H \
@@ -107,8 +113,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
-lnInclude/interpolationInfo.H \
-lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DimensionedScalarField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.H \
@@ -201,6 +205,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/HashTableI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/HashTable.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/doubleFloat.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Scalar.H \
+lnInclude/interpolationInfo.H \
+lnInclude/constantSchemeTemplates.C \
+lnInclude/linearSchemeTemplates.C \
+lnInclude/quadraticSchemeTemplates.C \
+lnInclude/logarithmicSchemeTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/parRun.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Time.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvc.H \
@@ -909,6 +918,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/dimensionSets.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/floatScalar.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/doubleScalar.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/longDoubleScalar.H :
+./ibInterpolation/ibScheme/ibScheme.H :
+lnInclude/constantScheme.H :
+lnInclude/linearScheme.H :
+lnInclude/quadraticScheme.H :
+lnInclude/logarithmicScheme.H :
+lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H :
@@ -929,8 +944,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H :
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
-lnInclude/interpolationInfo.H :
-lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/DimensionedScalarField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/GeometricFieldFunctionsM.H :
@@ -1023,6 +1036,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/HashTableI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/HashTable.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/doubleFloat.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Scalar.H :
+lnInclude/interpolationInfo.H :
+lnInclude/constantSchemeTemplates.C :
+lnInclude/linearSchemeTemplates.C :
+lnInclude/quadraticSchemeTemplates.C :
+lnInclude/logarithmicSchemeTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/parRun.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Time.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvc.H :

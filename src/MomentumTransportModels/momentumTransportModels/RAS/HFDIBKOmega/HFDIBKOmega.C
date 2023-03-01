@@ -256,10 +256,12 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         )
     )
 {
-    // read HFDIBDEM dictionary
-    dictionary HFDIBKOmegaDict = HFDIBDEMDict_.subDict("HFDIBKOmega");
-    HFDIBKOmegaDict.lookup("surfaceType") >> surfaceType_;
-    boundaryValue_ = readScalar(HFDIBKOmegaDict.lookup("boundaryValue"));
+    // read dictionaries
+    dictionary HFDIBRASDict = this->HFDIBRASDict_;
+    HFDIBRASDict.lookup("surfaceType") >> surfaceType_;
+    boundaryValue_ = readScalar(HFDIBRASDict.lookup("boundaryValue"));
+    tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
+    maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 
     // bound
     bound(k_, this->kMin_);
@@ -377,14 +379,14 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     kEqn.relax();
     fvOptions.constrain(kEqn);
 
-    for (label nCorr = 0; nCorr < HFDIBRANS.maxKEqnIters(); nCorr++)
+    for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
         kQ_ = surface_*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
-        if (max(surface_*(ki_ - k_)).value() < HFDIBRANS.tolKEqn())
+        if (max(surface_*(ki_ - k_)).value() < tolKEqn_)
         {
-            Info << "HFDIBRAS: k converged to ki within max tolerance " << HFDIBRANS.tolKEqn() << endl;
+            Info << "HFDIBRAS: k converged to ki within max tolerance " << tolKEqn_ << endl;
             break;
         }
 

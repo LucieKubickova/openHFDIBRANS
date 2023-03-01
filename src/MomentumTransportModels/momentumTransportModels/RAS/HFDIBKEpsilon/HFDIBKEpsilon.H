@@ -112,8 +112,12 @@ protected:
         // Dictionaries
 
             IOdictionary HFDIBDEMDict_;
+
+        // Equations settings
             word surfaceType_;
             scalar boundaryValue_;
+            scalar tolKEqn_;
+            label maxKEqnIters_;
 
     // Protected Member Functions
 

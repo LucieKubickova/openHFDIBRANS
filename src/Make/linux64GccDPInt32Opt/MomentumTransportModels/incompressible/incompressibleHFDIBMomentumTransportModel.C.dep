@@ -47,6 +47,12 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMesh.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchField.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvPatchFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFieldsI.H \
+./ibInterpolation/ibScheme/ibScheme.H \
+lnInclude/constantScheme.H \
+lnInclude/linearScheme.H \
+lnInclude/quadraticScheme.H \
+lnInclude/logarithmicScheme.H \
+lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/polyMesh.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H \
@@ -69,8 +75,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
-lnInclude/interpolationInfo.H \
-lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pTraits.H \
@@ -129,6 +133,11 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchFvMeshTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatch.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchField.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvPatchField.H \
+lnInclude/interpolationInfo.H \
+lnInclude/constantSchemeTemplates.C \
+lnInclude/linearSchemeTemplates.C \
+lnInclude/quadraticSchemeTemplates.C \
+lnInclude/logarithmicSchemeTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/objectRegistry.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/faceList.H \
@@ -868,6 +877,12 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMesh.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchField.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvPatchFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/volFieldsI.H :
+./ibInterpolation/ibScheme/ibScheme.H :
+lnInclude/constantScheme.H :
+lnInclude/linearScheme.H :
+lnInclude/quadraticScheme.H :
+lnInclude/logarithmicScheme.H :
+lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/polyMesh.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H :
@@ -890,8 +905,6 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H :
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
-lnInclude/interpolationInfo.H :
-lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/one.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/oneFieldI.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pTraits.H :
@@ -950,6 +963,11 @@ $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchFvMeshTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatch.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvPatchField.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/calculatedFvPatchField.H :
+lnInclude/interpolationInfo.H :
+lnInclude/constantSchemeTemplates.C :
+lnInclude/linearSchemeTemplates.C :
+lnInclude/quadraticSchemeTemplates.C :
+lnInclude/logarithmicSchemeTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/objectRegistry.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/faceList.H :

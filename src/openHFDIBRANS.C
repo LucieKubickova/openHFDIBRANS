@@ -54,18 +54,25 @@ HFDIBDEMDict_
         IOobject::NO_WRITE
     )
 ),
+fvSchemes_
+(
+    IOobject
+    (
+        "fvSchemes",
+        "system",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+),
 ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, isWallCell_),
 ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_, isWallCell_)
 {
     // read HFDIBDEM dictionary
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
 
-    // simple algorithm settings
-    dictionary HFDIBSimpleDict = HFDIBDEMDict_.subDict("SIMPLE");
-    tolUEqn_ = readScalar(HFDIBSimpleDict.lookup("tolUEqn"));
-    tolKEqn_ = readScalar(HFDIBSimpleDict.lookup("tolKEqn"));
-    maxUEqnIters_ = readScalar(HFDIBSimpleDict.lookup("maxUEqnIters"));
-    maxKEqnIters_ = readScalar(HFDIBSimpleDict.lookup("maxKEqnIters"));
+    // read fvSchemes
+    HFDIBSchemes_ = fvSchemes_.subDict("HFDIBSchemes");
 
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
@@ -117,32 +124,49 @@ void openHFDIBRANS::computeUi
     // reset imposed field
     Ui *= 0.0;
 
-    // interpolate to boundary cells centers
-    if (simulationType_ == "laminar")
-    {
-        // calculate values at the immersed boundary
-        List<vector> UIB;
-        UIB.setSize(boundaryCells_.size());
-        ibDirichletBCs_.UAtIB(UIB, "noSlip");
+    // calculate values at the immersed boundary
+    List<vector> UIB;
+    UIB.setSize(boundaryCells_.size());
+    ibDirichletBCs_.UAtIB(UIB, "noSlip");
 
-        // interpolate
-        ibInterpolation_.polynomialInterp<vector, volVectorField>(U, Ui, UIB);
+    // get references
+    volScalarField& yPlusi = ibDirichletBCs_.getYPlusi();
+    scalar yPlusLam = ibDirichletBCs_.getYPlusLam();
+        
+    // calculate log scales for interpolation
+    List<scalar> logScales;
+    logScales.setSize(boundaryCells_.size());
+
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // get distance to surface
+        scalar ds = boundaryDists_[bCell].first();
+
+        // calculate the local log scale
+        logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_.getE();
     }
 
-    else if (simulationType_ == "HFDIBRAS")
-    {
-        // calculate values at the immersed boundary
-        List<vector> UIB;
-        UIB.setSize(boundaryCells_.size());
-        ibDirichletBCs_.UAtIB(UIB, "noSlip");
+    // read interpolation schemes from fvSchemes
+    ITstream UInterpScheme = HFDIBSchemes_.lookup("UInterpolation");
+    word interpType = UInterpScheme[0].wordToken();
 
-        // interpolate
-        ibInterpolation_.polynomialInterp<vector, volVectorField>(U, Ui, UIB);
+    // interpolation
+    if (interpType == "unifunctional")
+    {
+        ibInterpolation_.unifunctionalInterp<vector, volVectorField>(UInterpScheme, U, Ui, UIB, logScales);
+    }
+
+    else if (interpType == "switched")
+    {
+        ibInterpolation_.switchedInterp<vector, volVectorField>(UInterpScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
     else
     {
-        FatalError << "Interpolation for " << simulationType_ << " not implemented" << exit(FatalError);
+        FatalError << "Interpolation type " << UInterpScheme << " for field U not implemented" << exit(FatalError);
     }
 }
 
@@ -181,8 +205,25 @@ void openHFDIBRANS::computeKi
         logScales[bCell] = yPlusi[cellI]/ds;
     }
 
-    // switch interpolation
-    ibInterpolation_.polySwitchLogInterp<scalar, volScalarField>(k, ki, kIB, logScales, yPlusi, yPlusLam);
+    // read interpolation schemes from fvSchemes
+    ITstream kInterpScheme = HFDIBSchemes_.lookup("kInterpolation");
+    word interpType = kInterpScheme[0].wordToken();
+
+    // interpolation
+    if (interpType == "unifunctional")
+    {
+        ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(kInterpScheme, k, ki, kIB, logScales);
+    }
+
+    else if (interpType == "switched")
+    {
+        ibInterpolation_.switchedInterp<scalar, volScalarField>(kInterpScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
+    }
+
+    else
+    {
+        FatalError << "Interpolation type " << kInterpScheme << " for field k not implemented" << exit(FatalError);
+    }
 
     // TODO: blended interpolation
 }

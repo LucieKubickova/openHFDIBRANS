@@ -167,6 +167,12 @@ class ibDirichletBCs
     {
         return yPlusLam_;
     }
+
+    // return E coefficient
+    scalar getE()
+    {
+        return E_;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

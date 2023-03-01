@@ -36,144 +36,26 @@ Contributors
 
 using namespace Foam;
 
-//--------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 template <typename Type, typename volTypeField>
-Type ibInterpolation::polynom
+void ibInterpolation::unifunctionalInterp
 (
-    volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    Type& dirichletVal,
-    label bCell
-)
-{
-    // get boundary cell information
-    label cellI = boundaryCells_[bCell].first();
-    scalar ds = boundaryDists_[bCell].first();
-    interpolationInfo intInfo = intInfoList_[bCell];
-
-    // interpolated value
-    Type toReturn;
-
-    // interpolation
-    switch(intInfo.order_)
-    {
-        case 0:
-        {
-            // interpolated value
-            toReturn = body_[cellI]*dirichletVal + (1-body_[cellI])*phi[cellI];
-            break;
-        }
-
-        case 1:
-        {
-            // value in the interpolation point
-            Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;
-
-            // distance between interpolation points
-            scalar deltaR = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
-
-            // first polynomial coefficient
-            Type linCoeff = phiP1/(deltaR+SMALL);
-
-            // interpolated value
-            toReturn = linCoeff*ds + dirichletVal;
-            break;
-        }
-
-        case 2:
-        {
-            // values in the interpolation points
-            Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;
-            Type phiP2 = interpPhi.interpolate(intInfo.intPoints_[2], intInfo.intCells_[1]) - dirichletVal;
-
-            // distance between interpolation points
-            scalar deltaR2 = mag(intInfo.intPoints_[2] - intInfo.intPoints_[1]);
-            scalar deltaR1 = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
-
-            // second polynomial coefficient
-            Type quadCoeff = (phiP2 - phiP1)*deltaR1 - phiP1*deltaR2;
-            quadCoeff      /= (deltaR1*deltaR2*(deltaR1 + deltaR2)+SMALL);
-
-            // first polynomial coefficient
-            Type linCoeff  = (phiP1-phiP2)*Foam::pow(deltaR1,2.0);
-            linCoeff  += 2.0*phiP1*deltaR1*deltaR2;
-            linCoeff  += phiP1*Foam::pow(deltaR2,2.0);
-            linCoeff  /= (deltaR1*deltaR2*(deltaR1 + deltaR2)+SMALL);
-
-            // interpolated value
-            toReturn = quadCoeff*ds*ds + linCoeff*ds + dirichletVal;
-            break;
-        }
-    }
-
-    // return
-    return toReturn;
-}
-
-//--------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-Type ibInterpolation::logarithm
-(
-    volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    Type& dirichletVal,
-    scalar& logScale,
-    label bCell
-)
-{
-    // get boundary cell information
-    scalar ds = boundaryDists_[bCell].first();
-    interpolationInfo intInfo = intInfoList_[bCell];
-
-    // interpolated value
-    Type toReturn;
-
-    // interpolation
-    switch(intInfo.order_)
-    {
-        case 0:
-        {
-            // interpolated value
-            toReturn = polynom<Type, volTypeField>(phi, interpPhi, dirichletVal, bCell);
-            break;
-        }
-
-        case 1: case 2: // what more can I do with 2 interpolation points?
-        {
-            // value in the first interpolation point
-            Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;
-
-            // distance between interpolation points
-            scalar deltaR = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
-
-            // compute A-log coefficient: 
-            // y = A*ln(B*x + C) + D
-            // y = A*ln(logScale*x + 1) + dirichletVal
-            scalar B = logScale;
-            scalar C = 1.0;
-            Type A = phiP1/Foam::log(B*deltaR + C);
-
-            // interpolated value
-            toReturn = A*Foam::log(B*ds + C) + dirichletVal;
-        }
-    }
-
-    // return
-    return toReturn;
-}
-
-//--------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-void ibInterpolation::polynomialInterp
-(
+    ITstream& interpScheme,
     volTypeField& phi,
     volTypeField& phii,
-    List<Type>& dirichletVals
+    List<Type>& dirichletVals,
+    List<scalar>& scales
 )
 {
     // create interpolator
     autoPtr<interpolation<Type>> interpPhi =
                    interpolation<Type>::New(HFDIBInterpDict_, phi);
+
+    // read chosen interpolation function
+    word interpType = interpScheme[1].wordToken();
+
+    // prepare chosen interpolation function
+    autoPtr<ibScheme> interpFunc = chosenInterpFunc(interpType);
 
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_, bCell)
@@ -181,44 +63,20 @@ void ibInterpolation::polynomialInterp
         // get cell label
         label cellI = boundaryCells_[bCell].first();
 
-        // interpolate and assign
-        phii[cellI] = polynom<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], bCell);
+        // interpolate
+        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
     }
 }
 
 //---------------------------------------------------------------------------//
 template <typename Type, typename volTypeField>
-void ibInterpolation::logarithmicInterp
+void ibInterpolation::switchedInterp
 (
+    ITstream& interpScheme,
     volTypeField& phi,
     volTypeField& phii,
     List<Type>& dirichletVals,
-    List<scalar>& logScales
-)
-{
-    // create interpolator
-    autoPtr<interpolation<Type>> interpPhi =
-                   interpolation<Type>::New(HFDIBInterpDict_, phi);
-
-    // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
-
-        // interpolate and assign
-        phii[cellI] = logarithm<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], logScales[bCell], bCell);
-    }
-}
-
-//---------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
-void ibInterpolation::polySwitchLogInterp
-(
-    volTypeField& phi,
-    volTypeField& phii,
-    List<Type>& dirichletVals,
-    List<scalar>& logScales,
+    List<scalar>& scales,
     volScalarField& yPlusi,
     scalar yPlusLam
 )
@@ -226,6 +84,14 @@ void ibInterpolation::polySwitchLogInterp
     // create interpolator
     autoPtr<interpolation<Type>> interpPhi =
                    interpolation<Type>::New(HFDIBInterpDict_, phi);
+
+    // read chosen interpolation functions
+    word lowerType = interpScheme[1].wordToken();
+    word higherType = interpScheme[2].wordToken();
+
+    // prepare chosen interpolation functions
+    autoPtr<ibScheme> lowerFunc = chosenInterpFunc(lowerType);
+    autoPtr<ibScheme> higherFunc = chosenInterpFunc(higherType);
 
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_, bCell)
@@ -236,14 +102,12 @@ void ibInterpolation::polySwitchLogInterp
         // switch based on yPlus value
         if (yPlusi[cellI] > yPlusLam)
         {
-            // logarithmic interpolation
-            phii[cellI] = logarithm<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], logScales[bCell], bCell);
+            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
         }
 
         else
         {
-            // polynomial interpolation
-            phii[cellI] = polynom<Type, volTypeField>(phi, *interpPhi, dirichletVals[bCell], bCell);
+            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
         }
     }
 }

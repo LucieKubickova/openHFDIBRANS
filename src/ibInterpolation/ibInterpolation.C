@@ -32,8 +32,6 @@ Contributors
 
 #include "ibInterpolation.H"
 
-#define ORDER 2
-
 using namespace Foam;
 
 //---------------------------------------------------------------------------//
@@ -415,13 +413,13 @@ void ibInterpolation::findBoundaryCells
 )
 {
     // get label of wallInsideLambda patch and starting and ending face index
-    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    label startIL = mesh_.boundary()[patchIL].start();
-    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
+    //~ label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    //~ label startIL = mesh_.boundary()[patchIL].start();
+    //~ label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
 
-    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
-    label startIW = mesh_.boundary()[patchIW].start();
-    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
+    //~ label patchIW = mesh_.boundaryMesh().findPatchID("walls");
+    //~ label startIW = mesh_.boundary()[patchIW].start();
+    //~ label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
 
     // preparation
     Tuple2<label,label> toAppend;
@@ -465,19 +463,19 @@ void ibInterpolation::findBoundaryCells
         }
 
         // check whether the cell is adjecent to a regular wall -- taken care of by correction of surface normals
-        if (toInclude)
-        {
-            forAll(mesh_.cells()[cellI], f)
-            {
-                // get face label
-                label faceI = mesh_.cells()[cellI][f];
+        //~ if (toInclude)
+        //~ {
+            //~ forAll(mesh_.cells()[cellI], f)
+            //~ {
+                //~ // get face label
+                //~ label faceI = mesh_.cells()[cellI][f];
 
-                if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
-                {
-                    toInclude = false;
-                }
-            }
-        }
+                //~ if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
+                //~ {
+                    //~ toInclude = false;
+                //~ }
+            //~ }
+        //~ }
 
         // add the cell
         if (toInclude)
@@ -514,13 +512,13 @@ void ibInterpolation::areWallCells
 )
 {
     // get label of wallInsideLambda patch and starting and ending face index
-    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    label startIL = mesh_.boundary()[patchIL].start();
-    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
+    //~ label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    //~ label startIL = mesh_.boundary()[patchIL].start();
+    //~ label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
 
-    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
-    label startIW = mesh_.boundary()[patchIW].start();
-    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
+    //~ label patchIW = mesh_.boundaryMesh().findPatchID("walls");
+    //~ label startIW = mesh_.boundary()[patchIW].start();
+    //~ label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
 
     forAll(boundaryCells_, bCell)
     {
@@ -532,18 +530,18 @@ void ibInterpolation::areWallCells
         isWallCell_[bCell].second() = -1;
 
         // check whether the cell is adjecent to a regular wall
-        forAll(mesh_.cells()[cellI], f)
-        {
-            // get face label
-            label faceI = mesh_.cells()[cellI][f];
+        //~ forAll(mesh_.cells()[cellI], f)
+        //~ {
+            //~ // get face label
+            //~ label faceI = mesh_.cells()[cellI][f];
 
-            if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
-            {
-                isWallCell_[bCell].first() = true;
-                isWallCell_[bCell].second() = faceI;
-                break;
-            }
-        }
+            //~ if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
+            //~ {
+                //~ isWallCell_[bCell].first() = true;
+                //~ isWallCell_[bCell].second() = faceI;
+                //~ break;
+            //~ }
+        //~ }
     }
 }
 
@@ -685,7 +683,6 @@ void ibInterpolation::calculateDistToBoundary
             surfPoint += surfNorm_[inCellI]*ds;
             ds = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
             toSave.first() = ds;
-
         }
 
         else
@@ -713,6 +710,42 @@ void ibInterpolation::calculateDistToBoundary
 
         boundaryDists_[bCell] = toSave;
     }
+}
+
+//---------------------------------------------------------------------------//
+autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
+(
+    word name
+)
+{
+    autoPtr<ibScheme> funcPtr;
+
+    if (name == "constant")
+    {
+        funcPtr.set(new constantScheme());
+    }
+
+    else if (name == "linear")
+    {
+        funcPtr.set(new linearScheme());
+    }
+
+    else if (name == "quadratic")
+    {
+        funcPtr.set(new quadraticScheme());
+    }
+
+    else if (name == "logarithmic")
+    {
+        funcPtr.set(new logarithmicScheme());
+    }
+
+    else
+    {
+        FatalError << "Interpolation function " << name << " not implemented" << exit(FatalError);
+    }
+
+    return funcPtr;
 }
 
 //---------------------------------------------------------------------------//

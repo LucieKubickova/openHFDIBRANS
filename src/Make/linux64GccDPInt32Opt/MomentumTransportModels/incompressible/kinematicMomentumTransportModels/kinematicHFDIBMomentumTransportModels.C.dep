@@ -274,6 +274,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointField.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Map.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedValueFvPatchField.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/zeroGradientFvPatchField.H \
+./ibInterpolation/ibScheme/ibScheme.H \
+lnInclude/constantScheme.H \
+lnInclude/linearScheme.H \
+lnInclude/quadraticScheme.H \
+lnInclude/logarithmicScheme.H \
+lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H \
@@ -288,8 +294,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H \
-lnInclude/interpolationInfo.H \
-lnInclude/ibInterpolationTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/messageStream.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/errorManip.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/uint.H \
@@ -416,6 +420,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/point.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointFieldFwd.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedValueFvPatchField.C \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/zeroGradientFvPatchField.C \
+lnInclude/interpolationInfo.H \
+lnInclude/constantSchemeTemplates.C \
+lnInclude/linearSchemeTemplates.C \
+lnInclude/quadraticSchemeTemplates.C \
+lnInclude/logarithmicSchemeTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/parRun.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/uniformDimensionedFields.H \
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedFluxPressureFvPatchScalarField.H \
@@ -1125,6 +1134,12 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointField.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/Map.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedValueFvPatchField.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/zeroGradientFvPatchField.H :
+./ibInterpolation/ibScheme/ibScheme.H :
+lnInclude/constantScheme.H :
+lnInclude/linearScheme.H :
+lnInclude/quadraticScheme.H :
+lnInclude/logarithmicScheme.H :
+lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvCFD.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fvMatrices.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/interpolationCellPoint.H :
@@ -1139,8 +1154,6 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/meshSearch.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/ListOps.H :
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/PstreamReduceOps.H :
-lnInclude/interpolationInfo.H :
-lnInclude/ibInterpolationTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/messageStream.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/errorManip.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/uint.H :
@@ -1267,6 +1280,11 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/point.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/pointFieldFwd.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedValueFvPatchField.C :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/zeroGradientFvPatchField.C :
+lnInclude/interpolationInfo.H :
+lnInclude/constantSchemeTemplates.C :
+lnInclude/linearSchemeTemplates.C :
+lnInclude/quadraticSchemeTemplates.C :
+lnInclude/logarithmicSchemeTemplates.C :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/parRun.H :
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/uniformDimensionedFields.H :
 $(WM_PROJECT_DIR)/src/finiteVolume/lnInclude/fixedFluxPressureFvPatchScalarField.H :

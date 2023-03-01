@@ -39,40 +39,11 @@ Contributors
 #ifndef ibInterpolation_H
 #define ibInterpolation_H
 
-#include "polyMesh.H"
-#include "fvCFD.H"
-#include "fvMatrices.H"
-#include "geometricOneField.H"
-
-#include "interpolationCellPoint.H"
-#include "interpolationCell.H"
-#include "SVD.H"
-#include "scalarMatrices.H"
-#include "OFstream.H"
-#include "Pstream.H"
-
-#include "dictionary.H"
-#include "coordinateSystem.H"
-#include "coordinateSystems.H"
-#include "wordList.H"
-#include "labelList.H"
-#include "dimensionedScalar.H"
-#include "dimensionedTensor.H"
-#include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
-#include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
-
-#include "meshSearch.H"
-#include "List.H"
-#include "ListOps.H"
-
-#include "cellSet.H"
-#include "addToRunTimeSelectionTable.H"
-#include "PstreamReduceOps.H"
-#include "addToRunTimeSelectionTable.H"
-
-#include "interpolationInfo.H"
+#include "ibScheme.H"
+#include "constantScheme.H"
+#include "linearScheme.H"
+#include "quadraticScheme.H"
+#include "logarithmicScheme.H"
 
 #define ORDER 2
 
@@ -108,12 +79,8 @@ class ibInterpolation
     dictionary HFDIBInterpDict_;
 
     // private functions
-    // interpolation functions
-    template <typename Type, typename volTypeField>
-    Type polynom(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, label bCell);
-
-    template <typename Type, typename volTypeField>
-    Type logarithm(volTypeField& phi, interpolation<Type>& interpPhi, Type& dirichletVal, scalar& logScale, label bCell);
+    // choose interpolation function
+    autoPtr<ibScheme> chosenInterpFunc(word name);
 
     public:
 
@@ -124,20 +91,15 @@ class ibInterpolation
     ~ibInterpolation();
 
     // Public methods --------------------------------------------------
-    
     // -- interpolation approaches
-    // polynomial interpolation
+    // unifunctional interpolation
     template <typename Type, typename volTypeField>
-    void polynomialInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals);
+    void unifunctionalInterp(ITstream& interpScheme, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
-    // logarithmic interpolation
+    // switched, decision based on local yPlus value
     template <typename Type, typename volTypeField>
-    void logarithmicInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales);
-
-    // polynomial/logarithmic interpolation, decision based on local yPlus value
-    template <typename Type, typename volTypeField>
-    void polySwitchLogInterp(volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& logScales, volScalarField& yPlusi, scalar yPlusLam);
-
+    void switchedInterp(ITstream& interpScheme, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
+    
     // TODO: blended interpolation
     
     // identification

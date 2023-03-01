@@ -65,14 +65,8 @@ class openHFDIBRANS
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
-
-    // tolerances for solvers
-    scalar tolUEqn_;
-    scalar tolKEqn_;
-
-    // maximum number of iterations for solvers
-    scalar maxUEqnIters_;
-    scalar maxKEqnIters_;
+    IOdictionary fvSchemes_;
+    dictionary HFDIBSchemes_;
 
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
@@ -110,28 +104,6 @@ class openHFDIBRANS
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
-
-    // return maximum tolarences for solvers
-    scalar tolUEqn()
-    {
-        return tolUEqn_;
-    }
-
-    scalar tolKEqn()
-    {
-        return tolKEqn_;
-    }
-
-    // return number of iterations for solvers
-    scalar maxUEqnIters()
-    {
-        return maxUEqnIters_;
-    }
-
-    scalar maxKEqnIters()
-    {
-        return maxKEqnIters_;
-    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
