@@ -1,2 +1,0 @@
-writeLambdaFromFileV1.C
-EXE = $(FOAM_USER_APPBIN)/writeLambdaFromFileV1
