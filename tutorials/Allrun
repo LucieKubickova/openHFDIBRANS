@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cwd=$(echo $PWD)
+
+cd $cwd/straightPipe/openHFDIBRANS
+./Allrun
+
+cd $cwd/straightPipe/simpleFoam
+./Allrun
+
+cd $cwd/unsymmetricalPipe/openHFDIBRANS
+./Allrun
+
+cd $cwd/unsymmetricalPipe/simpleFoam
+./Allrun
+
+cd $cwd
