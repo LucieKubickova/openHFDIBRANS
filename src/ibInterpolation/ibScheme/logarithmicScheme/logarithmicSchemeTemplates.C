@@ -46,11 +46,12 @@ Type logarithmicScheme::interpolateT
     label& cellI
 )
 {
-    //~ // check whether there are enough interpolation points
-    //~ if (intInfo.order_ == 0)
-    //~ {
+    // check whether there are enough interpolation points
+    if (intInfo.order_ == 0)
+    {
+        return body[cellI]*dirichletVal + (1-body[cellI])*phi[cellI]; // UGLYYYYYYYYYYYYYYYYYYY
         //~ return constant<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
-    //~ }
+    }
 
     // value in the first interpolation point
     Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;

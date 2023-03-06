@@ -5,15 +5,6 @@ cwd=$(echo $PWD)
 cd $cwd/src
 ./Allwmake
 
-cd $cwd/applications/utilities/correctLambdaBoundary
-./Allwmake
-
-cd $cwd/applications/utilities/createLambdaPipe
-./Allwmake
-
-cd $cwd/applications/utilities/readAndWriteTurbulenceFields
-./Allwmake
-
 cd $cwd/applications/solvers/simpleHFDIBFoam
 ./Allwmake
 

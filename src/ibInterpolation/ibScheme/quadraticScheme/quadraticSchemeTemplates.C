@@ -46,11 +46,28 @@ Type quadraticScheme::interpolateT
     label& cellI
 )
 {
-    //~ // check whether there are enough interpolation points
-    //~ if (intInfo.order_ != 2)
-    //~ {
+    // check whether there are enough interpolation points
+    if (intInfo.order_ == 0)
+    {
+        return body[cellI]*dirichletVal + (1-body[cellI])*phi[cellI]; // UGLYYYYYYYYYYYYYYYYYYYYY
         //~ return linear<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
-    //~ }
+    }
+
+    else if (intInfo.order_ == 1)
+    {
+        // value in the interpolation point
+        Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;
+
+        // distance between interpolation points
+        scalar deltaR = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
+
+        // first polynomial coefficient
+        Type linCoeff = phiP1/(deltaR+SMALL);
+
+        // interpolated value
+        return linCoeff*ds + dirichletVal;
+        // UGLYYYYYYYYYYYYYYYYYYYY
+    }
 
     // values in the interpolation points
     Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;

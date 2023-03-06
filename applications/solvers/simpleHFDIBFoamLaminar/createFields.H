@@ -109,9 +109,9 @@ IOdictionary turbulenceProperties
 word simulationType;
 turbulenceProperties.lookup("simulationType") >> simulationType;
 
-autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
+autoPtr<incompressible::momentumTransportModel> turbulence
 (
-    incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+    incompressible::momentumTransportModel::New(U, phi, laminarTransport)
 );
 
 IOdictionary HFDIBDEMDict
