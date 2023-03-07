@@ -1,0 +1,22 @@
+#!/bin/bash
+# set openFoam environment
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# create base mesh 
+runApplication blockMesh
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# create files for postprocessing
+paraFoam -touch
+
+# get the solver application
+application=`getApplication`
+
+# run the application
+runApplication $application

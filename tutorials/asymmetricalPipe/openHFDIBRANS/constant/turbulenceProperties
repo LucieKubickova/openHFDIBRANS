@@ -1,0 +1,30 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  3.0.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      turbulenceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+simulationType  HFDIBRAS;
+
+HFDIBRAS
+{
+    HFDIBRASModel	    HFDIBKOmega;
+    turbulence          on;
+    printCoeffs         on;
+    surfaceType         setValue;
+    boundaryValue       1.0;
+    tolKEqn             1e-4;
+    maxKEqnIters        10;
+}
+
+// ************************************************************************* //
