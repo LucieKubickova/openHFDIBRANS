@@ -523,7 +523,7 @@ void ibInterpolation::areWallCells
     forAll(boundaryCells_, bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[bCell].first();
+        //~ label cellI = boundaryCells_[bCell].first();
 
         // initialize values
         isWallCell_[bCell].first() = false;
@@ -620,32 +620,32 @@ void ibInterpolation::correctSurfNorm
 (
 )
 {
-    // correct surface normals in cells adjecent to regural walls
-    forAll(boundaryCells_, bCell)
-    {
-        if (isWallCell_[bCell].first())
-        {
-            // get label of the wall face and the boundary cell
-            label faceI = isWallCell_[bCell].second();
-            label cellI = boundaryCells_[bCell].first();
+    //~ // correct surface normals in cells adjecent to regural walls
+    //~ forAll(boundaryCells_, bCell)
+    //~ {
+        //~ if (isWallCell_[bCell].first())
+        //~ {
+            //~ // get label of the wall face and the boundary cell
+            //~ label faceI = isWallCell_[bCell].second();
+            //~ label cellI = boundaryCells_[bCell].first();
 
-            // get the wall normal
-            vector wallNorm = -1*mesh_.Sf()[faceI];
-            wallNorm /= mag(wallNorm);
+            //~ // get the wall normal
+            //~ vector wallNorm = -1*mesh_.Sf()[faceI];
+            //~ wallNorm /= mag(wallNorm);
 
-            // get distances from wall and surface
-            scalar wallDist = mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]);
-            scalar surfDist = boundaryDists_[bCell].first();
+            //~ // get distances from wall and surface
+            //~ scalar wallDist = mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]);
+            //~ scalar surfDist = boundaryDists_[bCell].first();
 
-            // compute weights
-            scalar ww = 1 - wallDist/(wallDist + surfDist);
-            scalar sw = 1 - surfDist/(wallDist + surfDist);
+            //~ // compute weights
+            //~ scalar ww = 1 - wallDist/(wallDist + surfDist);
+            //~ scalar sw = 1 - surfDist/(wallDist + surfDist);
 
-            // compute new surface normal
+            //~ // compute new surface normal
             //~ surfNorm_[cellI] = ww*wallNorm + sw*surfNorm_[cellI];
             //~ surfNorm_[cellI] /= mag(surfNorm_[cellI]);
-        }
-    }
+        //~ }
+    //~ }
 }
 
 //---------------------------------------------------------------------------//
