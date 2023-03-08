@@ -687,24 +687,33 @@ void ibInterpolation::calculateDistToBoundary
 
         else
         {
-            // find the shared faces
-            label faceI;
+            // find the shared vertices
+            DynamicList<label> sharedVers;
 
-            forAll(mesh_.cells()[inCellI], fI)
+            forAll(mesh_.cellPoints()[inCellI], iI)
             {
-                faceI = mesh_.cells()[inCellI][fI];
-
-                if (mesh_.faceOwner()[faceI] == outCellI or mesh_.faceNeighbour()[faceI] == outCellI)
+                forAll(mesh_.cellPoints()[outCellI], oI)
                 {
-                    break;
+                    if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
+                    {
+                        sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
+                    }
                 }
             }
 
-            // compute ds as a distance from the cell centers to the center of the shared face
-            ds = mag(mesh_.C()[inCellI] - mesh_.Cf()[faceI]);
+            // average vertices
+            vector center(vector::zero);
+            forAll(sharedVers, vI)
+            {
+                center += mesh_.points()[sharedVers[vI]];
+            }
+            center /= sharedVers.size();
+
+            // compute ds as a distance from the cell center to the averaged vertex
+            ds = mag(mesh_.C()[inCellI] - center);
             toSave.second() = ds;
 
-            ds = mag(mesh_.C()[outCellI] - mesh_.Cf()[faceI]);
+            ds = mag(mesh_.C()[outCellI] - center);
             toSave.first() = ds;
         }
 
