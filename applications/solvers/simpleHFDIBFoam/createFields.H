@@ -114,24 +114,5 @@ autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
     incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
 );
 
-IOdictionary HFDIBDEMDict
-(
-    IOobject
-    (
-        "HFDIBDEMDict",
-        runTime.constant(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE
-    )
-);
-
-dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
-word surfaceType;
-HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
-scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
-scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
-
 #include "createMRF.H"
 #include "createFvOptions.H"

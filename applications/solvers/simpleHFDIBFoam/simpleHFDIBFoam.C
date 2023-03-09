@@ -63,6 +63,14 @@ int main(int argc, char *argv[])
 
     Info << "\nStarting time loop\n" << endl;
 
+    // read simple dict
+    dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
+    word surfaceType;
+    HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
+    scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
+    scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
+    scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
+
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda, simulationType);
     HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
