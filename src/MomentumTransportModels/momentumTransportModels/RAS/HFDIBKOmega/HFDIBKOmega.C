@@ -393,11 +393,12 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
         // apply correction
         k_ += 1.0*surface_*(ki_ - k_);
     }
-
+    
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    
+
     correctNut();
+    HFDIBRANS.correctNut(k_, nu_);
 }
 
 template<class BasicMomentumTransportModel>

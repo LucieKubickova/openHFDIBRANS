@@ -637,6 +637,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     bound(k_, this->kMin_);
     
     correctNut(S2, F23);
+    HFDIBRANS.correctNut(k_, nu_);
 }
 
 template<class BasicMomentumTransportModel>

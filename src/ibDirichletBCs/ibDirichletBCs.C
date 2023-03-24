@@ -81,6 +81,7 @@ beta1_(0.075)
 {
     // ONLY FOR KOMEGA MODELS FOR NOW
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
+    HFDIBBCsDict_.lookup("nut") >> nutWF_;
     HFDIBBCsDict_.lookup("k") >> kWF_;
     HFDIBBCsDict_.lookup("omega") >> omegaWF_;
     HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
@@ -111,6 +112,15 @@ void ibDirichletBCs::calcYPlusLam
 }
 
 //---------------------------------------------------------------------------//
+void ibDirichletBCs::setSizeToLists
+(
+)
+{
+    // set size to nutAtIB
+    nutAtIB_.setSize(boundaryCells_.size());
+}
+
+//---------------------------------------------------------------------------//
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
@@ -128,6 +138,42 @@ void ibDirichletBCs::UAtIB
     else
     {
         FatalError << BCType << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::correctNutAtIB
+(
+    volScalarField& k,
+    volScalarField& nu
+)
+{
+    if (nutWF_ == "nutkWallFunction")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_, bCell)
+        {
+            // reset field
+            nutAtIB_[bCell] *= 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get distance to the surface
+            scalar ds = boundaryDists_[bCell].first();
+
+            // compute the friction velocity
+            scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+
+            // compute yPlus
+            scalar yPlus = uTau*ds/nu[cellI];
+
+            // compute the values at the surface
+            if (yPlus > yPlusLam_)
+            {
+                nutAtIB_[bCell] = nu[cellI]*(yPlus*kappa_/Foam::log(E_*yPlus) - 1.0);
+            }
+        }
     }
 }
 
@@ -325,8 +371,7 @@ void ibDirichletBCs::epsilonGAtIB
     volScalarField::Internal& G,
     const volVectorField& U,
     volScalarField& k,
-    volScalarField& nu,
-    volScalarField& nut
+    volScalarField& nu
 )
 {
     if (epsilonWF_ == "epsilonWallFunction")
@@ -403,7 +448,7 @@ void ibDirichletBCs::epsilonGAtIB
                 if (yPlus > yPlusLam_)
                 {
                     epsilonIB[bCell] += w*Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
-                    GIB[bCell] += w*(nut[cellI] + nu[cellI])*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
+                    GIB[bCell] += w*(nutAtIB_[bCell] + nu[cellI])*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
                 }
 
                 else

@@ -85,6 +85,9 @@ class ibDirichletBCs
     // mesh related parameters
     const fvMesh& mesh_;
 
+    // fields
+    List<scalar> nutAtIB_;
+
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
@@ -101,6 +104,7 @@ class ibDirichletBCs
     volScalarField yPlusi_;
 
     // RAS wall function names
+    word nutWF_;
     word kWF_;
     word omegaWF_;
     word epsilonWF_;
@@ -147,14 +151,20 @@ class ibDirichletBCs
     ~ibDirichletBCs();
 
     // Public methods --------------------------------------------------
+
+    // set size to list
+    void setSizeToLists();
     
     // velocity boundary condition
     void UAtIB(List<vector>& UIB, word BCType);
 
+    // correct nut at the immersed boundary
+    void correctNutAtIB(volScalarField& k, volScalarField& nu);
+
     // turbulence fields boundary conditions
     void kAtIB(List<scalar>& kIB, volScalarField& k, volScalarField& nu);
     void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
-    void epsilonGAtIB(List<scalar>& epsilonIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& nut);
+    void epsilonGAtIB(List<scalar>& epsilonIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
 
     // return the immersed yPlus field
     volScalarField& getYPlusi()

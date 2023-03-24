@@ -343,7 +343,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     epsilon_.boundaryFieldRef().updateCoeffs();
     
     // HFDIB: correct epsilon and G
-    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, nut, surface_);
+    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, surface_);
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn
@@ -409,6 +409,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     bound(k_, this->kMin_);
 
     correctNut();
+    HFDIBRANS.correctNut(k_, nu_);
 }
 
 template<class BasicMomentumTransportModel>

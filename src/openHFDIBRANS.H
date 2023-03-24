@@ -98,8 +98,9 @@ class openHFDIBRANS
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
 
     // correct values
+    void correctNut(volScalarField& k, volScalarField& nu);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
-    void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& nut, volScalarField& surface);
+    void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);

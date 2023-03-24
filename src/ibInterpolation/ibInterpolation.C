@@ -260,6 +260,7 @@ Tuple2<vector,Tuple2<label,label>> ibInterpolation::findCellCustom
     forAll (cellPoints, pointI)
     {
         labelList pointFaces(mesh_.pointFaces()[cellPoints[pointI]]);
+
         forAll (pointFaces, faceI)
         {
             if (mesh_.isInternalFace(pointFaces[faceI]))
@@ -413,13 +414,13 @@ void ibInterpolation::findBoundaryCells
 )
 {
     // get label of wallInsideLambda patch and starting and ending face index
-    //~ label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    //~ label startIL = mesh_.boundary()[patchIL].start();
-    //~ label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
+    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
+    label startIL = mesh_.boundary()[patchIL].start();
+    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
 
-    //~ label patchIW = mesh_.boundaryMesh().findPatchID("walls");
-    //~ label startIW = mesh_.boundary()[patchIW].start();
-    //~ label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
+    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
+    label startIW = mesh_.boundary()[patchIW].start();
+    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
 
     // preparation
     Tuple2<label,label> toAppend;
@@ -460,22 +461,22 @@ void ibInterpolation::findBoundaryCells
                     //~ break;
                 //~ }
             //~ }
+
+            // check whether the cell is adjecent to a regular wall
+            if (toInclude)
+            {
+                forAll(mesh_.cells()[cellI], f)
+                {
+                    // get face label
+                    label faceI = mesh_.cells()[cellI][f];
+
+                    if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
+                    {
+                        toInclude = false;
+                    }
+                }
+            }
         }
-
-        // check whether the cell is adjecent to a regular wall -- taken care of by correction of surface normals
-        //~ if (toInclude)
-        //~ {
-            //~ forAll(mesh_.cells()[cellI], f)
-            //~ {
-                //~ // get face label
-                //~ label faceI = mesh_.cells()[cellI][f];
-
-                //~ if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
-                //~ {
-                    //~ toInclude = false;
-                //~ }
-            //~ }
-        //~ }
 
         // add the cell
         if (toInclude)

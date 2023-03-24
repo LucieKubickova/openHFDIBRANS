@@ -77,6 +77,9 @@ ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_, isWallCell
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
 
+    // set size to lists
+    ibDirichletBCs_.setSizeToLists();
+
     // check whether boundary cells are adjecent to regular walls
     isWallCell_.setSize(boundaryCells_.size());
     ibInterpolation_.areWallCells();
@@ -229,6 +232,16 @@ void openHFDIBRANS::computeKi
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::correctNut
+(
+    volScalarField& k,
+    volScalarField& nu
+)
+{
+    ibDirichletBCs_.correctNutAtIB(k, nu);
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::correctOmegaG
 (
     volScalarField& omega,
@@ -285,7 +298,6 @@ void openHFDIBRANS::correctEpsilonG
     const volVectorField& U,
     volScalarField& k,
     volScalarField& nu,
-    volScalarField& nut,
     volScalarField& surface
 )
 {
@@ -297,7 +309,7 @@ void openHFDIBRANS::correctEpsilonG
     GIB.setSize(boundaryCells_.size());
 
     // calculate values at the immersed boundary
-    ibDirichletBCs_.epsilonGAtIB(epsilonIB, GIB, G, U, k, nu, nut);
+    ibDirichletBCs_.epsilonGAtIB(epsilonIB, GIB, G, U, k, nu);
 
     // assign the values for boundary cells
     forAll(boundaryCells_, bCell)
