@@ -337,15 +337,15 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     // Turbulence specific dissipation rate equation
     tmp<fvScalarMatrix> omegaEqn
     (
-        fvm::ddt(alpha, rho, omega_) // tohle je nula
-      + fvm::div(alphaRhoPhi, omega_) // az na upravovane bunky stejne
-      - fvm::laplacian(alpha*rho*DomegaEff(), omega_) // bez korekce nut dobre v ramci vypoctu wall functions
+        fvm::ddt(alpha, rho, omega_)
+      + fvm::div(alphaRhoPhi, omega_)
+      - fvm::laplacian(alpha*rho*DomegaEff(), omega_)
      ==
-        omegaSource() // tohle je nula
-      + gamma_*alpha()*rho()*G*omega_()/k_() // tohle je dobre
-      - fvm::Sp(beta_*alpha()*rho()*omega_(), omega_) // tohle je dobre v ramci vypoctu wall functions
-      - fvm::SuSp(((2.0/3.0)*gamma_)*alpha()*rho()*divU, omega_) // tohle je stejny, pro stejny divU, juch
-      + fvOptions(alpha, rho, omega_) // tohle je nula
+        omegaSource()
+      + gamma_*alpha()*rho()*G*omega_()/k_()
+      - fvm::Sp(beta_*alpha()*rho()*omega_(), omega_)
+      - fvm::SuSp(((2.0/3.0)*gamma_)*alpha()*rho()*divU, omega_)
+      + fvOptions(alpha, rho, omega_)
     );
 
     omegaEqn.ref().relax();
@@ -365,15 +365,15 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
     (
-        fvm::ddt(alpha, rho, k_) // nula
-      + fvm::div(alphaRhoPhi, k_) // dobre az na posledni radu bunek logicky
-      - fvm::laplacian(alpha*rho*DkEff(), k_) // dobre az na predposledni a posledni radu bunek
+        fvm::ddt(alpha, rho, k_)
+      + fvm::div(alphaRhoPhi, k_)
+      - fvm::laplacian(alpha*rho*DkEff(), k_)
      ==
-      kSource() // proste nula
-      + alpha()*rho()*G // tohle vypada dobre
-      - fvm::Sp(Cmu_*alpha()*rho()*omega_(), k_) // tohle je spravne v ramci spravnosti omega
-      - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_) // tohle je spravne se spravnym divU
-      + fvOptions(alpha, rho, k_) // nula
+      kSource()
+      + alpha()*rho()*G
+      - fvm::Sp(Cmu_*alpha()*rho()*omega_(), k_)
+      - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
+      + fvOptions(alpha, rho, k_)
     );
 
     kEqn.relax();
