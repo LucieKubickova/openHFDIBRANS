@@ -69,7 +69,6 @@ class ibInterpolation
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
-    List<Tuple2<bool,label>>& isWallCell_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -85,7 +84,7 @@ class ibInterpolation
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, List<Tuple2<bool,label>>& isWallCell);
+    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();
@@ -104,7 +103,6 @@ class ibInterpolation
     
     // identification
     void findBoundaryCells();
-    void areWallCells();
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
@@ -119,7 +117,6 @@ class ibInterpolation
 
     // surface normals
     void calculateSurfNorm();
-    void correctSurfNorm();
 
     // find cell
     Tuple2<vector,Tuple2<label,label>> findCellCustom(vector& prevPoint, label& startCell, label& startProc, vector& gradToBody, scalar& intDist);

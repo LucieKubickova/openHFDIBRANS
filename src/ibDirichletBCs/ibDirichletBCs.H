@@ -91,7 +91,6 @@ class ibDirichletBCs
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
-    List<Tuple2<bool,label>>& isWallCell_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -145,7 +144,7 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists, List<Tuple2<bool,label>>& isWallCell);
+    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();

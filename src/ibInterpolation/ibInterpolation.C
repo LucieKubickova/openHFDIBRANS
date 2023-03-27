@@ -40,8 +40,7 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists,
-    List<Tuple2<bool,label>>& isWallCell
+    List<Tuple2<scalar,scalar>>& boundaryDists
 )
 :
 mesh_(mesh),
@@ -61,7 +60,6 @@ surfNorm_
 ),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
-isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -508,45 +506,6 @@ void ibInterpolation::findBoundaryCells
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::areWallCells
-(
-)
-{
-    // get label of wallInsideLambda patch and starting and ending face index
-    //~ label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    //~ label startIL = mesh_.boundary()[patchIL].start();
-    //~ label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
-
-    //~ label patchIW = mesh_.boundaryMesh().findPatchID("walls");
-    //~ label startIW = mesh_.boundary()[patchIW].start();
-    //~ label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
-
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell label
-        //~ label cellI = boundaryCells_[bCell].first();
-
-        // initialize values
-        isWallCell_[bCell].first() = false;
-        isWallCell_[bCell].second() = -1;
-
-        // check whether the cell is adjecent to a regular wall
-        //~ forAll(mesh_.cells()[cellI], f)
-        //~ {
-            //~ // get face label
-            //~ label faceI = mesh_.cells()[cellI][f];
-
-            //~ if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
-            //~ {
-                //~ isWallCell_[bCell].first() = true;
-                //~ isWallCell_[bCell].second() = faceI;
-                //~ break;
-            //~ }
-        //~ }
-    }
-}
-
-//---------------------------------------------------------------------------//
 void ibInterpolation::setUpSurface
 (
     volScalarField& surface,
@@ -614,39 +573,6 @@ void ibInterpolation::calculateSurfNorm
     // calculate the surface normal based on the body gradient
     surfNorm_ = -fvc::grad(body_);
     surfNorm_ /= (mag(surfNorm_) + deltaN);
-}
-
-//---------------------------------------------------------------------------//
-void ibInterpolation::correctSurfNorm
-(
-)
-{
-    //~ // correct surface normals in cells adjecent to regural walls
-    //~ forAll(boundaryCells_, bCell)
-    //~ {
-        //~ if (isWallCell_[bCell].first())
-        //~ {
-            //~ // get label of the wall face and the boundary cell
-            //~ label faceI = isWallCell_[bCell].second();
-            //~ label cellI = boundaryCells_[bCell].first();
-
-            //~ // get the wall normal
-            //~ vector wallNorm = -1*mesh_.Sf()[faceI];
-            //~ wallNorm /= mag(wallNorm);
-
-            //~ // get distances from wall and surface
-            //~ scalar wallDist = mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]);
-            //~ scalar surfDist = boundaryDists_[bCell].first();
-
-            //~ // compute weights
-            //~ scalar ww = 1 - wallDist/(wallDist + surfDist);
-            //~ scalar sw = 1 - surfDist/(wallDist + surfDist);
-
-            //~ // compute new surface normal
-            //~ surfNorm_[cellI] = ww*wallNorm + sw*surfNorm_[cellI];
-            //~ surfNorm_[cellI] /= mag(surfNorm_[cellI]);
-        //~ }
-    //~ }
 }
 
 //---------------------------------------------------------------------------//

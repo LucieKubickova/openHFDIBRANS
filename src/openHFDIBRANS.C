@@ -65,8 +65,8 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, isWallCell_),
-ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_, isWallCell_)
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
+ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_)
 {
     // read HFDIBDEM dictionary
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
@@ -80,16 +80,9 @@ ibDirichletBCs_(mesh, simulationType, boundaryCells_, boundaryDists_, isWallCell
     // set size to lists
     ibDirichletBCs_.setSizeToLists();
 
-    // check whether boundary cells are adjecent to regular walls
-    isWallCell_.setSize(boundaryCells_.size());
-    ibInterpolation_.areWallCells();
-
     // compute distance to the immersed boundary
     boundaryDists_.setSize(boundaryCells_.size());
     ibInterpolation_.calculateDistToBoundary();
-
-    // correct surface normals for wall cells
-    ibInterpolation_.correctSurfNorm();
 
     // calculate interpolation points
     ibInterpolation_.calculateInterpolationPoints();

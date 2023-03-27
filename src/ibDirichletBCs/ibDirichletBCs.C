@@ -40,14 +40,12 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     word simulationType,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists,
-    List<Tuple2<bool,label>>& isWallCell
+    List<Tuple2<scalar,scalar>>& boundaryDists
 )
 :
 mesh_(mesh),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
-isWallCell_(isWallCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -261,97 +259,53 @@ void ibDirichletBCs::omegaGAtIB
             // get cell label
             label cellI = boundaryCells_[bCell].first();
 
-            // prepare list of distances and weights
-            List<scalar> distances;
-            List<scalar> weights;
+            // get distance to the surface
+            scalar ds = boundaryDists_[bCell].first();
 
-            if (isWallCell_[bCell].first())
+            // compute magnitude of snGrad of U at the surface
+            vector zeroU = vector::zero;
+            vector snGradU = (zeroU - U[cellI])/ds;
+            scalar magGradUWall = mag(snGradU);
+
+            // compute local Reynolds number
+            scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            
+            // compute normalized variables
+            const scalar yPlus = Cmu25_*Rey;
+            const scalar uPlus = (1/kappa_)*Foam::log(E_*yPlus);
+
+            // compute the values at the surface
+            if (blended)
             {
-                // set size of dss
-                distances.setSize(2);
-                weights.setSize(2);
+                const scalar lamFrac = Foam::exp(-Rey/11);
+                const scalar turbFrac = 1 - lamFrac;
 
-                // get face label
-                label faceI = isWallCell_[bCell].second();
+                const scalar uStar = Foam::sqrt
+                (
+                    lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
+                );
 
-                // get patch label
-                label patchI = mesh_.boundaryMesh().whichPatch(faceI);
+                const scalar omegaVis = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
+                const scalar omegaLog = uStar/(Cmu5_*kappa_*ds);
 
-                // get local face label
-                label lfaceI = mesh_.boundaryMesh()[patchI].whichFace(faceI);
-
-                // get near wall distance
-                distances[1] = yWall[patchI][lfaceI];
+                omegaIB[bCell] = lamFrac*omegaVis + turbFrac*omegaLog;
+                GIB[bCell] = lamFrac*G[cellI] + turbFrac*sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
             }
 
             else
             {
-                // set size of dss
-                distances.setSize(1);
-                weights.setSize(1);
-            }
-
-            // get distance to the surface
-            distances[0] = boundaryDists_[bCell].first();
-
-            // calculate weights
-            forAll(weights, wI)
-            {
-                weights[wI] = 1.0/weights.size();
-            }
-
-            // loop over walls and surfaces
-            forAll(distances, dsI)
-            {
-                // get distance and weight
-                scalar ds = distances[dsI];
-                scalar w = weights[dsI];
-
-                // compute magnitude of snGrad of U at the surface
-                vector zeroU = vector::zero;
-                vector snGradU = (zeroU - U[cellI])/ds;
-                scalar magGradUWall = mag(snGradU);
-
-                // compute local Reynolds number
-                scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
-                
-                // compute normalized variables
-                const scalar yPlus = Cmu25_*Rey;
-                const scalar uPlus = (1/kappa_)*Foam::log(E_*yPlus);
-
-                // compute the values at the surface
-                if (blended)
+                if (yPlus < yPlusLam_)
                 {
-                    const scalar lamFrac = Foam::exp(-Rey/11);
-                    const scalar turbFrac = 1 - lamFrac;
-
-                    const scalar uStar = Foam::sqrt
-                    (
-                        lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
-                    );
-
-                    const scalar omegaVis = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
-                    const scalar omegaLog = uStar/(Cmu5_*kappa_*ds);
-
-                    omegaIB[bCell] += w*(lamFrac*omegaVis + turbFrac*omegaLog);
-                    GIB[bCell] += w*(lamFrac*G[cellI] + turbFrac*sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus));
+                    omegaIB[bCell] = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
+                    GIB[bCell] = G[cellI];
                 }
 
                 else
                 {
-                    if (yPlus < yPlusLam_)
-                    {
-                        omegaIB[bCell] += w*(6*nu[cellI]/(beta1_*Foam::sqr(ds)));
-                        GIB[bCell] += w*(G[cellI]);
-                    }
+                    const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
 
-                    else
-                    {
-                        const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
-
-                        omegaIB[bCell] += w*(uStar/(Cmu5_*kappa_*ds));
-                        GIB[bCell] += w*(sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus));
-                    }
+                    omegaIB[bCell] = uStar/(Cmu5_*kappa_*ds);
+                    GIB[bCell] = sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
                 }
             }
         }
@@ -388,74 +342,30 @@ void ibDirichletBCs::epsilonGAtIB
             // get cell label
             label cellI = boundaryCells_[bCell].first();
 
-            // prepare list of distances and weights
-            List<scalar> distances;
-            List<scalar> weights;
+            // get distance to the surface
+            scalar ds = boundaryDists_[bCell].first();
 
-            if (isWallCell_[bCell].first())
+            // compute magnitude of snGrad of U at the surface
+            vector zeroU = vector::zero;
+            vector snGradU = (zeroU - U[cellI])/ds;
+            scalar magGradUWall = mag(snGradU);
+
+            // compute local Reynolds number
+            scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+
+            // compute normalized variables
+            const scalar yPlus = Cmu25_*Rey;
+
+            if (yPlus > yPlusLam_)
             {
-                // set size of dss
-                distances.setSize(2);
-                weights.setSize(2);
-
-                // get face label
-                label faceI = isWallCell_[bCell].second();
-
-                // get patch label
-                label patchI = mesh_.boundaryMesh().whichPatch(faceI);
-
-                // get local face label
-                label lfaceI = mesh_.boundaryMesh()[patchI].whichFace(faceI);
-
-                // get near wall distance
-                distances[1] = yWall[patchI][lfaceI];
+                epsilonIB[bCell] = Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
+                GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
             }
 
             else
             {
-                // set size of dss
-                distances.setSize(1);
-                weights.setSize(1);
-            }
-
-            // get distance to the surface
-            distances[0] = boundaryDists_[bCell].first();
-
-            // calculate weights
-            forAll(weights, wI)
-            {
-                weights[wI] = 1.0/weights.size();
-            }
-
-            // loop over walls and surfaces
-            forAll(distances, dsI)
-            {
-                // get distance and weight
-                scalar ds = distances[dsI];
-                scalar w = weights[dsI];
-
-                // compute magnitude of snGrad of U at the surface
-                vector zeroU = vector::zero;
-                vector snGradU = (zeroU - U[cellI])/ds;
-                scalar magGradUWall = mag(snGradU);
-
-                // compute local Reynolds number
-                scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
-
-                // compute normalized variables
-                const scalar yPlus = Cmu25_*Rey;
-
-                if (yPlus > yPlusLam_)
-                {
-                    epsilonIB[bCell] += w*Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
-                    GIB[bCell] += w*(nutAtIB_[bCell] + nu[cellI])*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
-                }
-
-                else
-                {
-                    epsilonIB[bCell] += w*2.0*k[cellI]*nu[cellI]/sqr(ds);
-                    GIB[bCell] += w*(G[cellI]); // NOTE: not sure about this
-                }
+                epsilonIB[bCell] = 2.0*k[cellI]*nu[cellI]/sqr(ds);
+                GIB[bCell] = G[cellI]; // NOTE: not sure about this
             }
         }
     }
