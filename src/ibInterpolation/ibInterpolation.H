@@ -93,11 +93,11 @@ class ibInterpolation
     // -- interpolation approaches
     // unifunctional interpolation
     template <typename Type, typename volTypeField>
-    void unifunctionalInterp(ITstream& interpScheme, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
+    void unifunctionalInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
     // switched, decision based on local yPlus value
     template <typename Type, typename volTypeField>
-    void switchedInterp(ITstream& interpScheme, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
+    void switchedInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
     
     // TODO: blended interpolation
     

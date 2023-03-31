@@ -40,7 +40,7 @@ using namespace Foam;
 template <typename Type, typename volTypeField>
 void ibInterpolation::unifunctionalInterp
 (
-    ITstream& interpScheme,
+    ITstream& ibSchemeName,
     volTypeField& phi,
     volTypeField& phii,
     List<Type>& dirichletVals,
@@ -52,10 +52,10 @@ void ibInterpolation::unifunctionalInterp
                    interpolation<Type>::New(HFDIBInterpDict_, phi);
 
     // read chosen interpolation function
-    word interpType = interpScheme[1].wordToken();
+    word ibSchemeType = ibSchemeName[1].wordToken();
 
     // prepare chosen interpolation function
-    autoPtr<ibScheme> interpFunc = chosenInterpFunc(interpType);
+    autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_, bCell)
@@ -72,7 +72,7 @@ void ibInterpolation::unifunctionalInterp
 template <typename Type, typename volTypeField>
 void ibInterpolation::switchedInterp
 (
-    ITstream& interpScheme,
+    ITstream& ibSchemeName,
     volTypeField& phi,
     volTypeField& phii,
     List<Type>& dirichletVals,
@@ -86,8 +86,8 @@ void ibInterpolation::switchedInterp
                    interpolation<Type>::New(HFDIBInterpDict_, phi);
 
     // read chosen interpolation functions
-    word lowerType = interpScheme[1].wordToken();
-    word higherType = interpScheme[2].wordToken();
+    word lowerType = ibSchemeName[1].wordToken();
+    word higherType = ibSchemeName[2].wordToken();
 
     // prepare chosen interpolation functions
     autoPtr<ibScheme> lowerFunc = chosenInterpFunc(lowerType);

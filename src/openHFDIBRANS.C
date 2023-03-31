@@ -146,23 +146,23 @@ void openHFDIBRANS::computeUi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream UInterpScheme = HFDIBSchemes_.lookup("UInterpolation");
-    word interpType = UInterpScheme[0].wordToken();
+    ITstream UIBScheme = HFDIBSchemes_.lookup("U");
+    word interpType = UIBScheme[0].wordToken();
 
     // interpolation
     if (interpType == "unifunctional")
     {
-        ibInterpolation_.unifunctionalInterp<vector, volVectorField>(UInterpScheme, U, Ui, UIB, logScales);
+        ibInterpolation_.unifunctionalInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
     }
 
     else if (interpType == "switched")
     {
-        ibInterpolation_.switchedInterp<vector, volVectorField>(UInterpScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
+        ibInterpolation_.switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
     else
     {
-        FatalError << "Interpolation type " << UInterpScheme << " for field U not implemented" << exit(FatalError);
+        FatalError << "Interpolation type " << UIBScheme << " for field U not implemented" << exit(FatalError);
     }
 }
 
@@ -202,23 +202,23 @@ void openHFDIBRANS::computeKi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream kInterpScheme = HFDIBSchemes_.lookup("kInterpolation");
-    word interpType = kInterpScheme[0].wordToken();
+    ITstream kIBScheme = HFDIBSchemes_.lookup("k");
+    word interpType = kIBScheme[0].wordToken();
 
     // interpolation
     if (interpType == "unifunctional")
     {
-        ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(kInterpScheme, k, ki, kIB, logScales);
+        ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales);
     }
 
     else if (interpType == "switched")
     {
-        ibInterpolation_.switchedInterp<scalar, volScalarField>(kInterpScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
+        ibInterpolation_.switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
     else
     {
-        FatalError << "Interpolation type " << kInterpScheme << " for field k not implemented" << exit(FatalError);
+        FatalError << "Interpolation type " << kIBScheme << " for field k not implemented" << exit(FatalError);
     }
 
     // TODO: blended interpolation
