@@ -8,10 +8,10 @@ cd $cwd/straightPipe/openHFDIBRANS
 cd $cwd/straightPipe/simpleFoam
 ./Allclean
 
-cd $cwd/unsymmetricalPipe/openHFDIBRANS
+cd $cwd/asymmetricalPipe/openHFDIBRANS
 ./Allclean
 
-cd $cwd/unsymmetricalPipe/simpleFoam
+cd $cwd/asymmetricalPipe/simpleFoam
 ./Allclean
 
 cd $cwd
