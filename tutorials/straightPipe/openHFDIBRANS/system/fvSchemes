@@ -68,8 +68,8 @@ wallDist
 
 HFDIBSchemes
 {
-    U  unifunctional quadratic;
-    k  switched quadratic logarithmic;
+    U               unifunctional quadratic;
+    k               switched quadratic logarithmic;
 }
 
 // ************************************************************************* //
