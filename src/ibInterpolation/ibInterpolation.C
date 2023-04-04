@@ -415,14 +415,15 @@ void ibInterpolation::findBoundaryCells
 (
 )
 {
-    // get label of wallInsideLambda patch and starting and ending face index
-    label patchIL = mesh_.boundaryMesh().findPatchID("wallInsideLambda");
-    label startIL = mesh_.boundary()[patchIL].start();
-    label endIL = startIL + mesh_.boundary()[patchIL].Cf().size();
-
-    label patchIW = mesh_.boundaryMesh().findPatchID("walls");
-    label startIW = mesh_.boundary()[patchIW].start();
-    label endIW = startIW + mesh_.boundary()[patchIW].Cf().size();
+    // get wall patches
+    DynamicList<label> wPatchIs;
+    forAll(mesh_.boundary(), pI)
+    {
+        if (mesh_.boundary()[pI].type() == "wall")
+        {
+            wPatchIs.append(pI);
+        }
+    }
 
     // preparation
     Tuple2<label,label> toAppend;
@@ -472,9 +473,31 @@ void ibInterpolation::findBoundaryCells
                     // get face label
                     label faceI = mesh_.cells()[cellI][f];
 
-                    if ((faceI >= startIL and faceI < endIL) or (faceI >= startIW and faceI < endIW))
+                    if (faceI >= mesh_.owner().size())
                     {
-                        toInclude = false;
+                        bool wallFace(false);
+
+                        // loop over patches of type wall
+                        forAll(wPatchIs, pI)
+                        {
+                            // get patch label
+                            label patchI = wPatchIs[pI];
+
+                            // get start and end face index
+                            label startI = mesh_.boundary()[patchI].start();
+                            label endI = startI + mesh_.boundary()[patchI].Cf().size();
+
+                            if (faceI >= startI and faceI < endI)
+                            {
+                                wallFace = true;
+                            }
+                        }
+
+                        // exclude wall faces
+                        if (wallFace)
+                        {
+                            toInclude = false;
+                        }
                     }
                 }
             }
