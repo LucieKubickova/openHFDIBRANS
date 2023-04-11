@@ -51,7 +51,7 @@ Type constantScheme::interpolateT
 )
 {
     // interpolation
-    return body[cellI]*dirichletVal + (1-body[cellI])*phi[cellI];
+    return dirichletVal;
 }
 
 // ************************************************************************* //
