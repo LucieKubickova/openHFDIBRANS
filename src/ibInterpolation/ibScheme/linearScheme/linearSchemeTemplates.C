@@ -53,7 +53,7 @@ Type linearScheme::interpolateT
     // check whether there are anough interpolation points
     if (intInfo.order_ == 0)
     {
-        return body[cellI]*dirichletVal + (1-body[cellI])*phi[cellI]; // UGLYYYYYYYYYYYYYYYYYY
+        return dirichletVal; // UGLYYYYYYYYYYYYYYYYYY
         //~ return constant<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
     }
 

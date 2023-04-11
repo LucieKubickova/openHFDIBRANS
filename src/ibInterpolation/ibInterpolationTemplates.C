@@ -116,4 +116,62 @@ void ibInterpolation::switchedInterp
     }
 }
 
+//---------------------------------------------------------------------------//
+template <typename Type, typename volTypeField>
+void ibInterpolation::outerInnerInterp
+(
+    ITstream& ibSchemeName,
+    volTypeField& phi,
+    volTypeField& phii,
+    List<Type>& dirichletVals,
+    List<scalar>& scales,
+    volScalarField& yPlusi,
+    scalar yPlusLam
+)
+{
+    // create interpolator
+    autoPtr<interpolation<Type>> interpPhi =
+                   interpolation<Type>::New(HFDIBInterpDict_, phi);
+
+    // read chosen interpolation functions
+    word outerType = ibSchemeName[1].wordToken();
+    word innerType = ibSchemeName[2].wordToken();
+
+    // prepare chosen interpolation functions
+    autoPtr<ibScheme> outerFunc = chosenInterpFunc(outerType);
+    autoPtr<ibScheme> innerFunc = chosenInterpFunc(innerType);
+
+    // interpolate and assign values to the imposed field
+    forAll(boundaryCells_, bCell)
+    {
+        // get outer cell label
+        label outCellI = boundaryCells_[bCell].first();
+
+        // switch based on yPlus value
+        if (yPlusi[outCellI] > yPlusLam)
+        {
+            // get the inner cell label
+            label inCellI = boundaryCells_[bCell].second();
+
+            // create new interpolation info to interpolate inside
+            interpolationInfo intInfoToSend(intInfoList_[bCell]);
+            intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
+            intInfoToSend.intPoints_[2] = intInfoList_[bCell].intPoints_[1];
+            intInfoToSend.intCells_[0] = outCellI;
+            intInfoToSend.intCells_[1] = intInfoList_[bCell].intCells_[0];
+
+            // get the inner cell distance
+            scalar dsToSend = -1*boundaryDists_[bCell].second();
+
+            // NOTE: logarithm of negative number?
+            phii[inCellI] = innerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);
+            // NOTE: constant won't work
+        }
+
+        else
+        {
+            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], outCellI);
+        }
+    }
+}
 // ************************************************************************* //

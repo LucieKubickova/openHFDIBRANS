@@ -97,6 +97,10 @@ class ibInterpolation
     template <typename Type, typename volTypeField>
     void switchedInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
     
+    // outer or inner interpolation, decision based on local yPlus value
+    template <typename Type, typename volTypeField>
+    void outerInnerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
+
     // TODO: blended interpolation
     
     // identification

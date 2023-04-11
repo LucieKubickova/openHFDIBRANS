@@ -88,11 +88,14 @@ class openHFDIBRANS
     ~openHFDIBRANS();
 
     // Public methods --------------------------------------------------
-    
+
     // compute imposed fields
     void computeUi(volVectorField& U, volVectorField& Ui);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
 
+    // update friction velocity
+    void updateUTau(volScalarField& k);
+    
     // correct values
     void correctNut(volScalarField& k, volScalarField& nu);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
