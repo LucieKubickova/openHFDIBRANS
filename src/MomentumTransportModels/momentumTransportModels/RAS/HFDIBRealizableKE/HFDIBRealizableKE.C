@@ -140,7 +140,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::matrixManipulate
 (
     fvScalarMatrix& eqn,
     volScalarField& phi,
-    scalar threshold
+    volScalarField& surface
 )
 {
     DynamicList<label> cells;
@@ -148,7 +148,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::matrixManipulate
 
     forAll(lambda_, cellI)
     {
-        if (surface_[cellI] == 1.0)
+        if (surface[cellI] == 1.0)
         {
             cells.append(cellI);
             phis.append(phi[cellI]);
@@ -257,11 +257,24 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
         ),
         this->mesh_
     ),
-    surface_
+    kSurface_
     (
         IOobject
         (
-            "HFDIBRealizableKE::surface",
+            "HFDIBRealizableKE::kSurface",
+            this->runTime_.timeName(),
+            this->mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        this->mesh_,
+        dimensionedScalar("zero",dimless,0.0)
+    ),
+    epsilonSurface_
+    (
+        IOobject
+        (
+            "HFDIBRealizableKE::epsilonSurface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -310,8 +323,10 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
 {
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
-    HFDIBRASDict.lookup("surfaceType") >> surfaceType_;
-    boundaryValue_ = readScalar(HFDIBRASDict.lookup("boundaryValue"));
+    HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
+    HFDIBRASDict.lookup("epsilonSurfaceType") >> epsilonSurfaceType_;
+    kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
+    epsilonBoundaryValue_ = readScalar(HFDIBRASDict.lookup("epsilonBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 
@@ -362,7 +377,8 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
     // HFDIBRANS references
-    HFDIBRANS.createBaseSurface(surface_, surfaceType_, boundaryValue_);
+    HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    HFDIBRANS.createBaseSurface(epsilonSurface_, epsilonSurfaceType_, epsilonBoundaryValue_);
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -392,8 +408,11 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     // Update epsilon and G at the wall
     epsilon_.boundaryFieldRef().updateCoeffs();
     
+    // HFDIB: update uTau
+    HFDIBRANS.updateUTau(k_);
+
     // HFDIB: correct epsilon and G
-    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, surface_);
+    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonSurface_);
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn
@@ -417,7 +436,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     epsEqn.ref().boundaryManipulate(epsilon_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(epsEqn.ref(), epsilon_, 1e-4);
+    matrixManipulate(epsEqn.ref(), epsilon_, epsilonSurface_);
 
     solve(epsEqn);
     fvOptions.correct(epsilon_);
@@ -445,17 +464,17 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
-        kQ_ = surface_*(kEqn.A()*ki_ - kEqn.H());
+        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
-        if (max(surface_*(ki_ - k_)).value() < tolKEqn_)
+        if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
         {
-            Info << "HFDIBRAS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+            Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
             break;
         }
 
         // apply correction
-        k_ += 1.0*surface_*(ki_ - k_);
+        k_ += 1.0*kSurface_*(ki_ - k_);
     }
     
     fvOptions.correct(k_);

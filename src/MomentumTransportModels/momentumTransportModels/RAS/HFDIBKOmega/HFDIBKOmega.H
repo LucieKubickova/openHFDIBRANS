@@ -75,7 +75,8 @@ protected:
             volScalarField k_;
             volScalarField omega_;
 	        volScalarField lambda_;
-            volScalarField surface_;
+            volScalarField kSurface_;
+            volScalarField omegaSurface_;
 	        volScalarField ki_;
             volScalarField kQ_;
 	        volScalarField nu_;
@@ -85,8 +86,10 @@ protected:
             IOdictionary HFDIBDEMDict_;
 
         // Equations settings
-            word surfaceType_;
-            scalar boundaryValue_;
+            word kSurfaceType_;
+            word omegaSurfaceType_;
+            scalar kBoundaryValue_;
+            scalar omegaBoundaryValue_;
             scalar tolKEqn_;
             label maxKEqnIters_;
 
@@ -95,7 +98,7 @@ protected:
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
         virtual tmp<fvScalarMatrix> omegaSource() const;
-        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, scalar threshold);
+        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, volScalarField& surface);
 
 
 public:

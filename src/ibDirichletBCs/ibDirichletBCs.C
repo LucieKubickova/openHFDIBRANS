@@ -42,12 +42,14 @@ using namespace Foam;
 ibDirichletBCs::ibDirichletBCs
 (
     const fvMesh& mesh,
+    const volScalarField& body,
     word simulationType,
     DynamicList<Tuple2<label,label>>& boundaryCells,
     List<Tuple2<scalar,scalar>>& boundaryDists
 )
 :
 mesh_(mesh),
+body_(body),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
 HFDIBDEMDict_
@@ -120,6 +122,9 @@ void ibDirichletBCs::setSizeToLists
 {
     // set size to nutAtIB
     nutAtIB_.setSize(boundaryCells_.size());
+
+    // set size to uTauAtIB
+    uTauAtIB_.setSize(boundaryCells_.size());
 }
 
 //---------------------------------------------------------------------------//
@@ -144,6 +149,61 @@ void ibDirichletBCs::UAtIB
 }
 
 //---------------------------------------------------------------------------//
+void ibDirichletBCs::updateUTauAtIB
+(
+    volScalarField& k
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // reset field
+        uTauAtIB_[bCell] *= 0.0;
+
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // initialize
+        scalar totA(0.0);
+
+        // loop over faces
+        forAll(mesh_.cells()[cellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[cellI][fI];
+
+            // skip boundary faces
+            if (faceI >= mesh_.faceNeighbour().size())
+            {
+                continue;
+            }
+
+            // get cell labels
+            label owner = mesh_.faceOwner()[faceI];
+            label neighbor = mesh_.faceNeighbour()[faceI];
+
+            // skip in-solid cells
+            if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
+            {
+                continue;
+            }
+
+            // get uTau values
+            scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
+            scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
+
+            // calculate the average value
+            uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
+
+            // add face area to total
+            totA += mag(mesh_.Sf()[faceI]);
+        }
+
+        // divide by total area
+        uTauAtIB_[bCell] /= totA;
+    }
+}
+//---------------------------------------------------------------------------//
 void ibDirichletBCs::correctNutAtIB
 (
     volScalarField& k,
@@ -164,8 +224,9 @@ void ibDirichletBCs::correctNutAtIB
             // get distance to the surface
             scalar ds = boundaryDists_[bCell].first();
 
-            // compute the friction velocity
-            scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+            // get the friction velocity
+            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+            scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
             scalar yPlus = uTau*ds/nu[cellI];
@@ -197,8 +258,9 @@ void ibDirichletBCs::kAtIB
             // get distance to the surface
             scalar ds = boundaryDists_[bCell].first();
 
-            // compute the friction velocity
-            scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+            // get the friction velocity
+            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+            scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
             scalar yPlus = uTau*ds/nu[cellI];
@@ -226,6 +288,51 @@ void ibDirichletBCs::kAtIB
         forAll(kIB, bCell)
         {
             kIB[bCell] = max(kIB[bCell], small);
+        }
+
+        // save kIB
+        word fileName = "k.dat";
+        word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
+
+        // prepare outFile
+        autoPtr<OFstream> outFilePtr;
+        outFilePtr.reset(new OFstream(outDir/fileName));
+        outFilePtr() << "cellI,x,y,z,V,k" << endl;
+
+        // loop over cells
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get distance to the surface
+            scalar ds = boundaryDists_[bCell].first();
+
+            // get coordinates and volume
+            scalar x = mesh_.C()[cellI].x();
+            scalar y = mesh_.C()[cellI].y();
+            if (y < 0.0) // UGLYYYYYYYYYYYY
+            {
+                y -= ds;
+            }
+            else
+            {
+                y += ds;
+            }
+            scalar z = mesh_.C()[cellI].z();
+            scalar V = mesh_.V()[cellI];
+
+            // get the fields value
+            scalar kk = kIB[bCell];
+
+            // write
+            outFilePtr() << cellI
+                << "," << x
+                << "," << y
+                << "," << z
+                << "," << V
+                << "," << kk
+                << endl;
         }
     }
 
@@ -271,8 +378,13 @@ void ibDirichletBCs::omegaGAtIB
             vector snGradU = (zeroU - U[cellI])/ds;
             scalar magGradUWall = mag(snGradU);
 
+            // get the friction velocity
+            scalar uTau = uTauAtIB_[bCell];
+
             // compute local Reynolds number
-            scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            scalar Rey = ds*uTau/nu[cellI];
+            Rey /= Cmu25_;
             
             // compute normalized variables
             const scalar yPlus = Cmu25_*Rey;
@@ -286,7 +398,8 @@ void ibDirichletBCs::omegaGAtIB
 
                 const scalar uStar = Foam::sqrt
                 (
-                    lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
+                    //~ lamFrac*nu[cellI]*magGradUWall + turbFrac*Cmu5_*k[cellI]
+                    lamFrac*nu[cellI]*magGradUWall + turbFrac*sqr(uTau)
                 );
 
                 const scalar omegaVis = 6*nu[cellI]/(beta1_*Foam::sqr(ds));
@@ -306,7 +419,8 @@ void ibDirichletBCs::omegaGAtIB
 
                 else
                 {
-                    const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
+                    //~ const scalar uStar = Foam::sqrt(Cmu5_*k[cellI]);
+                    const scalar uStar = uTau;
 
                     omegaIB[bCell] = uStar/(Cmu5_*kappa_*ds);
                     GIB[bCell] = sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
@@ -354,16 +468,23 @@ void ibDirichletBCs::epsilonGAtIB
             vector snGradU = (zeroU - U[cellI])/ds;
             scalar magGradUWall = mag(snGradU);
 
+            // get the friction velocity
+            scalar uTau = uTauAtIB_[bCell];
+
             // compute local Reynolds number
-            scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            scalar Rey = ds*uTau/nu[cellI];
+            Rey /= Cmu25_;
 
             // compute normalized variables
             const scalar yPlus = Cmu25_*Rey;
 
             if (yPlus > yPlusLam_)
             {
-                epsilonIB[bCell] = Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
-                GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
+                //~ epsilonIB[bCell] = Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
+                epsilonIB[bCell] = pow3(uTau)/(kappa_*ds);
+                //~ GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
+                GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*uTau/(kappa_*ds);
             }
 
             else

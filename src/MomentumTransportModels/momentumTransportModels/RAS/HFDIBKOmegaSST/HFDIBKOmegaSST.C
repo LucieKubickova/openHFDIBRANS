@@ -224,7 +224,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::matrixManipulate
 (
     fvScalarMatrix& eqn,
     volScalarField& phi,
-    scalar threshold
+    volScalarField& surface
 )
 {
     DynamicList<label> cells;
@@ -232,7 +232,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::matrixManipulate
 
     forAll(lambda_, cellI)
     {
-        if (surface_[cellI] == 1.0)
+        if (surface[cellI] == 1.0)
         {
             cells.append(cellI);
             phis.append(phi[cellI]);
@@ -426,11 +426,24 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
 	    ),
 	    this->mesh_
     ),
-    surface_
+    kSurface_
     (
         IOobject
         (
-            "HFDIBKOmegaSST::surface",
+            "HFDIBKOmegaSST::kSurface",
+            this->runTime_.timeName(),
+            this->mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        this->mesh_,
+        dimensionedScalar("zero",dimless,0.0)
+    ),
+    omegaSurface_
+    (
+        IOobject
+        (
+            "HFDIBKOmegaSST::omegaSurface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -479,8 +492,10 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
 {
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
-    HFDIBRASDict.lookup("surfaceType") >> surfaceType_;
-    boundaryValue_ = readScalar(HFDIBRASDict.lookup("boundaryValue"));
+    HFDIBRASDict.lookup("omegaSurfaceType") >> omegaSurfaceType_;
+    omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("omegaBoundaryValue"));
+    HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
+    kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 
@@ -540,7 +555,8 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
     // HFDIBRANS references
-    HFDIBRANS.createBaseSurface(surface_, surfaceType_, boundaryValue_);
+    HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    HFDIBRANS.createBaseSurface(omegaSurface_, omegaSurfaceType_, omegaBoundaryValue_);
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -569,8 +585,11 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     volScalarField::Internal gamma(this->gamma(F1));
     volScalarField::Internal beta(this->beta(F1));
 
+    // HFDIB: update uTau
+    HFDIBRANS.updateUTau(k_);
+
     // HFDIB: correct omega and G
-    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, surface_);
+    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaSurface_);
 
     // Turbulent frequency equation
     tmp<fvScalarMatrix> omegaEqn
@@ -603,7 +622,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, 1e-4);
+    matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
 
     solve(omegaEqn);
     fvOptions.correct(omega_);
@@ -631,17 +650,17 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
-        kQ_ = surface_*(kEqn.A()*ki_ - kEqn.H());
+        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
-        if (max(surface_*(ki_ - k_)).value() < tolKEqn_)
+        if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
         {
-            Info << "HFDIBRAS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+            Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
             break;
         }
 
         // apply correction
-        k_ += 1.0*surface_*(ki_ - k_);
+        k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
     fvOptions.correct(k_);

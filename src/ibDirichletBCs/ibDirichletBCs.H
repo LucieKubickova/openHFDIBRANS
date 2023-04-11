@@ -82,8 +82,12 @@ class ibDirichletBCs
     // mesh related parameters
     const fvMesh& mesh_;
 
+    // lambda related things
+    const volScalarField& body_;
+
     // fields
     List<scalar> nutAtIB_;
+    List<scalar> uTauAtIB_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
@@ -141,7 +145,7 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibDirichletBCs(const fvMesh& mesh, const volScalarField& body, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();
@@ -150,9 +154,12 @@ class ibDirichletBCs
 
     // set size to list
     void setSizeToLists();
-    
+
     // velocity boundary condition
     void UAtIB(List<vector>& UIB, word BCType);
+
+    // calculate friction velocity
+    void updateUTauAtIB(volScalarField& k);
 
     // correct nut at the immersed boundary
     void correctNutAtIB(volScalarField& k, volScalarField& nu);
