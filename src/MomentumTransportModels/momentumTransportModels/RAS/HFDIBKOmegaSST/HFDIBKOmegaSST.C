@@ -492,10 +492,10 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
 {
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
-    HFDIBRASDict.lookup("omegaSurfaceType") >> omegaSurfaceType_;
-    omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("omegaBoundaryValue"));
+    HFDIBRASDict.lookup("disSurfaceType") >> omegaSurfaceType_;
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
+    omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 

@@ -293,9 +293,9 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
-    HFDIBRASDict.lookup("epsilonSurfaceType") >> epsilonSurfaceType_;
+    HFDIBRASDict.lookup("disSurfaceType") >> epsilonSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
-    epsilonBoundaryValue_ = readScalar(HFDIBRASDict.lookup("epsilonBoundaryValue"));
+    epsilonBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
 
