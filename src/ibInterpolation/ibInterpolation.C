@@ -563,6 +563,25 @@ void ibInterpolation::setUpSurface
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::setLambdaBasedSurface
+(
+    volScalarField& surface,
+    scalar boundaryValue
+)
+{
+    // reset field
+    surface *= 0.0;
+
+    // loop over cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= boundaryValue)
+        {
+            surface[cellI] = 1.0;
+        }
+    }
+}
+//---------------------------------------------------------------------------//
 void ibInterpolation::updateSwitchSurface
 (
     volScalarField& surface,

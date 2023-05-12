@@ -108,6 +108,7 @@ class ibInterpolation
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
+    void setLambdaBasedSurface(volScalarField& surface, scalar boundaryVal);
     void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
     // TODO: blended surface
 

@@ -158,7 +158,7 @@ void ibDirichletBCs::updateUTauAtIB
     forAll(boundaryCells_, bCell)
     {
         // reset field
-        uTauAtIB_[bCell] *= 0.0;
+        uTauAtIB_[bCell] = 0.0;
 
         // get cell label
         label cellI = boundaryCells_[bCell].first();
@@ -216,7 +216,7 @@ void ibDirichletBCs::correctNutAtIB
         forAll(boundaryCells_, bCell)
         {
             // reset field
-            nutAtIB_[bCell] *= 0.0;
+            nutAtIB_[bCell] = 0.0;
 
             // get cell label
             label cellI = boundaryCells_[bCell].first();
@@ -364,8 +364,8 @@ void ibDirichletBCs::omegaGAtIB
         forAll(boundaryCells_, bCell)
         {
             // reset fields
-            omegaIB[bCell] *= 0.0;
-            GIB[bCell] *= 0.0;
+            omegaIB[bCell] = 0.0;
+            GIB[bCell] = 0.0;
 
             // get cell label
             label cellI = boundaryCells_[bCell].first();
@@ -454,8 +454,8 @@ void ibDirichletBCs::epsilonGAtIB
         forAll(boundaryCells_, bCell)
         {
             // reset fields
-            epsilonIB[bCell] *= 0.0;
-            GIB[bCell] *= 0.0;
+            epsilonIB[bCell] = 0.0;
+            GIB[bCell] = 0.0;
 
             // get cell label
             label cellI = boundaryCells_[bCell].first();
@@ -483,8 +483,8 @@ void ibDirichletBCs::epsilonGAtIB
             {
                 //~ epsilonIB[bCell] = Cmu75_*Foam::pow(k[cellI], 1.5)/(kappa_*ds);
                 epsilonIB[bCell] = pow3(uTau)/(kappa_*ds);
-                //~ GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
-                GIB[bCell] = nutAtIB_[bCell] + nu[cellI]*magGradUWall*uTau/(kappa_*ds);
+                //~ GIB[bCell] = (nutAtIB_[bCell] + nu[cellI])*magGradUWall*Cmu25_*Foam::sqrt(k[cellI])/(kappa_*ds);
+                GIB[bCell] = (nutAtIB_[bCell] + nu[cellI])*magGradUWall*uTau/(kappa_*ds);
             }
 
             else

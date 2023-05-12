@@ -396,6 +396,11 @@ void openHFDIBRANS::createBaseSurface
         ibInterpolation_.setUpSurface(surface, boundaryVal);
     }
 
+    else if (surfType == "lambdaBased")
+    {
+        ibInterpolation_.setLambdaBasedSurface(surface, boundaryVal);
+    }
+
     else
     {
         FatalError << "Surface type " << surfType << " not implemented" << exit(FatalError);

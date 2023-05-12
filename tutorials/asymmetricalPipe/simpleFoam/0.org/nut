@@ -29,8 +29,8 @@ boundaryField
 
     outlet
     {
-	    type		calculated;
-	    value		$internalField;
+	    type		    calculated;
+	    value		    $internalField;
     }
 
     wall
