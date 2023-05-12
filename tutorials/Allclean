@@ -14,4 +14,10 @@ cd $cwd/asymmetricalPipe/openHFDIBRANS
 cd $cwd/asymmetricalPipe/simpleFoam
 ./Allclean
 
+cd $cwd/backwardFacingStep/openHFDIBRANS
+./Allclean
+
+cd $cwd/backwardFacingStep/simpleFoam
+./Allclean
+
 cd $cwd
