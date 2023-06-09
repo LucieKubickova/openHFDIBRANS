@@ -9,8 +9,9 @@ EXE_INC = \
     -I$(LIB_SRC)/fvOptions/lnInclude \
     -I$(LIB_SRC)/triSurface/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
-    -I../../../src/MomentumTransportModels/momentumTransportModels/lnInclude \
-    -I../../../src/lnInclude
+    -I../../../src/HFDIBRANS/lnInclude \
+    -I../../../src/HFDIBMomentumTransportModels/momentumTransportModels/lnInclude \
+    -I../../../src/HFDIBMomentumTransportModels/incompressible/lnInclude
 
 EXE_LIBS = \
     -lincompressibleMomentumTransportModels \
@@ -23,4 +24,6 @@ EXE_LIBS = \
     -lfvOptions \
     -lsampling \
     -L$(FOAM_USER_LIBBIN) \
-    -lHFDIBRANS
+    -lHFDIBRANS \
+    -lHFDIBmomentumTransportModels \
+    -lincompressibleHFDIBMomentumTransportModels

@@ -47,6 +47,7 @@ Contributors
 #include "HFDIBRASModel.H"
 
 #include "triSurfaceMesh.H"
+#include "openHFDIBRANS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
