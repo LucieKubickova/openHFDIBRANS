@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
 
     // prepare HFDIBRANS
-    openHFDIBRANS HFDIBRANS(mesh, lambda, simulationType);
+    openHFDIBRANS HFDIBRANS(mesh, lambda);
     HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
 
     Ui *= 0.0;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
         Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-	    << nl << endl;
+            << nl << endl;
     }
 
     Info << "End\n" << endl;

@@ -94,21 +94,6 @@ mesh.setFluxRequired(p.name());
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
-IOdictionary turbulenceProperties
-(
-    IOobject
-    (
-        "turbulenceProperties",
-        runTime.constant(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE
-    )
-);
-
-word simulationType;
-turbulenceProperties.lookup("simulationType") >> simulationType;
-
 autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
 (
     incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
