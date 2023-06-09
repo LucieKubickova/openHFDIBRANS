@@ -2,7 +2,13 @@
 
 cwd=$(echo $PWD)
 
-cd $cwd/src
+cd $cwd/src/HFDIBRANS
+./Allwclean
+
+cd $cwd/src/HFDIBMomentumTransportModels/momentumTransportModels
+./Allwclean
+
+cd $cwd/src/HFDIBMomentumTransportModels/incompressible
 ./Allwclean
 
 cd $cwd/applications/solvers/simpleHFDIBFoam

@@ -46,6 +46,8 @@ runTimeModifiable yes;
 libs
 (
       "libHFDIBRANS.so"
+      "libHFDIBmomentumTransportModels.so"
+      "libincompressibleHFDIBMomentumTransportModels.so"
 );
 
 functions

@@ -1,0 +1,3 @@
+incompressibleHFDIBMomentumTransportModel.C
+kinematicMomentumTransportModels/kinematicHFDIBMomentumTransportModels.C
+LIB = $(FOAM_USER_LIBBIN)/libincompressibleHFDIBMomentumTransportModels
