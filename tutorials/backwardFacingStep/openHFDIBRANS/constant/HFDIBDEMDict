@@ -34,7 +34,7 @@ saveIntInfo         false;
 
 wallFunctions
 {
-	nut		nutkWallFunction;
+    nut		nutkWallFunction;
 	k		kLowReWallFunction;
 	omega	omegaWallFunction;
 	epsilon	epsilonWallFunction;

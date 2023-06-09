@@ -57,9 +57,6 @@ class openHFDIBRANS
     // lambda related
     const volScalarField& body_;
 
-    // turbulence related
-    word simulationType_;
-
     // dictionaries
     IOdictionary HFDIBDEMDict_;
     IOdictionary fvSchemes_;
@@ -82,7 +79,7 @@ class openHFDIBRANS
     public:
 
     // Constructors ----------------------------------------------------
-    openHFDIBRANS(const fvMesh& mesh, const volScalarField& body, word simulationType);
+    openHFDIBRANS(const fvMesh& mesh, const volScalarField& body);
 
     // Destructors -----------------------------------------------------
     ~openHFDIBRANS();

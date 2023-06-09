@@ -41,12 +41,10 @@ using namespace Foam;
 openHFDIBRANS::openHFDIBRANS
 (
     const fvMesh& mesh,
-    const volScalarField& body,
-    word simulationType
+    const volScalarField& body
 ) :
 mesh_(mesh),
 body_(body),
-simulationType_(simulationType),
 HFDIBDEMDict_
 (
     IOobject
@@ -70,7 +68,7 @@ fvSchemes_
     )
 ),
 ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
-ibDirichletBCs_(mesh, body, simulationType, boundaryCells_, boundaryDists_)
+ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
 {
     // read HFDIBDEM dictionary
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;

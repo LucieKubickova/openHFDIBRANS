@@ -43,7 +43,6 @@ ibDirichletBCs::ibDirichletBCs
 (
     const fvMesh& mesh,
     const volScalarField& body,
-    word simulationType,
     DynamicList<Tuple2<label,label>>& boundaryCells,
     List<Tuple2<scalar,scalar>>& boundaryDists
 )
@@ -52,6 +51,17 @@ mesh_(mesh),
 body_(body),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+turbulenceProperties_
+(
+    IOobject
+    (
+        "turbulenceProperties",
+        "constant",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+),
 HFDIBDEMDict_
 (
     IOobject
@@ -63,7 +73,6 @@ HFDIBDEMDict_
         IOobject::NO_WRITE
     )
 ),
-simulationType_(simulationType),
 yPlusi_
 (
     IOobject
@@ -83,7 +92,10 @@ Cmu_(0.09),
 Ceps2_(1.9),
 beta1_(0.075)
 {
-    // ONLY FOR KOMEGA MODELS FOR NOW
+    // read turbulence properties
+    turbulenceProperties_.lookup("simulationType") >> simulationType_;
+    
+    // read HFDIBDEMDict
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     HFDIBBCsDict_.lookup("nut") >> nutWF_;
     HFDIBBCsDict_.lookup("k") >> kWF_;

@@ -94,6 +94,7 @@ class ibDirichletBCs
     List<Tuple2<scalar,scalar>>& boundaryDists_;
 
     // dictionaries
+    IOdictionary turbulenceProperties_;
     IOdictionary HFDIBDEMDict_;
     dictionary HFDIBBCsDict_;
 
@@ -145,7 +146,7 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, const volScalarField& body, word simulationType, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibDirichletBCs(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();
