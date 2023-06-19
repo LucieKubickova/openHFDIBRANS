@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     simpleHFDIBFoam;
+application     simpleHFDIBRANSFoam;
 
 startFrom       latestTime;
 
@@ -23,7 +23,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         2500;
+endTime         1000;
 
 deltaT          1;
 
@@ -46,8 +46,6 @@ runTimeModifiable yes;
 libs
 (
       "libHFDIBRANS.so"
-      "libHFDIBmomentumTransportModels.so"
-      "libincompressibleHFDIBMomentumTransportModels.so"
 );
 
 functions
