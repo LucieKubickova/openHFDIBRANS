@@ -11,7 +11,7 @@ cd $cwd/src/HFDIBMomentumTransportModels/momentumTransportModels
 cd $cwd/src/HFDIBMomentumTransportModels/incompressible
 ./Allwmake
 
-cd $cwd/applications/solvers/simpleHFDIBFoam
+cd $cwd/applications/solvers/simpleHFDIBRANSFoam
 ./Allwmake
 
 cd $cwd
