@@ -86,6 +86,19 @@ yPlusi_
     mesh_,
     dimensionedScalar("zero", dimless, -1.0)
 ),
+yOrthoi_
+(
+    IOobject
+    (
+        "yOrthoi",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, -1.0)
+),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -243,6 +256,10 @@ void ibDirichletBCs::correctNutAtIB
             // compute yPlus
             scalar yPlus = uTau*ds/nu[cellI];
 
+            // saves for later interpolation
+            yPlusi_[cellI] = yPlus;
+            yOrthoi_[cellI] = ds;
+
             // compute the values at the surface
             if (yPlus > yPlusLam_)
             {
@@ -279,6 +296,7 @@ void ibDirichletBCs::kAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
+            yOrthoi_[cellI] = ds;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -402,6 +420,10 @@ void ibDirichletBCs::omegaGAtIB
             const scalar yPlus = Cmu25_*Rey;
             const scalar uPlus = (1/kappa_)*Foam::log(E_*yPlus);
 
+            // saves for later interpolation
+            yPlusi_[cellI] = yPlus;
+            yOrthoi_[cellI] = ds;
+
             // compute the values at the surface
             if (blended)
             {
@@ -490,6 +512,10 @@ void ibDirichletBCs::epsilonGAtIB
 
             // compute normalized variables
             const scalar yPlus = Cmu25_*Rey;
+
+            // saves for later interpolation
+            yPlusi_[cellI] = yPlus;
+            yOrthoi_[cellI] = ds;
 
             if (yPlus > yPlusLam_)
             {
