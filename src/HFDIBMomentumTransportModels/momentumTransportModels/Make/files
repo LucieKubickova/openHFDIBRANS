@@ -1,2 +1,0 @@
-HFDIBmomentumTransportModel.C
-LIB = $(FOAM_USER_LIBBIN)/libHFDIBmomentumTransportModels

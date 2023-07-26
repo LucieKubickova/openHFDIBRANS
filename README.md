@@ -10,11 +10,11 @@ Hybrid fictitious domain-immersed boundary (HFDIB) method extended for Reynolds-
 L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Immersed Boundary Method. In Proceedings of Topical Problems of Fluid Mechanics 2023, Prague, 2023, Edited by David Šimurda and Tomáš Bodnár, pp. 104–111., DOI:  https://doi.org/10.14311/TPFM.2023.015
 
 ## Compatibility
-The code is prepared for compilation with OpenFOAMv8 (https://openfoam.org/version/8/).
+The code is prepared for compilation with OpenFOAMv2212 (https://www.openfoam.com/news/main-news/openfoam-v2212/).
 
 ## Compilation
 ./Allwclean && ./Allwmake
 
 ## Tutorials
 cd tutorials && ./Allrun
-Note: the results for simpleFoam and HFDIB-RAS (simpleHFDIBFoam) will be stored in respective folders
+Note: the results for simpleFoam and HFDIB-RAS (simpleHFDIBRANSFoam) will be stored in respective folders

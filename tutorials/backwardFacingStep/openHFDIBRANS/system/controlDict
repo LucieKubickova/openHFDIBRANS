@@ -50,7 +50,12 @@ libs
 
 functions
 {
-      #include "residuals"
+    residuals
+    {
+        type            solverInfo;
+        libs            (utilityFunctionObjects);
+        fields          (".*");
+    }
 }
 
 // ************************************************************************* //

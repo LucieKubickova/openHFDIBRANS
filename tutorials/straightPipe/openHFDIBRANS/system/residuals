@@ -16,7 +16,7 @@ FoamFile
 
 residuals
 {
-    functionObjectLibs ("libutilityFunctionObjects.so");
+    libs ("libutilityFunctionObjects.so");
     type            residuals;
     writeControl   timeStep;
     writeInterval  1;

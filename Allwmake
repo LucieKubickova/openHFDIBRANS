@@ -5,10 +5,10 @@ cwd=$(echo $PWD)
 cd $cwd/src/HFDIBRANS
 ./Allwmake
 
-cd $cwd/src/HFDIBMomentumTransportModels/momentumTransportModels
+cd $cwd/src/HFDIBTurbulenceModels/turbulenceModels
 ./Allwmake
 
-cd $cwd/src/HFDIBMomentumTransportModels/incompressible
+cd $cwd/src/HFDIBTurbulenceModels/incompressible
 ./Allwmake
 
 cd $cwd/applications/solvers/simpleHFDIBRANSFoam

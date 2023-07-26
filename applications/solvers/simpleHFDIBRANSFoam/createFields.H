@@ -1,4 +1,4 @@
-Info << "Reading field p\n" << endl;
+Info<< "Reading field p\n" << endl;
 volScalarField p
 (
     IOobject
@@ -12,7 +12,7 @@ volScalarField p
     mesh
 );
 
-Info << "Reading field U\n" << endl;
+Info<< "Reading field U\n" << endl;
 volVectorField U
 (
     IOobject
@@ -85,6 +85,7 @@ volVectorField f
 
 #include "createPhi.H"
 
+
 label pRefCell = 0;
 scalar pRefValue = 0.0;
 setRefCell(p, simple.dict(), pRefCell, pRefValue);
@@ -94,9 +95,9 @@ mesh.setFluxRequired(p.name());
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
-autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
+autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 (
-    incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+    incompressible::HFDIBturbulenceModel::New(U, phi, laminarTransport)
 );
 
 #include "createMRF.H"

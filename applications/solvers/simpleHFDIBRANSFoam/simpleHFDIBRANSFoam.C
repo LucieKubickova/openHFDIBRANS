@@ -36,14 +36,14 @@ Contributors
 
 #include "fvCFD.H"
 #include "singlePhaseTransportModel.H"
-#include "kinematicHFDIBMomentumTransportModel.H"
+#include "HFDIBTurbulentTransportModel.H"
 #include "simpleControl.H"
 #include "fvOptions.H"
 
 #include "addToRunTimeSelectionTable.H"
-#include "HFDIBMomentumTransportModel.H"
-#include "IncompressibleHFDIBMomentumTransportModel.H"
-#include "transportModel.H"
+#include "HFDIBTurbulenceModel.H"
+#include "IncompressibleHFDIBTurbulenceModel.H"
+#include "incompressible/transportModel/transportModel.H"
 #include "HFDIBRASModel.H"
 
 #include "triSurfaceMesh.H"
@@ -53,8 +53,14 @@ Contributors
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Steady-state solver for incompressible, turbulent flows."
+    );
+
     #include "postProcess.H"
 
+    #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
@@ -66,7 +72,7 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    Info << "\nStarting time loop\n" << endl;
+    Info<< "\nStarting time loop\n" << endl;
 
     // read simple dict
     dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
@@ -83,27 +89,28 @@ int main(int argc, char *argv[])
     Ui *= 0.0;
     Ui.correctBoundaryConditions();
 
-    while (simple.loop(runTime))
+    while (simple.loop())
     {
-        Info << "Time = " << runTime.timeName() << nl << endl;
+        Info<< "Time = " << runTime.timeName() << nl << endl;
 
         // --- Pressure-velocity SIMPLE corrector
-        #include "UEqn.H"
-        #include "pEqn.H"
+        {
+            #include "UEqn.H"
+            #include "pEqn.H"
+        }
 
         laminarTransport.correct();
         turbulence->correct(HFDIBRANS);
 
         runTime.write();
 
-        Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-            << nl << endl;
+        runTime.printExecutionTime(Info);
     }
 
-    Info << "End\n" << endl;
+    Info<< "End\n" << endl;
 
     return 0;
 }
+
 
 // ************************************************************************* //

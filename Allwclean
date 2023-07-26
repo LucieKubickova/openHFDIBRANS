@@ -5,10 +5,10 @@ cwd=$(echo $PWD)
 cd $cwd/src/HFDIBRANS
 ./Allwclean
 
-cd $cwd/src/HFDIBMomentumTransportModels/momentumTransportModels
+cd $cwd/src/HFDIBTurbulenceModels/turbulenceModels
 ./Allwclean
 
-cd $cwd/src/HFDIBMomentumTransportModels/incompressible
+cd $cwd/src/HFDIBTurbulenceModels/incompressible
 ./Allwclean
 
 cd $cwd/applications/solvers/simpleHFDIBRANSFoam
