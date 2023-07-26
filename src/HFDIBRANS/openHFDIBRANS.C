@@ -236,7 +236,7 @@ void openHFDIBRANS::computeKi
     // bound ki
     forAll(ki, cellI)
     {
-        ki[cellI] = max(ki[cellI], small);
+        ki[cellI] = max(ki[cellI], SMALL);
     }
 
     // TODO: blended interpolation

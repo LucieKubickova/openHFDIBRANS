@@ -704,22 +704,22 @@ autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
 
     if (name == "constant")
     {
-        funcPtr.set(new constantScheme());
+        funcPtr.reset(new constantScheme());
     }
 
     else if (name == "linear")
     {
-        funcPtr.set(new linearScheme());
+        funcPtr.reset(new linearScheme());
     }
 
     else if (name == "quadratic")
     {
-        funcPtr.set(new quadraticScheme());
+        funcPtr.reset(new quadraticScheme());
     }
 
     else if (name == "logarithmic")
     {
-        funcPtr.set(new logarithmicScheme());
+        funcPtr.reset(new logarithmicScheme());
     }
 
     else

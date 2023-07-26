@@ -317,7 +317,7 @@ void ibDirichletBCs::kAtIB
         // ensure stability of computations
         forAll(kIB, bCell)
         {
-            kIB[bCell] = max(kIB[bCell], small);
+            kIB[bCell] = max(kIB[bCell], SMALL);
         }
 
         // save kIB
