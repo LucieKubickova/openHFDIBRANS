@@ -17,4 +17,4 @@ The code is prepared for compilation with OpenFOAMv8 (https://openfoam.org/versi
 
 ## Tutorials
 cd tutorials && ./Allrun
-Note: the results for simpleFoam and HFDIB-RAS (simpleHFDIBFoam) will be stored in respective folders
+Note: the results for simpleFoam and HFDIB-RAS (simpleHFDIBRANSFoam) will be stored in respective folders
