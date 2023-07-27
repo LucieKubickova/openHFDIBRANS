@@ -39,6 +39,7 @@ Contributors
 #include "addToRunTimeSelectionTable.H"
 #include "makeHFDIBMomentumTransportModel.H"
 
+#include "HFDIBLaminarModel.H"
 #include "HFDIBRASModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -51,6 +52,10 @@ makeHFDIBMomentumTransportModelTypes
     IncompressibleHFDIBMomentumTransportModel,
     transportModel
 );
+
+#define makeHFDIBLaminarModel(Type)                                                 \
+    makeTemplatedHFDIBMomentumTransportModel                                        \
+    (transportModelIncompressibleHFDIBMomentumTransportModel, HFDIBLaminar, Type)
 
 #define makeHFDIBRASModel(Type)                                                     \
     makeTemplatedHFDIBMomentumTransportModel                                        \

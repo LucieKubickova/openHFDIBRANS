@@ -40,6 +40,8 @@ Contributors
     namespace Foam                                                             \
     {                                                                          \
         typedef BaseModel<Transport> Transport##BaseModel;                     \
+        typedef HFDIBLaminarModel<Transport##BaseModel>                             \
+            HFDIBLaminar##Transport##BaseModel;                                     \
         typedef HFDIBRASModel<Transport##BaseModel> HFDIBRAS##Transport##BaseModel;\
     }
 
@@ -62,6 +64,20 @@ Contributors
             Transport##baseModel,                                              \
             dictionary                                                         \
         );                                                                     \
+                                                                               \
+                                                                               \
+        defineNamedTemplateTypeNameAndDebug(HFDIBLaminar##Transport##BaseModel, 0); \
+                                                                               \
+        defineTemplateRunTimeSelectionTable                                    \
+        (HFDIBLaminar##Transport##BaseModel, dictionary);                           \
+                                                                               \
+        addToRunTimeSelectionTable                                             \
+        (                                                                      \
+            Transport##baseModel,                                              \
+            HFDIBLaminar##Transport##BaseModel,                                     \
+            dictionary                                                         \
+        );                                                                     \
+                                                                               \
                                                                                \
         defineNamedTemplateTypeNameAndDebug(HFDIBRAS##Transport##BaseModel, 0);\
                                                                                \

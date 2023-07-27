@@ -204,8 +204,7 @@ void Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::correct()
 template<class BasicHFDIBMomentumTransportModel>
 void Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 {
-    correct();
+    BasicHFDIBMomentumTransportModel::correct(HFDIBRANS);
 }
-
 
 // ************************************************************************* //

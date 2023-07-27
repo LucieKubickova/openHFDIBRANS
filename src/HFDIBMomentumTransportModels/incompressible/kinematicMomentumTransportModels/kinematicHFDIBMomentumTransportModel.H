@@ -38,6 +38,7 @@ Contributors
 #define kinematicHFDIBMomentumTransportModel_H
 
 #include "IncompressibleHFDIBMomentumTransportModel.H"
+#include "HFDIBLaminarModel.H"
 #include "HFDIBRASModel.H"
 #include "transportModel.H"
 
@@ -50,6 +51,7 @@ namespace Foam
         typedef IncompressibleHFDIBMomentumTransportModel<transportModel>
             HFDIBmomentumTransportModel;
 
+        typedef HFDIBLaminarModel<HFDIBmomentumTransportModel> HFDIBLaminarModel;
         typedef HFDIBRASModel<HFDIBmomentumTransportModel> HFDIBRASModel;
 
         template<class BasicIncompressibleHFDIBMomentumTransportModel>

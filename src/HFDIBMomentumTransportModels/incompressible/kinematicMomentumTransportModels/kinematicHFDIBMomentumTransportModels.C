@@ -49,6 +49,26 @@ makeBaseHFDIBMomentumTransportModel
 
 
 // -------------------------------------------------------------------------- //
+// Laminar models
+// -------------------------------------------------------------------------- //
+
+#include "../../momentumTransportModels/lnInclude/HFDIBStokes.H"
+makeHFDIBLaminarModel(HFDIBStokes);
+
+#include "../../momentumTransportModels/lnInclude/HFDIBGeneralizedNewtonian.H"
+makeHFDIBLaminarModel(HFDIBGeneralizedNewtonian);
+
+#include "../../momentumTransportModels/lnInclude/HFDIBMaxwell.H"
+makeHFDIBLaminarModel(HFDIBMaxwell);
+
+#include "../../momentumTransportModels/lnInclude/HFDIBGiesekus.H"
+makeHFDIBLaminarModel(HFDIBGiesekus);
+
+#include "../../momentumTransportModels/lnInclude/HFDIBPTT.H"
+makeHFDIBLaminarModel(HFDIBPTT);
+
+
+// -------------------------------------------------------------------------- //
 // RAS models
 // -------------------------------------------------------------------------- //
 

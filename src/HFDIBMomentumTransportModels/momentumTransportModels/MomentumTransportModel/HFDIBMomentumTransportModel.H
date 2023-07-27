@@ -40,8 +40,6 @@ Contributors
 #include "HFDIBmomentumTransportModel.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
-#include "volFields.H"
-#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
