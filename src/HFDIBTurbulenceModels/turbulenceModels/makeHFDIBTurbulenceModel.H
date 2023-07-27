@@ -51,6 +51,9 @@ Contributors
         typedef BaseModel<Transport>                                           \
             Transport##BaseModel;                                              \
                                                                                \
+        typedef HFDIBLaminarModel<Transport##BaseModel>                             \
+            HFDIBLaminar##Transport##BaseModel;                                     \
+                                                                               \
         typedef HFDIBRASModel<Transport##BaseModel>                                 \
             HFDIBRAS##Transport##BaseModel;                                         \
     }
@@ -70,6 +73,19 @@ Contributors
         defineTemplateRunTimeSelectionTable                                    \
         (                                                                      \
             Transport##baseModel,                                              \
+            dictionary                                                         \
+        );                                                                     \
+                                                                               \
+        /* Laminar models */                                                   \
+        defineNamedTemplateTypeNameAndDebug(HFDIBLaminar##Transport##BaseModel, 0); \
+                                                                               \
+        defineTemplateRunTimeSelectionTable                                    \
+        (HFDIBLaminar##Transport##BaseModel, dictionary);                           \
+                                                                               \
+        addToRunTimeSelectionTable                                             \
+        (                                                                      \
+            Transport##baseModel,                                              \
+            HFDIBLaminar##Transport##BaseModel,                                     \
             dictionary                                                         \
         );                                                                     \
                                                                                \
