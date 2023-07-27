@@ -73,7 +73,8 @@ class ibInterpolation
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
-    dictionary HFDIBInterpDict_;
+    IOdictionary fvSchemes_;
+    dictionary HFDIBInnerSchemes_;
 
     // private functions
     // choose interpolation function

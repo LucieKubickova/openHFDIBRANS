@@ -53,7 +53,7 @@ void ibInterpolation::unifunctionalInterp
 {
     // create interpolator
     autoPtr<interpolation<Type>> interpPhi =
-                   interpolation<Type>::New(HFDIBInterpDict_, phi);
+                   interpolation<Type>::New(HFDIBInnerSchemes_, phi);
 
     // read chosen interpolation function
     word ibSchemeType = ibSchemeName[1].wordToken();
@@ -87,7 +87,7 @@ void ibInterpolation::switchedInterp
 {
     // create interpolator
     autoPtr<interpolation<Type>> interpPhi =
-                   interpolation<Type>::New(HFDIBInterpDict_, phi);
+                   interpolation<Type>::New(HFDIBInnerSchemes_, phi);
 
     // read chosen interpolation functions
     word lowerType = ibSchemeName[1].wordToken();
@@ -131,7 +131,7 @@ void ibInterpolation::outerInnerInterp
 {
     // create interpolator
     autoPtr<interpolation<Type>> interpPhi =
-                   interpolation<Type>::New(HFDIBInterpDict_, phi);
+                   interpolation<Type>::New(HFDIBInnerSchemes_, phi);
 
     // read chosen interpolation functions
     word outerType = ibSchemeName[1].wordToken();

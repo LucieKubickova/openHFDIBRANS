@@ -74,10 +74,15 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
 
     // read fvSchemes
-    HFDIBSchemes_ = fvSchemes_.subDict("HFDIBSchemes");
+    HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
 
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
+    if (save_)
+    {
+        // save boundary cells as cell sets
+        ibInterpolation_.saveBoundaryCells();
+    }
 
     // set size to lists
     ibDirichletBCs_.setSizeToLists();
@@ -92,10 +97,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
     // save data
     if (save_)
     {
-        // save boundary cells as cell sets
-        ibInterpolation_.saveBoundaryCells();
-
-        // create output directory to save data
+        // create output directory to save data for python
         word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
         if (!isDir(outDir))
         {
@@ -148,7 +150,7 @@ void openHFDIBRANS::computeUi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream UIBScheme = HFDIBSchemes_.lookup("U");
+    ITstream UIBScheme = HFDIBOuterSchemes_.lookup("U");
     word interpType = UIBScheme[0].wordToken();
 
     // interpolation
@@ -209,7 +211,7 @@ void openHFDIBRANS::computeKi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream kIBScheme = HFDIBSchemes_.lookup("k");
+    ITstream kIBScheme = HFDIBOuterSchemes_.lookup("k");
     word interpType = kIBScheme[0].wordToken();
 
     // interpolation

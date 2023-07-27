@@ -70,8 +70,20 @@ wallDist
 
 HFDIBSchemes
 {
-    U               unifunctional quadratic;
-    k               switched quadratic logarithmic;
+    outerSchemes
+    {
+        U               unifunctional quadratic;
+        k               switched quadratic logarithmic;
+    }
+
+    innerSchemes
+    {
+        U               cellPointFace;
+        nut             cellPointFace;
+        k               cellPointFace;
+        omega           cellPointFace;
+        epsilon         cellPointFace;
+    }
 }
 
 // ************************************************************************* //
