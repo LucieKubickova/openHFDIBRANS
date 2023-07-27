@@ -14,19 +14,6 @@ FoamFile
     object      HFDIBDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-interpolationSchemes
-{
-  U			cellPointFace;
-  UTan  	cellPointFace;
-  UNorm		cellPointFace;
-  nut 		cellPointFace;
-  k			cellPointFace;
-  ek		cellPointFace;
-  omega		cellPointFace;
-  epsilon	cellPointFace;
-  grad(U)	cellPointFace;
-}
-
 surfaceThreshold    1e-4;
 sdBasedLambda       true;
 interfaceSpan       1.0;
