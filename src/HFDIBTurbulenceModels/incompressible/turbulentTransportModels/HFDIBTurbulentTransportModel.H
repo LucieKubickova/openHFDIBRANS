@@ -38,6 +38,7 @@ Contributors
 #define HFDIBTurbulentTransportModel_H
 
 #include "IncompressibleHFDIBTurbulenceModel.H"
+#include "HFDIBLaminarModel.H"
 #include "HFDIBRASModel.H"
 #include "incompressible/transportModel/transportModel.H"
 
@@ -49,6 +50,7 @@ namespace Foam
     {
         typedef IncompressibleHFDIBTurbulenceModel<transportModel> HFDIBturbulenceModel;
 
+        typedef HFDIBLaminarModel<turbulenceModel> HFDIBLaminarModel;
         typedef HFDIBRASModel<HFDIBturbulenceModel> HFDIBRASModel;
 
         template<class BasicIncompressibleHFDIBTurbulenceModel>

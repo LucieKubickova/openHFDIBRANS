@@ -39,6 +39,7 @@ Contributors
 #include "addToRunTimeSelectionTable.H"
 #include "makeHFDIBTurbulenceModel.H"
 
+#include "HFDIBLaminarModel.H"
 #include "HFDIBRASModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -51,6 +52,10 @@ makeHFDIBTurbulenceModelTypes
     IncompressibleHFDIBTurbulenceModel,
     transportModel
 );
+
+#define makeHFDIBLaminarModel(Type)                                                 \
+    makeTemplatedHFDIBTurbulenceModel                                               \
+    (transportModelIncompressibleHFDIBTurbulenceModel, HFDIBLaminar, Type)
 
 #define makeHFDIBRASModel(Type)                                                     \
     makeTemplatedHFDIBTurbulenceModel                                        \

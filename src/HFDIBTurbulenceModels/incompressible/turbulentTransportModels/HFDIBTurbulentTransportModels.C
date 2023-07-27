@@ -57,6 +57,19 @@ makeBaseHFDIBTurbulenceModel
 );
 
 
+// -------------------------------------------------------------------------- //
+// Laminar models
+// -------------------------------------------------------------------------- //
+
+#include "../../turbulenceModels/lnInclude/HFDIBStokes.H"
+makeHFDIBLaminarModel(HFDIBStokes);
+
+#include "../../turbulenceModels/lnInclude/HFDIBGeneralizedNewtonian.H"
+makeHFDIBLaminarModel(HFDIBGeneralizedNewtonian);
+
+#include "../../turbulenceModels/lnInclude/HFDIBMaxwell.H"
+makeHFDIBLaminarModel(HFDIBMaxwell);
+
 
 // -------------------------------------------------------------------------- //
 // RAS models
