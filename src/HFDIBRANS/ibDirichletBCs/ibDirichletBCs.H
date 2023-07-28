@@ -90,13 +90,22 @@ class ibDirichletBCs
     List<scalar> uTauAtIB_;
 
     // references to shared data
-    DynamicList<Tuple2<label,label>>& boundaryCells_;
+    DynamicList<Tuple2<label,label>>& boundaryCells_; // first: boundary, second: halo
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    DynamicList<scalar>& boundaryAlpha_; // volume fractions occupied by fluid in boundary cells
 
     // dictionaries
     IOdictionary turbulenceProperties_;
     IOdictionary HFDIBDEMDict_;
     dictionary HFDIBBCsDict_;
+    dictionary HFDIBCutCellDict_;
+
+    // cut cells correction
+    scalar ccNut_;
+    scalar ccK_;
+    scalar ccOmega_;
+    scalar ccEpsilon_;
+    scalar ccG_;
 
     // simulation type
     word simulationType_;
@@ -147,7 +156,14 @@ class ibDirichletBCs
     public:
 
     // Constructors ----------------------------------------------------
-    ibDirichletBCs(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibDirichletBCs
+    (
+        const fvMesh& mesh,
+        const volScalarField& body,
+        DynamicList<Tuple2<label,label>>& boundaryCells,
+        List<Tuple2<scalar,scalar>>& boundaryDists,
+        DynamicList<scalar>& boundaryAlpha
+    );
 
     // Destructors -----------------------------------------------------
     ~ibDirichletBCs();
@@ -167,9 +183,32 @@ class ibDirichletBCs
     void correctNutAtIB(volScalarField& k, volScalarField& nu);
 
     // turbulence fields boundary conditions
-    void kAtIB(List<scalar>& kIB, volScalarField& k, volScalarField& nu);
-    void omegaGAtIB(List<scalar>& omegaIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
-    void epsilonGAtIB(List<scalar>& epsilonIB, List<scalar>& GIB, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu);
+    void kAtIB
+    (
+        List<scalar>& kIB,
+        volScalarField& k,
+        volScalarField& nu
+    );
+    
+    void omegaGAtIB
+    (
+        List<scalar>& omegaIB,
+        List<scalar>& GIB,
+        volScalarField::Internal& G,
+        const volVectorField& U,
+        volScalarField& k,
+        volScalarField& nu
+    );
+
+    void epsilonGAtIB
+    (
+        List<scalar>& epsilonIB,
+        List<scalar>& GIB,
+        volScalarField::Internal& G,
+        const volVectorField& U,
+        volScalarField& k,
+        volScalarField& nu
+    );
 
     // return the immersed yPlus field
     volScalarField& getYPlusi()

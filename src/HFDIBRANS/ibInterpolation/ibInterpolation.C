@@ -32,6 +32,21 @@ Description
 Contributors
     Federico Municchi (2016),
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+
+Notes
+    boundaryCells - tupple boundary-inSolid -> needed for region III (outer)
+    -> wanted - DynamicList<Tuple4<label,label,label,label>>& boundaryCells
+    * Tuple2<-1/III-boundary/mezo,-1/III-insolid/inner>
+    *   <label,label> ... region III, boundary-inSolid
+    *   <label,-2>    ... region II
+    *   <label,-1>    ... region I
+    boundaryDists ... size given by boundaryCells
+    -> wanted - List<Tuple2<scalar,scalar>>& boundaryDists
+    * Tuple2<-1/III-boundary/mezo,-1/III-insolid/inner>
+    *  ... same structure as boundaryCells
+    * Note (LK): boundaryDists.first() = lambdaBased ds, boundaryDists.second() = yOrtho from cutCell
+    Note (MI): I need to construct III only for cells with lambda > 1 - inSolidThr
+               (and inSolidThr is kind of a hyperparameter)
 \*---------------------------------------------------------------------------*/
 
 #include "ibInterpolation.H"
@@ -44,7 +59,8 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    DynamicList<scalar>& boundaryAlpha
 )
 :
 mesh_(mesh),
@@ -64,6 +80,7 @@ surfNorm_
 ),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+boundaryAlpha_(boundaryAlpha),
 HFDIBDEMDict_
 (
     IOobject
@@ -80,6 +97,9 @@ HFDIBDEMDict_
     HFDIBInterpDict_ = HFDIBDEMDict_.subDict("interpolationSchemes");
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+
+    HFDIBCutCellDict_ = HFDIBDEMDict_.subDict("cutCellCorrection");
+    ccDS_ = readScalar(HFDIBCutCellDict_.lookup("ds"));
 
     // compute average cell volume
     VAve_ = 0.0;
@@ -113,9 +133,9 @@ void ibInterpolation::calculateInterpolationPoints
 
         // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar ds = boundaryDists_[bCell].first();
+        scalar sigma = boundaryDists_[bCell].first();
         vector surfNormToSend = surfNorm_[cellI];
-        surfPoint -= surfNormToSend*ds;
+        surfPoint -= surfNormToSend*sigma;
 
         // create vector for points and cells and add to main vectors
         DynamicList<point> intPoints;
@@ -411,10 +431,15 @@ Tuple2<vector,Tuple2<label,label>> ibInterpolation::findCellCustom
     return tupleToReturn;
 }
 //---------------------------------------------------------------------------//
-void ibInterpolation::findBoundaryCells
+void ibInterpolation::findBoundaryCells // Note: redone
 (
 )
 {
+    // ugly hardcoded values
+    //~ scalar inSolidThr(1.0e-2);                                          //threshold to see cell as in-solid
+    // Note: do not treat and find vertex-neighbour (region III)
+    // TODO: unhardcode
+    
     // get wall patches
     DynamicList<label> wPatchIs;
     forAll(mesh_.boundary(), pI)
@@ -432,71 +457,38 @@ void ibInterpolation::findBoundaryCells
     forAll(mesh_.cellCells(), cellI)
     {
         bool toInclude(false);
-        label vertex(-1);
-
-        if (body_[cellI] < 0.5 && body_[cellI] >= thrSurf_)
+        label idLabel(-3);
+        
+        point C(mesh_.C()[cellI]);
+        
+        //~ if (body_[cellI] >= thrSurf_ && body_[cellI] < 1.0 - inSolidThr)//forAll inSolidCells
+        if (body_[cellI] >= thrSurf_ && body_[cellI] < 1.0 - thrSurf_)//forAll inSolidCells
         {
-            toInclude = true;
-        }
-
-        else if (body_[cellI] < thrSurf_)
-        {
-            forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+            toInclude   = true;
+            idLabel  = -1;
+            
+            scalar dotMax(0.0);
+            scalar dotC(0.0);
+            
+            forAll(mesh_.cellPoints()[cellI], pID)                      //go through cell vertices
             {
-                label pointI = mesh_.cellPoints()[cellI][pID];
-
-                forAll(mesh_.pointCells()[pointI], cI)
+                label pointI = mesh_.cellPoints()[cellI][pID];          //index of the current point
+                
+                forAll(mesh_.pointCells()[pointI], cI)                  //go through all the neighbors of the current point                  
                 {
-                    if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                    label nCI(mesh_.pointCells()[pointI][cI]);
+                    if (nCI != cellI)        //if not the current cell
                     {
-                        toInclude = true;
-                        vertex = mesh_.pointCells()[pointI][cI];
-                        break;
-                    }
-                }
-            }
-
-            //~ forAll(mesh_.cellCells()[cellI], nID) // face neighbours
-            //~ {
-                //~ if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
-                //~ {
-                    //~ toInclude = true;
-                    //~ break;
-                //~ }
-            //~ }
-
-            // check whether the cell is adjecent to a regular wall
-            if (toInclude)
-            {
-                forAll(mesh_.cells()[cellI], f)
-                {
-                    // get face label
-                    label faceI = mesh_.cells()[cellI][f];
-
-                    if (faceI >= mesh_.owner().size())
-                    {
-                        bool wallFace(false);
-
-                        // loop over patches of type wall
-                        forAll(wPatchIs, pI)
+                        point  cC(mesh_.C()[nCI]);//neighbor center
+                        vector dV((cC - C));                            //vector between current cell neighbor center
+                        dV /= mag(dV);
+                        
+                        dotC = dV & surfNorm_[cellI];                   //alignement with surface
+                        
+                        if (dotC > dotMax)
                         {
-                            // get patch label
-                            label patchI = wPatchIs[pI];
-
-                            // get start and end face index
-                            label startI = mesh_.boundary()[patchI].start();
-                            label endI = startI + mesh_.boundary()[patchI].Cf().size();
-
-                            if (faceI >= startI and faceI < endI)
-                            {
-                                wallFace = true;
-                            }
-                        }
-
-                        // exclude wall faces
-                        if (wallFace)
-                        {
-                            toInclude = false;
+                            idLabel = nCI;   //best aligned cell to be used as outer
+                            dotMax  = dotC;
                         }
                     }
                 }
@@ -506,27 +498,10 @@ void ibInterpolation::findBoundaryCells
         // add the cell
         if (toInclude)
         {
-            if (vertex == -1)
-            {
-                Tuple2<label,label> helpTup(cellI,-1);
-                Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
-
-                scalar intDist = Foam::pow(VAve_,0.333);
-                intDist *= 0.5;
-
-                vector surfNormToSend(-surfNorm_[cellI]);
-                startCell = findCellCustom(startCell.first(),startCell.second().first(),startCell.second().second(),surfNormToSend,intDist);
-
-                toAppend.first() = cellI;
-                toAppend.second() = startCell.second().first();
-            }
-
-            else
-            {
-                toAppend.first() = cellI;
-                toAppend.second() = vertex;
-            }
-
+            
+            toAppend.first() = cellI;                                   //inner cell
+            toAppend.second() = idLabel;                                //outer cell
+            
             boundaryCells_.append(toAppend);
         }
     }
@@ -622,75 +597,98 @@ void ibInterpolation::calculateSurfNorm
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::calculateDistToBoundary
+void ibInterpolation::calculateDistToBoundary // Note: redone
 (
 )
 {
-    forAll(boundaryCells_, bCell)
+    // ugly hardcoded values
+    scalar inSolidThr(1.0e-2);                                          //threshold to see cell as in-solid
+    
+    forAll(boundaryCells_, bCellI)
     {
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
-
+        label cellI = boundaryCells_[bCellI].first();
+        label haloI = boundaryCells_[bCellI].second();
+        
         Tuple2<scalar,scalar> toSave;
+        
+        // get yOrtho estimate for inner cell
+        scalar ds(0.0);
+        point surfPoint(Zero);
+        
+        ds = Foam::atanh(1-2*body_[cellI])*Foam::pow(VAve_,0.333)/intSpan_;
+        
+        toSave.first() = ds;
+        
+        surfPoint = mesh_.C()[cellI];
+        surfPoint -= surfNorm_[cellI]*ds;
+        
+        const cell& bCellIn(mesh_.cells()[cellI]);
+        ibCutCell cCellIn(mesh_,surfNorm_[cellI],surfPoint,bCellIn);
+        
+        //~ toSave.second() = cCell.yOrtho();
+        scalar yOrthoIn(0.0);
+        yOrthoIn = cCellIn.yOrtho();
+        
+        //~ bool printData(false);
 
-        scalar ds;
-        point surfPoint;
-
-        if (body_[outCellI] >= thrSurf_)
+        if (((cCellIn.V()/cCellIn.VIn()) < inSolidThr) or (yOrthoIn < 0.0))
         {
-            ds = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
-            toSave.first() = ds;
-
-            surfPoint = mesh_.C()[outCellI];
-            surfPoint -= surfNorm_[outCellI]*ds;
-            ds = -1*surfNorm_[outCellI] & (mesh_.C()[inCellI] - surfPoint);
-            toSave.second() = ds;
+            yOrthoIn = (mesh_.C()[haloI] - surfPoint) & surfNorm_[haloI];
+            //~ Info << "looking out" << endl;
+            //~ printData = true;
         }
-
-        else if (body_[inCellI] < 1.0)
+        yOrthoIn = max(SMALL,yOrthoIn);
+        //~ Info << "lambda: " << body_[haloI] << " ds: " << toSave.first() << " yOrtho: " << cCell.yOrtho() << " yOrthoEst: " << toSave.second() << endl;
+        
+        // get yOrtho estimate for outer cell
+        scalar yOrthoOut(0.0);
+        if (body_[haloI] < thrSurf_)
         {
-            ds = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
-            toSave.second() = ds;
-
-            surfPoint = mesh_.C()[inCellI];
-            surfPoint += surfNorm_[inCellI]*ds;
-            ds = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
-            toSave.first() = ds;
+            yOrthoOut = (mesh_.C()[haloI] - surfPoint) & surfNorm_[haloI];
         }
-
         else
         {
-            // find the shared vertices
-            DynamicList<label> sharedVers;
-
-            forAll(mesh_.cellPoints()[inCellI], iI)
-            {
-                forAll(mesh_.cellPoints()[outCellI], oI)
-                {
-                    if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
-                    {
-                        sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
-                    }
-                }
-            }
-
-            // average vertices
-            vector center(vector::zero);
-            forAll(sharedVers, vI)
-            {
-                center += mesh_.points()[sharedVers[vI]];
-            }
-            center /= sharedVers.size();
-
-            // compute ds as a distance from the cell center to the averaged vertex
-            ds = mag(mesh_.C()[inCellI] - center);
-            toSave.second() = ds;
-
-            ds = mag(mesh_.C()[outCellI] - center);
-            toSave.first() = ds;
+            ds = Foam::atanh(1-2*body_[haloI])*Foam::pow(VAve_,0.333)/intSpan_;
+            
+            surfPoint = mesh_.C()[haloI];
+            surfPoint -= surfNorm_[haloI]*ds;
+            
+            const cell& bCellOut(mesh_.cells()[haloI]);
+            ibCutCell cCellOut(mesh_,surfNorm_[haloI],surfPoint,bCellOut);
+            
+            yOrthoOut = cCellOut.yOrtho();
         }
-
-        boundaryDists_[bCell] = toSave;
+        yOrthoOut = max(SMALL,yOrthoOut);
+        
+        //~ toSave.second() = 0.5*(yOrthoIn + yOrthoOut);
+        scalar alpha(cCellIn.V()/cCellIn.VIn());
+        //~ alpha = Foam::pow(alpha,0.25);
+        //~ toSave.second() = (alpha*yOrthoIn + (1.0-alpha)*yOrthoOut)*0.25;
+        //~ toSave.second() = (alpha*yOrthoIn + (1.0-alpha)*yOrthoOut)*0.5;
+        //~ toSave.second() = (alpha*yOrthoIn + (1.0-alpha)*yOrthoOut)*1.0;
+        //~ toSave.second() = (alpha*yOrthoIn + (1.0-alpha)*yOrthoOut);
+        toSave.second() = yOrthoIn; // NOTE: add ccDS somewhere somehow
+        
+        //~ if (printData or ((mag(mesh_.C()[cellI][0] - 0.1225) < SMALL) and (mag(mag(mesh_.C()[cellI][1]) - 0.0525)) < SMALL))
+        //~ {
+            //~ Info << "CIn: " << mesh_.C()[cellI] << " CCIn: " << cCellIn.C() << endl;
+            //~ Info << "SfCIn: " << cCellIn.Sf() << endl;
+            //~ Info << "fcCIn: " << cCellIn.faces() << endl;
+            //~ Info << "surfP: " << cCellIn.S() << " surfN:= " << cCellIn.Ss() << endl;
+            
+            
+            //~ Info << "CIn: " << mesh_.C()[cellI] << " COut: " << mesh_.C()[haloI] << " alpha: " << alpha << endl;
+            //~ Info << "CCIn: " << cCellIn.C() << " SfCIn: " << cCellIn.Sf() << endl;
+            //~ Info << "lambdaIn:  " << body_[cellI] << " yOrthoIn: " << yOrthoIn << endl;
+            //~ Info << "lambdaOut: " << body_[haloI] << " yOrthoOut:  " << yOrthoOut << endl;
+            
+            //~ Info << "surfNormIn: " << surfNorm_[cellI] << " surfNormOut: " << surfNorm_[haloI] << endl;
+            
+            //~ Info << "toSave: " << toSave << endl << endl;
+            
+        //~ }
+        boundaryDists_[bCellI] = toSave;
+        boundaryAlpha_.append(alpha);
     }
 }
 
@@ -757,17 +755,17 @@ void ibInterpolation::saveBoundaryCells
 (
 )
 {
-    List<label> saveOutCells(boundaryCells_.size());
-    List<label> saveInCells(boundaryCells_.size());
+    List<label> saveBoundaryCells(boundaryCells_.size());
+    List<label> saveHaloCells(boundaryCells_.size());
 
     forAll(boundaryCells_, bCell)
     {
-        saveOutCells[bCell] = boundaryCells_[bCell].first();
-        saveInCells[bCell] = boundaryCells_[bCell].second();
+        saveBoundaryCells[bCell] = boundaryCells_[bCell].first();
+        saveHaloCells[bCell] = boundaryCells_[bCell].second();
     }
 
-    saveCellSet(saveOutCells, "outerBoundaryCells");
-    saveCellSet(saveInCells, "innerBoundaryCells");
+    saveCellSet(saveBoundaryCells, "boundaryCells");
+    saveCellSet(saveHaloCells, "haloCells");
 }
 
 //---------------------------------------------------------------------------//

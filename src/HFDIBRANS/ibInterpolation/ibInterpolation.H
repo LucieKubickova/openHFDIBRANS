@@ -43,6 +43,8 @@ Contributors
 #include "quadraticScheme.H"
 #include "logarithmicScheme.H"
 
+#include "ibCutCell.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -67,6 +69,7 @@ class ibInterpolation
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    DynamicList<scalar>& boundaryAlpha_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -74,6 +77,10 @@ class ibInterpolation
     // dictionaries
     IOdictionary HFDIBDEMDict_;
     dictionary HFDIBInterpDict_;
+    dictionary HFDIBCutCellDict_;
+
+    // cut cell correction
+    scalar ccDS_;
 
     // private functions
     // choose interpolation function
@@ -82,7 +89,14 @@ class ibInterpolation
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibInterpolation
+    (
+        const fvMesh& mesh,
+        const volScalarField& body,
+        DynamicList<Tuple2<label,label>>& boundaryCells,
+        List<Tuple2<scalar,scalar>>& boundaryDists,
+        DynamicList<scalar>& boundaryAlpha
+    );
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();

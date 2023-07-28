@@ -44,13 +44,15 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    DynamicList<scalar>& boundaryAlpha
 )
 :
 mesh_(mesh),
 body_(body),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+boundaryAlpha_(boundaryAlpha),
 turbulenceProperties_
 (
     IOobject
@@ -114,6 +116,12 @@ beta1_(0.075)
     HFDIBBCsDict_.lookup("k") >> kWF_;
     HFDIBBCsDict_.lookup("omega") >> omegaWF_;
     HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+
+    HFDIBCutCellDict_ = HFDIBDEMDict_.subDict("cutCellCorrection");
+    ccNut_ = readScalar(HFDIBCutCellDict_.lookup("nut"));
+    ccK_ = readScalar(HFDIBCutCellDict_.lookup("k"));
+    ccOmega_ = readScalar(HFDIBCutCellDict_.lookup("omega"));
+    ccEpsilon_ = readScalar(HFDIBCutCellDict_.lookup("epsilon"));
 
     // compute turbulence parameters
     Cmu75_ = Foam::pow(Cmu_, 0.75);
@@ -185,47 +193,63 @@ void ibDirichletBCs::updateUTauAtIB
         // reset field
         uTauAtIB_[bCell] = 0.0;
 
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
+        // get cell labels
+        label cellI = boundaryCells_[bCell].first(); // boundary cell
+        label haloI = boundaryCells_[bCell].second(); // halo cell
+        
+        // get distance to the surface
+        scalar sigma = boundaryDists_[bCell].first(); // signed distance
+        scalar ds = boundaryDists_[bCell].second(); // orthogonal distance
 
-        // initialize
-        scalar totA(0.0);
-
-        // loop over faces
-        forAll(mesh_.cells()[cellI], fI)
+        // calculate uTau
+        if (sigma > 0.0)
         {
-            // get face label
-            label faceI = mesh_.cells()[cellI][fI];
-
-            // skip boundary faces
-            if (faceI >= mesh_.faceNeighbour().size())
-            {
-                continue;
-            }
-
-            // get cell labels
-            label owner = mesh_.faceOwner()[faceI];
-            label neighbor = mesh_.faceNeighbour()[faceI];
-
-            // skip in-solid cells
-            if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
-            {
-                continue;
-            }
-
-            // get uTau values
-            scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
-            scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
-
-            // calculate the average value
-            uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
-
-            // add face area to total
-            totA += mag(mesh_.Sf()[faceI]);
+            uTauAtIB_[bCell] = Cmu25_*Foam::sqrt(k[cellI]);
         }
 
-        // divide by total area
-        uTauAtIB_[bCell] /= totA;
+        else
+        {
+            uTauAtIB_[bCell] = Cmu25_*Foam::sqrt(k[haloI]);
+        }
+
+        //~ // initialize
+        //~ scalar totA(0.0);
+
+        //~ // loop over faces
+        //~ forAll(mesh_.cells()[cellI], fI)
+        //~ {
+            //~ // get face label
+            //~ label faceI = mesh_.cells()[cellI][fI];
+
+            //~ // skip boundary faces
+            //~ if (faceI >= mesh_.faceNeighbour().size())
+            //~ {
+                //~ continue;
+            //~ }
+
+            //~ // get cell labels
+            //~ label owner = mesh_.faceOwner()[faceI];
+            //~ label neighbor = mesh_.faceNeighbour()[faceI];
+
+            //~ // skip in-solid cells
+            //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
+            //~ {
+                //~ continue;
+            //~ }
+
+            //~ // get uTau values
+            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
+            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
+
+            //~ // calculate the average value
+            //~ uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
+
+            //~ // add face area to total
+            //~ totA += mag(mesh_.Sf()[faceI]);
+        //~ }
+
+        //~ // divide by total area
+        //~ uTauAtIB_[bCell] /= totA;
     }
 }
 //---------------------------------------------------------------------------//
@@ -247,10 +271,9 @@ void ibDirichletBCs::correctNutAtIB
             label cellI = boundaryCells_[bCell].first();
 
             // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
+            scalar ds = boundaryDists_[bCell].second();
 
             // get the friction velocity
-            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
             scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
@@ -265,6 +288,9 @@ void ibDirichletBCs::correctNutAtIB
             {
                 nutAtIB_[bCell] = nu[cellI]*(yPlus*kappa_/Foam::log(E_*yPlus) - 1.0);
             }
+
+            // cut cell correction
+            nutAtIB_[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccNut_);
         }
     }
 }
@@ -285,10 +311,9 @@ void ibDirichletBCs::kAtIB
             label cellI = boundaryCells_[bCell].first();
 
             // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
+            scalar ds = boundaryDists_[bCell].second();
 
             // get the friction velocity
-            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
             scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
@@ -318,51 +343,22 @@ void ibDirichletBCs::kAtIB
         forAll(kIB, bCell)
         {
             kIB[bCell] = max(kIB[bCell], small);
+
+            // cut cell correction
+            kIB[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccK_);
         }
+    }
 
-        // save kIB
-        word fileName = "k.dat";
-        word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
-
-        // prepare outFile
-        autoPtr<OFstream> outFilePtr;
-        outFilePtr.reset(new OFstream(outDir/fileName));
-        outFilePtr() << "cellI,x,y,z,V,k" << endl;
-
-        // loop over cells
+    else if (kWF_ == "zeroGradient")
+    {
         forAll(boundaryCells_, bCell)
         {
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
+            // get cell labels
+            label cellI = boundaryCells_[bCell].first(); // boundary cell
+            label haloI = boundaryCells_[bCell].second(); // halo cell
 
-            // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
-
-            // get coordinates and volume
-            scalar x = mesh_.C()[cellI].x();
-            scalar y = mesh_.C()[cellI].y();
-            if (y < 0.0) // UGLYYYYYYYYYYYY
-            {
-                y -= ds;
-            }
-            else
-            {
-                y += ds;
-            }
-            scalar z = mesh_.C()[cellI].z();
-            scalar V = mesh_.V()[cellI];
-
-            // get the fields value
-            scalar kk = kIB[bCell];
-
-            // write
-            outFilePtr() << cellI
-                << "," << x
-                << "," << y
-                << "," << z
-                << "," << V
-                << "," << kk
-                << endl;
+            // copy the value from halo cell to boundary cell
+            kIB[bCell] = k[haloI];
         }
     }
 
@@ -397,22 +393,33 @@ void ibDirichletBCs::omegaGAtIB
             omegaIB[bCell] = 0.0;
             GIB[bCell] = 0.0;
 
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
+            // get cell labels
+            label cellI = boundaryCells_[bCell].first(); // boundary cell
+            label haloI = boundaryCells_[bCell].second(); // halo cell
 
             // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
+            scalar sigma = boundaryDists_[bCell].first(); // signed distance
+            scalar ds = boundaryDists_[bCell].second(); // orthogonal distance
 
             // compute magnitude of snGrad of U at the surface
             vector zeroU = vector::zero;
-            vector snGradU = (zeroU - U[cellI])/ds;
+            vector snGradU = vector::zero;
+            if (sigma > 0.0)
+            {
+                snGradU = (zeroU - U[cellI])/ds;
+            }
+
+            else
+            {
+                snGradU = (zeroU - U[haloI])/ds;
+            }
             scalar magGradUWall = mag(snGradU);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI]; // Note: do not use unless you know where to get k
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
             
@@ -460,6 +467,10 @@ void ibDirichletBCs::omegaGAtIB
                     GIB[bCell] = sqr(uStar*magGradUWall*ds/uPlus)/(nu[cellI]*kappa_*yPlus);
                 }
             }
+
+            // cut cell correction
+            omegaIB[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccOmega_);
+            GIB[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccG_);
         }
     }
 
@@ -491,22 +502,33 @@ void ibDirichletBCs::epsilonGAtIB
             epsilonIB[bCell] = 0.0;
             GIB[bCell] = 0.0;
 
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
+            // get cell labels
+            label cellI = boundaryCells_[bCell].first(); // boundary cell
+            label haloI = boundaryCells_[bCell].second(); // halo cell
 
             // get distance to the surface
-            scalar ds = boundaryDists_[bCell].first();
+            scalar sigma = boundaryDists_[bCell].first(); // signed distance
+            scalar ds = boundaryDists_[bCell].second(); // orthogonal distance
 
             // compute magnitude of snGrad of U at the surface
             vector zeroU = vector::zero;
-            vector snGradU = (zeroU - U[cellI])/ds;
+            vector snGradU = vector::zero;
+            if (sigma > 0.0)
+            {
+                snGradU = (zeroU - U[cellI])/ds;
+            }
+
+            else
+            {
+                snGradU = (zeroU - U[haloI])/ds;
+            }
             scalar magGradUWall = mag(snGradU);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
+            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI]; // Note: do not use unless you know where to get k
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
 
@@ -528,8 +550,12 @@ void ibDirichletBCs::epsilonGAtIB
             else
             {
                 epsilonIB[bCell] = 2.0*k[cellI]*nu[cellI]/sqr(ds);
-                GIB[bCell] = G[cellI]; // NOTE: not sure about this
+                GIB[bCell] = G[cellI];
             }
+
+            // cut cell correction
+            epsilonIB[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccEpsilon_);
+            GIB[bCell] /= Foam::pow(boundaryAlpha_[bCell], ccG_);
         }
     }
 

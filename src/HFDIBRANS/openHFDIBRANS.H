@@ -64,6 +64,7 @@ class openHFDIBRANS
 
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
+    DynamicList<scalar> boundaryAlpha_;
     List<Tuple2<scalar,scalar>> boundaryDists_;
 
     // interpolation class

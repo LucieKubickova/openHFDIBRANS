@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     simpleHFDIBRANSFoam;
+application     simpleHFDIBRANSFoamCutCells;
 
 startFrom       latestTime;
 
@@ -45,7 +45,7 @@ runTimeModifiable yes;
 
 libs
 (
-      "libHFDIBRANS.so"
+      "libHFDIBRANSCutCells.so"
 );
 
 functions

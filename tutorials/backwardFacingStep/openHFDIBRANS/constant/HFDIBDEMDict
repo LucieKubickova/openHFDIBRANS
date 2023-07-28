@@ -13,6 +13,7 @@ FoamFile
     location    "constant";
     object      HFDIBDict;
 }
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 interpolationSchemes
 {
@@ -38,6 +39,16 @@ wallFunctions
 	k		kLowReWallFunction;
 	omega	omegaWallFunction;
 	epsilon	epsilonWallFunction;
+}
+
+cutCellCorrection
+{
+    k               0.0;
+    omega           1.0;
+    epsilon         0.0;
+    G               1.0;
+    nut             0.0;
+    ds              0.0;
 }
 
 // ************************************************************************* //

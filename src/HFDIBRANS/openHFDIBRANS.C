@@ -67,8 +67,8 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
-ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, boundaryAlpha_),
+ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, boundaryAlpha_)
 {
     // read HFDIBDEM dictionary
     HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
@@ -78,6 +78,11 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
 
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
+    if (save_)
+    {
+        // save boundary cells as cell sets
+        ibInterpolation_.saveBoundaryCells();
+    }
 
     // set size to lists
     ibDirichletBCs_.setSizeToLists();
@@ -92,10 +97,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
     // save data
     if (save_)
     {
-        // save boundary cells as cell sets
-        ibInterpolation_.saveBoundaryCells();
-
-        // create output directory to save data
+        // create output directory to save data for python
         word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
         if (!isDir(outDir))
         {
@@ -141,7 +143,7 @@ void openHFDIBRANS::computeUi
         label cellI = boundaryCells_[bCell].first();
 
         // get distance to surface
-        scalar ds = boundaryDists_[bCell].first();
+        scalar ds = boundaryDists_[bCell].second();
 
         // calculate the local log scale
         logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_.getE();
@@ -160,11 +162,6 @@ void openHFDIBRANS::computeUi
     else if (interpType == "switched")
     {
         ibInterpolation_.switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
-    }
-
-    else if (interpType == "outerInner")
-    {
-        ibInterpolation_.outerInnerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
     else
@@ -202,7 +199,7 @@ void openHFDIBRANS::computeKi
         label cellI = boundaryCells_[bCell].first();
 
         // get distance to surface
-        scalar ds = boundaryDists_[bCell].first();
+        scalar ds = boundaryDists_[bCell].second();
 
         // calculate the local log scale
         logScales[bCell] = yPlusi[cellI]/ds;
@@ -221,11 +218,6 @@ void openHFDIBRANS::computeKi
     else if (interpType == "switched")
     {
         ibInterpolation_.switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
-    }
-
-    else if (interpType == "outerInner")
-    {
-        ibInterpolation_.outerInnerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
     else
@@ -299,25 +291,14 @@ void openHFDIBRANS::correctOmegaG
     // assign the values in in-solid cells
     forAll(surface, cellI)
     {
-        if (surface[cellI] == 1.0)
+        if (surface[cellI] == 1.0) // TODO: wtf
         {
-            if (body_[cellI] >= 0.5)
+            if (body_[cellI] == 1.0) // TODO: inSolidThr
             {
                 omega[cellI] = inOmega;
                 G[cellI] = 0.0;
             }
         }
-    }
-
-    // correct the inner boudnary cells
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
-
-        // assign
-        omega[inCellI] = omega[outCellI];
     }
 }
 
@@ -359,25 +340,14 @@ void openHFDIBRANS::correctEpsilonG
     // assign the values in in-solid cells
     forAll(surface, cellI)
     {
-        if (surface[cellI] == 1.0)
+        if (surface[cellI] == 1.0) // TODO: wtf
         {
-            if (body_[cellI] >= 0.5)
+            if (body_[cellI] == 1.0) // TODO: inSolidThr
             {
                 epsilon[cellI] = inEpsilon;
                 G[cellI] = 0.0;
             }
         }
-    }
-
-    // correct the inner boudnary cells
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
-
-        // assign
-        epsilon[inCellI] = epsilon[outCellI];
     }
 }
 

@@ -24,6 +24,6 @@ EXE_LIBS = \
     -lfvOptions \
     -lsampling \
     -L$(FOAM_USER_LIBBIN) \
-    -lHFDIBRANS \
+    -lHFDIBRANSCutCells \
     -lHFDIBmomentumTransportModels \
     -lincompressibleHFDIBMomentumTransportModels

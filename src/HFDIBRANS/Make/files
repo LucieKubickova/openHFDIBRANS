@@ -5,7 +5,8 @@ ibInterpolation/ibScheme/constantScheme/constantScheme.C
 ibInterpolation/ibScheme/linearScheme/linearScheme.C
 ibInterpolation/ibScheme/quadraticScheme/quadraticScheme.C
 ibInterpolation/ibScheme/logarithmicScheme/logarithmicScheme.C
+ibInterpolation/ibCutCell.C
 ibInterpolation/ibInterpolation.C
 openHFDIBRANS.C
 
-LIB = $(FOAM_USER_LIBBIN)/libHFDIBRANS
+LIB = $(FOAM_USER_LIBBIN)/libHFDIBRANSCutCells
