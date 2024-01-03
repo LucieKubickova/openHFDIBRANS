@@ -38,6 +38,7 @@ Contributors
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "wallFvPatch.H"
+#include "nearWallDist.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -49,6 +50,51 @@ namespace Foam
 
 // * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
 
+//~ Foam::typeIOobject<Foam::IOdictionary>
+//~ Foam::HFDIBmomentumTransportModel::readModelDict
+//~ (
+    //~ const objectRegistry& obr,
+    //~ const word& group,
+    //~ bool registerObject
+//~ )
+//~ {
+    //~ typeIOobject<IOdictionary> HFDIBmomentumTransport
+    //~ (
+        //~ IOobject::groupName(typeName, group),
+        //~ obr.time().constant(),
+        //~ obr,
+        //~ IOobject::MUST_READ_IF_MODIFIED,
+        //~ IOobject::NO_WRITE,
+        //~ registerObject
+    //~ );
+
+    //~ if (HFDIBmomentumTransport.headerOk())
+    //~ {
+        //~ return HFDIBmomentumTransport;
+    //~ }
+    //~ else
+    //~ {
+        //~ typeIOobject<IOdictionary> turbulenceProperties
+        //~ (
+            //~ IOobject::groupName("turbulenceProperties", group),
+            //~ obr.time().constant(),
+            //~ obr,
+            //~ IOobject::MUST_READ_IF_MODIFIED,
+            //~ IOobject::NO_WRITE,
+            //~ registerObject
+        //~ );
+
+        //~ if (turbulenceProperties.headerOk())
+        //~ {
+            //~ return turbulenceProperties;
+        //~ }
+        //~ else
+        //~ {
+            //~ return HFDIBmomentumTransport;
+        //~ }
+    //~ }
+//~ }
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -56,9 +102,10 @@ Foam::HFDIBmomentumTransportModel::HFDIBmomentumTransportModel
 (
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
-    const surfaceScalarField& phi
+    const surfaceScalarField& phi,
+    const viscosity& viscosity
 )
-: momentumTransportModel(U, alphaRhoPhi, phi)
+: momentumTransportModel(U, alphaRhoPhi, phi, viscosity)
 {
 }
 
@@ -68,6 +115,12 @@ Foam::HFDIBmomentumTransportModel::HFDIBmomentumTransportModel
 Foam::tmp<Foam::surfaceScalarField> Foam::HFDIBmomentumTransportModel::phi() const
 {
     return phi_;
+}
+
+
+const Foam::volScalarField::Boundary& Foam::HFDIBmomentumTransportModel::y() const
+{
+    return nearWallDist::New(mesh_).y();
 }
 
 
@@ -82,21 +135,11 @@ void Foam::HFDIBmomentumTransportModel::validate()
 
 
 void Foam::HFDIBmomentumTransportModel::correct()
-{
-    if (mesh_.changing())
-    {
-        y_.correct();
-    }
-}
+{}
 
 
 void Foam::HFDIBmomentumTransportModel::correct(openHFDIBRANS& HFDIBRANS)
-{
-    if (mesh_.changing())
-    {
-        y_.correct();
-    }
-}
+{}
 
 
 // ************************************************************************* //

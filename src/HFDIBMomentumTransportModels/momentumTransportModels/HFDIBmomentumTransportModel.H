@@ -39,12 +39,12 @@ Contributors
 
 #include "IOdictionary.H"
 #include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
+#include "volFields.H"
 #include "surfaceFieldsFwd.H"
 #include "fvMatricesFwd.H"
-#include "nearWallDist.H"
 #include "geometricOneField.H"
 #include "momentumTransportModel.H"
+#include "viscosity.H"
 #include "openHFDIBRANS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -56,7 +56,7 @@ namespace Foam
 class fvMesh;
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBmomentumTransportModel Declaration
+                   Class HFDIBmomentumTransportModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class HFDIBmomentumTransportModel
@@ -75,17 +75,28 @@ protected:
         //~ const surfaceScalarField& alphaRhoPhi_;
         //~ const surfaceScalarField& phi_;
 
-        //- Near wall distance boundary field
-        //~ nearWallDist y_;
+        //~ const viscosity& viscosity_;
 
 
     // Protected member functions
 
-        //~ static IOdictionary readModelDict
+        //~ static typeIOobject<IOdictionary> readModelDict
         //~ (
-            //~ const objectRegistry& obr,
-            //~ const word& group,
-            //~ bool registerObject = false
+        //~     const objectRegistry& obr,
+        //~     const word& group,
+        //~     bool registerObject = false
+        //~ );
+
+
+        //~ template<class HFDIBMomentumTransportModel>
+        //~ static inline autoPtr<HFDIBMomentumTransportModel> New
+        //~ (
+            //~ const typename HFDIBMomentumTransportModel::alphaField& alpha,
+            //~ const typename HFDIBMomentumTransportModel::rhoField& rho,
+            //~ const volVectorField& U,
+            //~ const surfaceScalarField& alphaRhoPhi,
+            //~ const surfaceScalarField& phi,
+            //~ const viscosity& viscosity
         //~ );
 
 
@@ -102,7 +113,8 @@ public:
         (
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
-            const surfaceScalarField& phi
+            const surfaceScalarField& phi,
+            const viscosity& viscosity
         );
 
         //- Disallow default bitwise copy construction
@@ -153,17 +165,26 @@ public:
         //- Return the volumetric flux field
         virtual tmp<surfaceScalarField> phi() const;
 
-        //- Return the near wall distances
-        const nearWallDist& y() const
+        //- Access function to fluid properties
+        const class Foam::viscosity& properties() const
         {
-            return y_;
+            return viscosity_;
         }
 
-        //- Return the laminar viscosity
-        virtual tmp<volScalarField> nu() const = 0;
+        //- Return the near wall distance
+        const volScalarField::Boundary& y() const;
 
-        //- Return the laminar viscosity on patch
-        virtual tmp<scalarField> nu(const label patchi) const = 0;
+        //- Return the laminar viscosity
+        virtual tmp<volScalarField> nu() const
+        {
+            return this->viscosity_.nu();
+        }
+
+        //- Return the laminar viscosity on patchi
+        virtual tmp<scalarField> nu(const label patchi) const
+        {
+            return this->viscosity_.nu(patchi);
+        }
 
         //- Return the turbulence viscosity
         virtual tmp<volScalarField> nut() const = 0;
@@ -177,29 +198,14 @@ public:
         //- Return the effective viscosity on patch
         virtual tmp<scalarField> nuEff(const label patchi) const = 0;
 
-        //- Return the laminar dynamic viscosity
-        virtual tmp<volScalarField> mu() const = 0;
-
-        //- Return the laminar dynamic viscosity on patch
-        virtual tmp<scalarField> mu(const label patchi) const = 0;
-
-        //- Return the turbulence dynamic viscosity
-        virtual tmp<volScalarField> mut() const = 0;
-
-        //- Return the turbulence dynamic viscosity on patch
-        virtual tmp<scalarField> mut(const label patchi) const = 0;
-
-        //- Return the effective dynamic viscosity
-        virtual tmp<volScalarField> muEff() const = 0;
-
-        //- Return the effective dynamic viscosity on patch
-        virtual tmp<scalarField> muEff(const label patchi) const = 0;
-
         //- Return the turbulence kinetic energy
         virtual tmp<volScalarField> k() const = 0;
 
         //- Return the turbulence kinetic energy dissipation rate
         virtual tmp<volScalarField> epsilon() const = 0;
+
+        //- Return the turbulence specific dissipation rate
+        virtual tmp<volScalarField> omega() const = 0;
 
         //- Return the stress tensor [m^2/s^2]
         virtual tmp<volSymmTensorField> sigma() const = 0;
@@ -224,6 +230,12 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "HFDIBmomentumTransportModelTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
