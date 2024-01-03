@@ -34,65 +34,78 @@ Contributors
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#define makeHFDIBMomentumTransportModelTypes(                                  \
-    Alpha, Rho, baseModel, BaseModel, Transport)                               \
-                                                                               \
+#include "addToRunTimeSelectionTable.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#define makeHFDIBMomentumTransportModelTypes(Alpha, Rho, BaseModel)                 \
     namespace Foam                                                             \
     {                                                                          \
-        typedef BaseModel<Transport> Transport##BaseModel;                     \
-        typedef HFDIBLaminarModel<Transport##BaseModel>                             \
-            HFDIBLaminar##Transport##BaseModel;                                     \
-        typedef HFDIBRASModel<Transport##BaseModel> HFDIBRAS##Transport##BaseModel;\
+        typedef HFDIBLaminarModel<BaseModel> HFDIBLaminar##BaseModel;                    \
+        typedef HFDIBRASModel<BaseModel> HFDIBRAS##BaseModel;                            \
     }
 
 
-#define makeBaseHFDIBMomentumTransportModel(                                   \
-    Alpha, Rho, baseModel, BaseModel, Transport)                               \
+#define makeBaseHFDIBMomentumTransportModel(Alpha, Rho, BaseModel)                  \
                                                                                \
     namespace Foam                                                             \
     {                                                                          \
-        typedef HFDIBMomentumTransportModel                                         \
-        <                                                                      \
-            Alpha,                                                             \
-            Rho,                                                               \
-            baseModel,                                                         \
-            Transport                                                          \
-        > Transport##baseModel;                                                \
+        typedef BaseModel Transport##HFDIBmomentumTransportModel;                   \
                                                                                \
-        defineTemplateRunTimeSelectionTable                                    \
+        defineRunTimeSelectionTable                                            \
         (                                                                      \
-            Transport##baseModel,                                              \
+            Transport##HFDIBmomentumTransportModel,                                 \
             dictionary                                                         \
         );                                                                     \
                                                                                \
                                                                                \
-        defineNamedTemplateTypeNameAndDebug(HFDIBLaminar##Transport##BaseModel, 0); \
+        defineNamedTemplateTypeNameAndDebug(HFDIBLaminar##BaseModel, 0);            \
                                                                                \
-        defineTemplateRunTimeSelectionTable                                    \
-        (HFDIBLaminar##Transport##BaseModel, dictionary);                           \
+        defineTemplateRunTimeSelectionTable(HFDIBLaminar##BaseModel, dictionary);   \
                                                                                \
         addToRunTimeSelectionTable                                             \
         (                                                                      \
-            Transport##baseModel,                                              \
-            HFDIBLaminar##Transport##BaseModel,                                     \
+            Transport##HFDIBmomentumTransportModel,                                 \
+            HFDIBLaminar##BaseModel,                                                \
             dictionary                                                         \
         );                                                                     \
                                                                                \
                                                                                \
-        defineNamedTemplateTypeNameAndDebug(HFDIBRAS##Transport##BaseModel, 0);\
+        defineNamedTemplateTypeNameAndDebug(HFDIBRAS##BaseModel, 0);                \
                                                                                \
-        defineTemplateRunTimeSelectionTable                                    \
-        (HFDIBRAS##Transport##BaseModel, dictionary);                          \
+        defineTemplateRunTimeSelectionTable(HFDIBRAS##BaseModel, dictionary);       \
                                                                                \
         addToRunTimeSelectionTable                                             \
         (                                                                      \
-            Transport##baseModel,                                              \
-            HFDIBRAS##Transport##BaseModel,                                    \
+            Transport##HFDIBmomentumTransportModel,                                 \
+            HFDIBRAS##BaseModel,                                                    \
             dictionary                                                         \
         );                                                                     \
     }
 
-#define makeTemplatedHFDIBMomentumTransportModel(BaseModel, SType, Type)       \
+
+#define makeTemplatedHFDIBLaminarModel(BaseModel, SType, Type)                      \
+    typedef Foam::SType##Models::Type<Foam::BaseModel>                         \
+        Type##SType##BaseModel;                                                \
+    defineNamedTemplateTypeNameAndDebug(Type##SType##BaseModel, 0);            \
+                                                                               \
+    namespace Foam                                                             \
+    {                                                                          \
+        namespace SType##Models                                                \
+        {                                                                      \
+            typedef Type<BaseModel> Type##SType##BaseModel;                    \
+                                                                               \
+            addToRunTimeSelectionTable                                         \
+            (                                                                  \
+                SType##BaseModel,                                              \
+                Type##SType##BaseModel,                                        \
+                dictionary                                                     \
+            );                                                                 \
+        }                                                                      \
+    }
+
+
+#define makeTemplatedHFDIBMomentumTransportModel(BaseModel, SType, Type)            \
     defineNamedTemplateTypeNameAndDebug                                        \
         (Foam::SType##Models::Type<Foam::BaseModel>, 0);                       \
                                                                                \
@@ -112,7 +125,7 @@ Contributors
     }
 
 
-#define makeHFDIBMomentumTransportModel(BaseModel, SType, Type)                \
+#define makeHFDIBMomentumTransportModel(BaseModel, SType, Type)                     \
     namespace Foam                                                             \
     {                                                                          \
         namespace SType##Models                                                \
@@ -127,5 +140,6 @@ Contributors
             );                                                                 \
         }                                                                      \
     }
+
 
 // ************************************************************************* //
