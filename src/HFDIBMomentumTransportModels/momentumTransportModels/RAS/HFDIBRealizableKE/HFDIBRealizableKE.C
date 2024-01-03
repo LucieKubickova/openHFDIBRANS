@@ -34,7 +34,8 @@ Contributors
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#include "fvOptions.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 #include "bound.H"
 #include "OFstream.H"
 
@@ -58,7 +59,7 @@ tmp<volScalarField> HFDIBRealizableKE<BasicMomentumTransportModel>::rCmu
     tmp<volSymmTensorField> tS = dev(symm(gradU));
     const volSymmTensorField& S = tS();
 
-    volScalarField W
+    const volScalarField W
     (
         (2*sqrt(2.0))*((S&S)&&S)
        /(
@@ -69,12 +70,12 @@ tmp<volScalarField> HFDIBRealizableKE<BasicMomentumTransportModel>::rCmu
 
     tS.clear();
 
-    volScalarField phis
+    const volScalarField phis
     (
         (1.0/3.0)*acos(min(max(sqrt(6.0)*W, -scalar(1)), scalar(1)))
     );
-    volScalarField As(sqrt(6.0)*cos(phis));
-    volScalarField Us(sqrt(S2/2.0 + magSqr(skew(gradU))));
+    const volScalarField As(sqrt(6.0)*cos(phis));
+    const volScalarField Us(sqrt(S2/2.0 + magSqr(skew(gradU))));
 
     return 1.0/(A0_ + As*Us*k_/epsilon_);
 }
@@ -90,18 +91,18 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correctNut
 {
     this->nut_ = rCmu(gradU, S2, magS)*sqr(k_)/epsilon_;
     this->nut_.correctBoundaryConditions();
-    fv::options::New(this->mesh_).correct(this->nut_);
+    fvConstraints::New(this->mesh_).constrain(this->nut_);
 }
 
 
 template<class BasicMomentumTransportModel>
 void HFDIBRealizableKE<BasicMomentumTransportModel>::correctNut()
 {
-    tmp<volTensorField> tgradU = fvc::grad(this->U_);
-    volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(tgradU()))));
-    volScalarField magS(modelName("magS"), sqrt(S2));
+    const volTensorField gradU(fvc::grad(this->U_));
+    const volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(gradU))));
+    const volScalarField magS(modelName("magS"), sqrt(S2));
 
-    correctNut(tgradU(), S2, magS);
+    correctNut(gradU, S2, magS);
 }
 
 
@@ -171,7 +172,7 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -183,7 +184,7 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
     A0_
     (
@@ -340,6 +341,7 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
     }
 }
 
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
@@ -360,6 +362,7 @@ bool HFDIBRealizableKE<BasicMomentumTransportModel>::read()
     }
 }
 
+
 template<class BasicMomentumTransportModel>
 void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 {
@@ -374,7 +377,11 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     const surfaceScalarField& alphaRhoPhi = this->alphaRhoPhi_;
     const volVectorField& U = this->U_;
     volScalarField& nut = this->nut_;
-    fv::options& fvOptions(fv::options::New(this->mesh_));
+    const Foam::fvModels& fvModels(Foam::fvModels::New(this->mesh_));
+    const Foam::fvConstraints& fvConstraints
+    (
+        Foam::fvConstraints::New(this->mesh_)
+    );
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
@@ -385,15 +392,18 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     volScalarField::Internal divU
     (
         modelName("divU"),
-        fvc::div(fvc::absolute(this->phi(), U))().v()
+        fvc::div(fvc::absolute(this->phi(), U))()
     );
 
-    tmp<volTensorField> tgradU = fvc::grad(U);
-    volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(tgradU()))));
-    volScalarField magS(modelName("magS"), sqrt(S2));
+    const volTensorField gradU(fvc::grad(U));
+    const volScalarField S2(modelName("S2"), 2*magSqr(dev(symm(gradU))));
+    const volScalarField magS(modelName("magS"), sqrt(S2));
 
-    volScalarField::Internal eta(modelName("eta"), magS()*k_()/epsilon_());
-    volScalarField::Internal C1
+    const volScalarField::Internal eta
+    (
+        modelName("eta"), magS()*k_()/epsilon_()
+    );
+    const volScalarField::Internal C1
     (
         modelName("C1"),
         max(eta/(scalar(5) + eta), scalar(0.43))
@@ -402,7 +412,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     volScalarField::Internal G
     (
         this->GName(),
-        nut.v()*(dev(twoSymm(tgradU().v())) && tgradU().v())
+        nut*(gradU.v() && dev(twoSymm(gradU.v())))
     );
 
     // Update epsilon and G at the wall
@@ -428,18 +438,18 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
             epsilon_
         )
       + epsilonSource()
-      + fvOptions(alpha, rho, epsilon_)
+      + fvModels.source(alpha, rho, epsilon_)
     );
 
     epsEqn.ref().relax();
-    fvOptions.constrain(epsEqn.ref());
+    fvConstraints.constrain(epsEqn.ref());
     epsEqn.ref().boundaryManipulate(epsilon_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
     matrixManipulate(epsEqn.ref(), epsilon_, epsilonSurface_);
 
     solve(epsEqn);
-    fvOptions.correct(epsilon_);
+    fvConstraints.constrain(epsilon_);
     bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
@@ -456,11 +466,11 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
       - fvm::SuSp(2.0/3.0*alpha()*rho()*divU, k_)
       - fvm::Sp(alpha()*rho()*epsilon_()/k_(), k_)
       + kSource()
-      + fvOptions(alpha, rho, k_)
+      + fvModels.source(alpha, rho, k_)
     );
 
     kEqn.relax();
-    fvOptions.constrain(kEqn);
+    fvConstraints.constrain(kEqn);
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
@@ -477,10 +487,10 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
     
-    fvOptions.correct(k_);
+    fvConstraints.constrain(k_);
     bound(k_, this->kMin_);
 
-    correctNut(tgradU(), S2, magS);
+    correctNut(gradU, S2, magS);
     HFDIBRANS.correctNut(k_, nu_);
 }
 

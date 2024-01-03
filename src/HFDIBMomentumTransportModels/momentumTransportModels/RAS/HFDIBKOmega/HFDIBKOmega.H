@@ -63,7 +63,7 @@ protected:
 
         // Model coefficients
 
-            dimensionedScalar Cmu_;
+            dimensionedScalar betaStar_;
             dimensionedScalar beta_;
             dimensionedScalar gamma_;
             dimensionedScalar alphaK_;
@@ -105,7 +105,6 @@ public:
 
     typedef typename BasicHFDIBMomentumTransportModel::alphaField alphaField;
     typedef typename BasicHFDIBMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicHFDIBMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information
@@ -122,7 +121,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport,
+            const viscosity& viscosity,
             const word& type = typeName
         );
 
@@ -175,7 +174,7 @@ public:
             return volScalarField::New
             (
                 "epsilon",
-                Cmu_*k_*omega_,
+                betaStar_*k_*omega_,
                 omega_.boundaryField().types()
             );
         }

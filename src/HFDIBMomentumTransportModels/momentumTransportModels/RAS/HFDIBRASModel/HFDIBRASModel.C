@@ -35,6 +35,7 @@ Contributors
 \*---------------------------------------------------------------------------*/
 
 //~ #include "HFDIBRASModel.H"
+#include "NewtonianViscosityModel.H"
 
 // * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
 
@@ -59,7 +60,7 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::HFDIBRASModel
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport
+    const viscosity& viscosity
 )
 :
     BasicHFDIBMomentumTransportModel
@@ -70,7 +71,7 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::HFDIBRASModel
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
     HFDIBRASDict_(this->subOrEmptyDict("HFDIBRAS")),
@@ -109,6 +110,26 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::HFDIBRASModel
             dimless/dimTime,
             small
         )
+    ),
+
+    viscosityModel_
+    (
+        coeffDict_.found("viscosityModel")
+      ? laminarModels::generalisedNewtonianViscosityModel::New
+        (
+            coeffDict_,
+            viscosity,
+            U
+        )
+      : autoPtr<laminarModels::generalisedNewtonianViscosityModel>
+        (
+            new laminarModels::generalisedNewtonianViscosityModels::Newtonian
+            (
+                coeffDict_,
+                viscosity,
+                U
+            )
+        )
     )
 {
     // Force the construction of the mesh deltaCoeffs which may be needed
@@ -128,7 +149,7 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::New
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport
+    const viscosity& viscosity
 )
 {
     const IOdictionary modelDict
@@ -140,12 +161,11 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::New
         )
     );
 
-    const word modelType
-    (
-        modelDict.subDict("HFDIBRAS").found("model")
-      ? modelDict.subDict("HFDIBRAS").lookup("model")
-      : modelDict.subDict("HFDIBRAS").lookup("HFDIBRASModel")
-    );
+    const word modelType =
+        modelDict.subDict("HFDIBRAS").lookupBackwardsCompatible<word>
+        (
+            {"model", "HFDIBRASModel"}
+        );
 
     Info<< "Selecting HFDIBRAS turbulence model " << modelType << endl;
 
@@ -164,7 +184,7 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::New
 
     return autoPtr<HFDIBRASModel>
     (
-        cstrIter()(alpha, rho, U, alphaRhoPhi, phi, transport)
+        cstrIter()(alpha, rho, U, alphaRhoPhi, phi, viscosity)
     );
 }
 
@@ -197,6 +217,7 @@ bool Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::read()
 template<class BasicHFDIBMomentumTransportModel>
 void Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::correct()
 {
+    viscosityModel_->correct();
     BasicHFDIBMomentumTransportModel::correct();
 }
 
@@ -204,6 +225,7 @@ void Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::correct()
 template<class BasicHFDIBMomentumTransportModel>
 void Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 {
+    viscosityModel_->correct();
     BasicHFDIBMomentumTransportModel::correct(HFDIBRANS);
 }
 

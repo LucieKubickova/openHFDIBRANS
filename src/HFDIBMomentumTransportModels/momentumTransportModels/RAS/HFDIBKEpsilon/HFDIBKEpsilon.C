@@ -34,7 +34,8 @@ Contributors
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#include "fvOptions.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 #include "bound.H"
 #include "OFstream.H"
 
@@ -52,7 +53,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correctNut()
 {
     this->nut_ = Cmu_*sqr(k_)/epsilon_;
     this->nut_.correctBoundaryConditions();
-    fv::options::New(this->mesh_).correct(this->nut_);
+    fvConstraints::New(this->mesh_).constrain(this->nut_);
 }
 
 
@@ -121,7 +122,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -133,7 +134,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
     Cmu_
@@ -331,6 +332,7 @@ bool HFDIBKEpsilon<BasicMomentumTransportModel>::read()
     }
 }
 
+
 template<class BasicMomentumTransportModel>
 void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 {
@@ -345,7 +347,11 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     const surfaceScalarField& alphaRhoPhi = this->alphaRhoPhi_;
     const volVectorField& U = this->U_;
     volScalarField& nut = this->nut_;
-    fv::options& fvOptions(fv::options::New(this->mesh_));
+    const Foam::fvModels& fvModels(Foam::fvModels::New(this->mesh_));
+    const Foam::fvConstraints& fvConstraints
+    (
+        Foam::fvConstraints::New(this->mesh_)
+    );
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
@@ -386,18 +392,18 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
       - fvm::SuSp(((2.0/3.0)*C1_ - C3_)*alpha()*rho()*divU, epsilon_)
       - fvm::Sp(C2_*alpha()*rho()*epsilon_()/k_(), epsilon_)
       + epsilonSource()
-      + fvOptions(alpha, rho, epsilon_)
+      + fvModels.source(alpha, rho, epsilon_)
     );
 
     epsEqn.ref().relax();
-    fvOptions.constrain(epsEqn.ref());
+    fvConstraints.constrain(epsEqn.ref());
     epsEqn.ref().boundaryManipulate(epsilon_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
     matrixManipulate(epsEqn.ref(), epsilon_, epsilonSurface_);
 
     solve(epsEqn);
-    fvOptions.correct(epsilon_);
+    fvConstraints.constrain(epsilon_);
     bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
@@ -414,11 +420,11 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
       - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
       - fvm::Sp(alpha()*rho()*epsilon_()/k_(), k_)
       + kSource()
-      + fvOptions(alpha, rho, k_)
+      + fvModels.source(alpha, rho, k_)
     );
 
     kEqn.relax();
-    fvOptions.constrain(kEqn);
+    fvConstraints.constrain(kEqn);
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
@@ -435,7 +441,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
     
-    fvOptions.correct(k_);
+    fvConstraints.constrain(k_);
     bound(k_, this->kMin_);
 
     correctNut();

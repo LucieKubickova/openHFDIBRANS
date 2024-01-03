@@ -37,8 +37,8 @@ Contributors
 #ifndef HFDIBRASModel_H
 #define HFDIBRASModel_H
 
-#include "HFDIBMomentumTransportModel.H"
-//~ #include "openHFDIBRANS.H"
+#include "HFDIBmomentumTransportModel.H"
+#include "generalisedNewtonianViscosityModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -46,7 +46,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBRASModel Declaration
+                          Class HFDIBRASModel Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicHFDIBMomentumTransportModel>
@@ -80,6 +80,10 @@ protected:
         //- Lower limit for omega
         dimensionedScalar omegaMin_;
 
+        //- Run-time selectable generalised Newtonian viscosity model
+        autoPtr<laminarModels::generalisedNewtonianViscosityModel>
+            viscosityModel_;
+
 
     // Protected Member Functions
 
@@ -91,7 +95,6 @@ public:
 
     typedef typename BasicHFDIBMomentumTransportModel::alphaField alphaField;
     typedef typename BasicHFDIBMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicHFDIBMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information
@@ -111,9 +114,9 @@ public:
                 const volVectorField& U,
                 const surfaceScalarField& alphaRhoPhi,
                 const surfaceScalarField& phi,
-                const transportModel& transport
+                const viscosity& viscosity
             ),
-            (alpha, rho, U, alphaRhoPhi, phi, transport)
+            (alpha, rho, U, alphaRhoPhi, phi, viscosity)
         );
 
 
@@ -128,7 +131,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
         //- Disallow default bitwise copy construction
@@ -145,7 +148,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
 
@@ -159,51 +162,59 @@ public:
         //- Read model coefficients if they have changed
         virtual bool read();
 
+        //- Return the lower allowable limit for k (default: small)
+        const dimensionedScalar& kMin() const
+        {
+            return kMin_;
+        }
 
-        // Access
+        //- Return the lower allowable limit for epsilon (default: small)
+        const dimensionedScalar& epsilonMin() const
+        {
+            return epsilonMin_;
+        }
 
-            //- Return the lower allowable limit for k (default: small)
-            const dimensionedScalar& kMin() const
-            {
-                return kMin_;
-            }
+        //- Return the lower allowable limit for omega (default: small)
+        const dimensionedScalar& omegaMin() const
+        {
+            return omegaMin_;
+        }
 
-            //- Return the lower allowable limit for epsilon (default: small)
-            const dimensionedScalar& epsilonMin() const
-            {
-                return epsilonMin_;
-            }
+        //- Allow kMin to be changed
+        dimensionedScalar& kMin()
+        {
+            return kMin_;
+        }
 
-            //- Return the lower allowable limit for omega (default: small)
-            const dimensionedScalar& omegaMin() const
-            {
-                return omegaMin_;
-            }
+        //- Allow epsilonMin to be changed
+        dimensionedScalar& epsilonMin()
+        {
+            return epsilonMin_;
+        }
 
-            //- Allow kMin to be changed
-            dimensionedScalar& kMin()
-            {
-                return kMin_;
-            }
+        //- Allow omegaMin to be changed
+        dimensionedScalar& omegaMin()
+        {
+            return omegaMin_;
+        }
 
-            //- Allow epsilonMin to be changed
-            dimensionedScalar& epsilonMin()
-            {
-                return epsilonMin_;
-            }
+        //- Const access to the coefficients dictionary
+        virtual const dictionary& coeffDict() const
+        {
+            return coeffDict_;
+        }
 
-            //- Allow omegaMin to be changed
-            dimensionedScalar& omegaMin()
-            {
-                return omegaMin_;
-            }
+        //- Return the laminar viscosity
+        virtual tmp<volScalarField> nu() const
+        {
+            return viscosityModel_->nu();
+        }
 
-            //- Const access to the coefficients dictionary
-            virtual const dictionary& coeffDict() const
-            {
-                return coeffDict_;
-            }
-
+        //- Return the laminar viscosity on patchi
+        virtual tmp<scalarField> nu(const label patchi) const
+        {
+            return viscosityModel_->nu(patchi);
+        }
 
         //- Return the effective viscosity
         virtual tmp<volScalarField> nuEff() const

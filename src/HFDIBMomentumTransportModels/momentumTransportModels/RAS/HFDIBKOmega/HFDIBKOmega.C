@@ -34,7 +34,8 @@ Contributors
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#include "fvOptions.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 #include "bound.H"
 #include "OFstream.H"
 
@@ -52,7 +53,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correctNut()
 {
     this->nut_ = k_/omega_;
     this->nut_.correctBoundaryConditions(); // here nutWallFunctions are used
-    fv::options::New(this->mesh_).correct(this->nut_);
+    fvConstraints::New(this->mesh_).constrain(this->nut_);
 }
 
 
@@ -120,7 +121,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -132,10 +133,10 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
-    Cmu_
+    betaStar_
     (
         dimensioned<scalar>::lookupOrAddToDict
         (
@@ -306,7 +307,7 @@ bool HFDIBKOmega<BasicMomentumTransportModel>::read()
 {
     if (eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::read())
     {
-        Cmu_.readIfPresent(this->coeffDict());
+        betaStar_.readIfPresent(this->coeffDict());
         beta_.readIfPresent(this->coeffDict());
         gamma_.readIfPresent(this->coeffDict());
         alphaK_.readIfPresent(this->coeffDict());
@@ -319,6 +320,7 @@ bool HFDIBKOmega<BasicMomentumTransportModel>::read()
         return false;
     }
 }
+
 
 template<class BasicMomentumTransportModel>
 void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
@@ -334,7 +336,11 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     const surfaceScalarField& alphaRhoPhi = this->alphaRhoPhi_;
     const volVectorField& U = this->U_;
     volScalarField& nut = this->nut_;
-    fv::options& fvOptions(fv::options::New(this->mesh_));
+    const Foam::fvModels& fvModels(Foam::fvModels::New(this->mesh_));
+    const Foam::fvConstraints& fvConstraints
+    (
+        Foam::fvConstraints::New(this->mesh_)
+    );
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
@@ -371,22 +377,22 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
       + fvm::div(alphaRhoPhi, omega_)
       - fvm::laplacian(alpha*rho*DomegaEff(), omega_)
      ==
-        omegaSource()
-      + gamma_*alpha()*rho()*G*omega_()/k_()
-      - fvm::Sp(beta_*alpha()*rho()*omega_(), omega_)
+        gamma_*alpha()*rho()*G*omega_()/k_()
       - fvm::SuSp(((2.0/3.0)*gamma_)*alpha()*rho()*divU, omega_)
-      + fvOptions(alpha, rho, omega_)
+      - fvm::Sp(beta_*alpha()*rho()*omega_(), omega_)
+      + omegaSource()
+      + fvModels.source(alpha, rho, omega_)
     );
 
     omegaEqn.ref().relax();
-    fvOptions.constrain(omegaEqn.ref());
+    fvConstraints.constrain(omegaEqn.ref());
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
     matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
 
     solve(omegaEqn);
-    fvOptions.correct(omega_);
+    fvConstraints.constrain(omega_);
     bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
@@ -399,15 +405,15 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
       + fvm::div(alphaRhoPhi, k_)
       - fvm::laplacian(alpha*rho*DkEff(), k_)
      ==
-      kSource()
-      + alpha()*rho()*G
-      - fvm::Sp(Cmu_*alpha()*rho()*omega_(), k_)
+        alpha()*rho()*G
       - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
-      + fvOptions(alpha, rho, k_)
+      - fvm::Sp(betaStar_*alpha()*rho()*omega_(), k_)
+      + kSource()
+      + fvModels.source(alpha, rho, k_)
     );
 
     kEqn.relax();
-    fvOptions.constrain(kEqn);
+    fvConstraints.constrain(kEqn);
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
@@ -424,7 +430,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
     
-    fvOptions.correct(k_);
+    fvConstraints.constrain(k_);
     bound(k_, this->kMin_);
 
     correctNut();
@@ -443,4 +449,3 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct()
 } // End namespace Foam
 
 // ************************************************************************* //
-

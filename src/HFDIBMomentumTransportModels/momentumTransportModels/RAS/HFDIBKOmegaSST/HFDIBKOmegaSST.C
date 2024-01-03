@@ -34,7 +34,8 @@ Contributors
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#include "fvOptions.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 #include "bound.H"
 #include "wallDist.H"
 #include "OFstream.H"
@@ -68,7 +69,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST::F1
             max
             (
                 (scalar(1)/betaStar_)*sqrt(k_)/(omega_*y_),
-                scalar(500)*(this->mu()/this->rho_)/(sqr(y_)*omega_)
+                scalar(500)*this->nu()/(sqr(y_)*omega_)
             ),
             (4*alphaOmega2_)*k_/(CDkOmegaPlus*sqr(y_))
         ),
@@ -88,7 +89,7 @@ F2() const
         max
         (
             (scalar(2)/betaStar_)*sqrt(k_)/(omega_*y_),
-            scalar(500)*(this->mu()/this->rho_)/(sqr(y_)*omega_)
+            scalar(500)*this->nu()/(sqr(y_)*omega_)
         ),
         scalar(100)
     );
@@ -103,7 +104,7 @@ F3() const
 {
     tmp<volScalarField> arg3 = min
     (
-        150*(this->mu()/this->rho_)/(omega_*sqr(y_)),
+        150*this->nu()/(omega_*sqr(y_)),
         scalar(10)
     );
 
@@ -135,7 +136,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correctNut
 {
     this->nut_ = a1_*k_/max(a1_*omega_, b1_*F2*sqrt(S2));
     this->nut_.correctBoundaryConditions();
-    fv::options::New(this->mesh_).correct(this->nut_);
+    fvConstraints::New(this->mesh_).constrain(this->nut_);
 }
 
 
@@ -255,7 +256,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -267,7 +268,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
     alphaK1_
@@ -509,6 +510,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
     }
 }
 
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
@@ -552,7 +554,11 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     const surfaceScalarField& alphaRhoPhi = this->alphaRhoPhi_;
     const volVectorField& U = this->U_;
     volScalarField& nut = this->nut_;
-    fv::options& fvOptions(fv::options::New(this->mesh_));
+    const Foam::fvModels& fvModels(Foam::fvModels::New(this->mesh_));
+    const Foam::fvConstraints& fvConstraints
+    (
+        Foam::fvConstraints::New(this->mesh_)
+    );
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
@@ -562,7 +568,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
 
     volScalarField::Internal divU
     (
-        fvc::div(fvc::absolute(this->phi(), U))().v()
+        fvc::div(fvc::absolute(this->phi(), U))()
     );
 
     tmp<volTensorField> tgradU = fvc::grad(U);
@@ -582,51 +588,53 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     volScalarField F1(this->F1(CDkOmega));
     volScalarField F23(this->F23());
 
-    volScalarField::Internal gamma(this->gamma(F1));
-    volScalarField::Internal beta(this->beta(F1));
+    {
+        volScalarField::Internal gamma(this->gamma(F1));
+        volScalarField::Internal beta(this->beta(F1));
 
-    // HFDIB: update uTau
-    HFDIBRANS.updateUTau(k_);
+        // HFDIB: update uTau
+        HFDIBRANS.updateUTau(k_);
 
-    // HFDIB: correct omega and G
-    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaSurface_);
+        // HFDIB: correct omega and G
+        HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaSurface_);
 
-    // Turbulent frequency equation
-    tmp<fvScalarMatrix> omegaEqn
-    (
-        fvm::ddt(alpha, rho, omega_)
-      + fvm::div(alphaRhoPhi, omega_)
-      - fvm::laplacian(alpha*rho*DomegaEff(F1), omega_)
-     ==
-        alpha()*rho()*gamma
-       *min
+        // Turbulent frequency equation
+        tmp<fvScalarMatrix> omegaEqn
         (
-            GbyNu,
-            (c1_/a1_)*betaStar_*omega_()
-           *max(a1_*omega_(), b1_*F23()*sqrt(S2()))
-        )
-      - fvm::SuSp((2.0/3.0)*alpha()*rho()*gamma*divU, omega_)
-      - fvm::Sp(alpha()*rho()*beta*omega_(), omega_)
-      - fvm::SuSp
-        (
-            alpha()*rho()*(F1() - scalar(1))*CDkOmega()/omega_(),
-            omega_
-        )
-      + Qsas(S2(), gamma, beta)
-      + omegaSource()
-      + fvOptions(alpha, rho, omega_)
-    );
+            fvm::ddt(alpha, rho, omega_)
+          + fvm::div(alphaRhoPhi, omega_)
+          - fvm::laplacian(alpha*rho*DomegaEff(F1), omega_)
+         ==
+            alpha()*rho()*gamma
+           *min
+            (
+                GbyNu,
+                (c1_/a1_)*betaStar_*omega_()
+               *max(a1_*omega_(), b1_*F23()*sqrt(S2()))
+            )
+          - fvm::SuSp((2.0/3.0)*alpha()*rho()*gamma*divU, omega_)
+          - fvm::Sp(alpha()*rho()*beta*omega_(), omega_)
+          - fvm::SuSp
+            (
+                alpha()*rho()*(F1() - scalar(1))*CDkOmega()/omega_(),
+                omega_
+            )
+          + Qsas(S2(), gamma, beta)
+          + omegaSource()
+          + fvModels.source(alpha, rho, omega_)
+        );
 
-    omegaEqn.ref().relax();
-    fvOptions.constrain(omegaEqn.ref());
-    omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
+        omegaEqn.ref().relax();
+        fvConstraints.constrain(omegaEqn.ref());
+        omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
-    // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
+        // HFDIBRANS: matrix manipulate
+        matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
 
-    solve(omegaEqn);
-    fvOptions.correct(omega_);
-    bound(omega_, this->omegaMin_);
+        solve(omegaEqn);
+        fvConstraints.constrain(omega_);
+        bound(omega_, this->omegaMin_);
+    }
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -642,11 +650,11 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
       - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
       - fvm::Sp(alpha()*rho()*epsilonByk(F1, F23), k_)
       + kSource()
-      + fvOptions(alpha, rho, k_)
+      + fvModels.source(alpha, rho, k_)
     );
 
     kEqn.relax();
-    fvOptions.constrain(kEqn);
+    fvConstraints.constrain(kEqn);
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
@@ -663,9 +671,9 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
-    fvOptions.correct(k_);
+    fvConstraints.constrain(k_);
     bound(k_, this->kMin_);
-    
+
     correctNut(S2, F23);
     HFDIBRANS.correctNut(k_, nu_);
 }
