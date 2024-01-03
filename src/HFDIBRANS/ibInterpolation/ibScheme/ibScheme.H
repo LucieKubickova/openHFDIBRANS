@@ -59,7 +59,7 @@ Contributors
 #include "primitiveFieldsFwd.H"
 #include "volFieldsFwd.H"
 #include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
+#include "surfMesh.H"
 
 #include "meshSearch.H"
 #include "List.H"
