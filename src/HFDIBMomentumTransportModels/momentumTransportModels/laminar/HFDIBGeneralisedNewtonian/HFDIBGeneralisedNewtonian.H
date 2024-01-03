@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2019-2020 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018-2020 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -22,32 +22,22 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::HFDIBLaminarModels::HFDIBGiesekus
+    Foam::HFDIBLaminarModels::HFDIBGeneralisedNewtonian
 
 Description
-    HFDIBGiesekus model for viscoelasticity using the upper-convected time
-    derivative of the stress tensor with support for multiple modes.
-
-    Reference:
-    \verbatim
-        HFDIBGiesekus, H., 1982.
-        A simple constitutive equation for polymer fluids based on the
-        concept of deformation-dependent tensional mobility.
-        J. Non-Newton. Fluid. 11, 69–109.
-    \endverbatim
-
-See also
-    Foam::HFDIBLaminarModels::HFDIBMaxwell
+    Turbulence model for shear-dependent Non-Newtonian flow.
 
 SourceFiles
-    HFDIBGiesekus.C
+    HFDIBGeneralisedNewtonian.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef HFDIBGiesekus_H
-#define HFDIBGiesekus_H
+#ifndef HFDIBGeneralisedNewtonian_H
+#define HFDIBGeneralisedNewtonian_H
 
-#include "HFDIBMaxwell.H"
+#include "HFDIBLaminarModel.H"
+#include "linearViscousStress.H"
+#include "generalisedNewtonianViscosityModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -57,30 +47,21 @@ namespace HFDIBLaminarModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBGiesekus Declaration
+                    Class HFDIBGeneralisedNewtonian Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicMomentumTransportModel>
-class HFDIBGiesekus
+class HFDIBGeneralisedNewtonian
 :
-    public HFDIBMaxwell<BasicMomentumTransportModel>
+    public linearViscousStress<HFDIBLaminarModel<BasicMomentumTransportModel>>
 {
+
 protected:
 
     // Protected data
 
-        // Mode coefficients
-
-            PtrList<dimensionedScalar> alphaGs_;
-
-
-    // Protected Member Functions
-
-        virtual tmp<fvSymmTensorMatrix> sigmaSource
-        (
-            const label modei,
-            volSymmTensorField& sigma
-        ) const;
+        //- Run-time selectable generalised Newtonian viscosity model
+        autoPtr<Foam::laminarModels::generalisedNewtonianViscosityModel> viscosityModel_;
 
 
 public:
@@ -90,43 +71,56 @@ public:
 
 
     //- Runtime type information
-    TypeName("Giesekus"); // Note: do not use HFDIBGiesekus
+    TypeName("generalizedNewtonian"); // Note: do not use HFDIBGeneralisedNewtonian
 
 
     // Constructors
 
         //- Construct from components
-        HFDIBGiesekus
+        HFDIBGeneralisedNewtonian
         (
             const alphaField& alpha,
             const rhoField& rho,
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const viscosity& viscosity,
-            const word& type = typeName
+            const viscosity& viscosity
         );
 
-        //- Disallow default bitwise copy construction
-        HFDIBGiesekus(const HFDIBGiesekus&) = delete;
 
+    // Selectors
+
+        //- Return a reference to the selected turbulence model
+        static autoPtr<HFDIBGeneralisedNewtonian> New
+        (
+            const alphaField& alpha,
+            const rhoField& rho,
+            const volVectorField& U,
+            const surfaceScalarField& alphaRhoPhi,
+            const surfaceScalarField& phi,
+            const viscosity& viscosity
+        );
 
 
     //- Destructor
-    virtual ~HFDIBGiesekus()
+    virtual ~HFDIBGeneralisedNewtonian()
     {}
 
 
     // Member Functions
 
-        //- Re-read model coefficients if they have changed
+        //- Read momentumTransport dictionary
         virtual bool read();
 
+        //- Return the effective viscosity
+        //  i.e. the HFDIBGeneralisedNewtonian viscosity
+        virtual tmp<volScalarField> nuEff() const;
 
-    // Member Operators
+        //- Return the effective viscosity on patch
+        virtual tmp<scalarField> nuEff(const label patchi) const;
 
-        //- Disallow default bitwise assignment
-        void operator=(const HFDIBGiesekus&) = delete;
+        //- Correct the HFDIBGeneralisedNewtonian viscosity
+        virtual void correct();
 };
 
 
@@ -138,7 +132,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "HFDIBGiesekus.C"
+    #include "HFDIBGeneralisedNewtonian.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

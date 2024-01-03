@@ -52,7 +52,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::HFDIBLaminarModel
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport
+    const viscosity& viscosity
 )
 :
     BasicHFDIBMomentumTransportModel
@@ -63,7 +63,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::HFDIBLaminarModel
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
     HFDIBLaminarDict_(this->subOrEmptyDict("laminar")), // Note: do not change to HFDIBLaminar
@@ -87,7 +87,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::New
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport
+    const viscosity& viscosity
 )
 {
     const IOdictionary modelDict
@@ -101,12 +101,11 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::New
 
     if (modelDict.found("laminar")) // Note: do not change to HFDIBLaminar
     {
-        const word modelType
-        (
-            modelDict.subDict("laminar").found("model") // Note: do not change to HFDIBLaminar
-          ? modelDict.subDict("laminar").lookup("model") // Note: do not change to HFDIBLaminar
-          : modelDict.subDict("laminar").lookup("laminarModel") // Note: do not change to HFDIBLaminar
-        );
+        const word modelType =
+            modelDict.subDict("laminar").lookupBackwardsCompatible<word> // Note: do not change to HFDIBLaminar
+            (
+                {"model", "laminarModel"} // Note: do not change to HFDIBLaminar
+            );
 
         Info<< "Selecting HFDIBLaminar stress model " << modelType << endl;
 
@@ -132,7 +131,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::New
                 U,
                 alphaRhoPhi,
                 phi,
-                transport
+                viscosity
             )
         );
     }
@@ -151,7 +150,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::New
                 U,
                 alphaRhoPhi,
                 phi,
-                transport
+                viscosity
             )
         );
     }
@@ -207,36 +206,13 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::nut
 
 template<class BasicHFDIBMomentumTransportModel>
 Foam::tmp<Foam::volScalarField>
-Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::nuEff() const
-{
-    return volScalarField::New
-    (
-        IOobject::groupName("nuEff", this->alphaRhoPhi_.group()),
-        this->nu()
-    );
-}
-
-
-template<class BasicHFDIBMomentumTransportModel>
-Foam::tmp<Foam::scalarField>
-Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::nuEff
-(
-    const label patchi
-) const
-{
-    return this->nu(patchi);
-}
-
-
-template<class BasicHFDIBMomentumTransportModel>
-Foam::tmp<Foam::volScalarField>
 Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::k() const
 {
     return volScalarField::New
     (
         IOobject::groupName("k", this->alphaRhoPhi_.group()),
         this->mesh_,
-        dimensionedScalar(sqr(this->U_.dimensions()), 0)
+        dimensionedScalar(sqr(dimVelocity), 0)
     );
 }
 
@@ -249,7 +225,20 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::epsilon() const
     (
         IOobject::groupName("epsilon", this->alphaRhoPhi_.group()),
         this->mesh_,
-        dimensionedScalar(sqr(this->U_.dimensions())/dimTime, 0)
+        dimensionedScalar(sqr(dimVelocity)/dimTime, 0)
+    );
+}
+
+
+template<class BasicHFDIBMomentumTransportModel>
+Foam::tmp<Foam::volScalarField>
+Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::omega() const
+{
+    return volScalarField::New
+    (
+        IOobject::groupName("omega", this->alphaRhoPhi_.group()),
+        this->mesh_,
+        dimensionedScalar(dimless/dimTime, 0)
     );
 }
 
@@ -260,7 +249,7 @@ Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::sigma() const
 {
     return volSymmTensorField::New
     (
-        IOobject::groupName("R", this->alphaRhoPhi_.group()),
+        IOobject::groupName("sigma", this->alphaRhoPhi_.group()),
         this->mesh_,
         dimensionedSymmTensor(sqr(this->U_.dimensions()), Zero)
     );
@@ -279,5 +268,6 @@ void Foam::HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::correct(openHFDI
 {
     BasicHFDIBMomentumTransportModel::correct();
 }
+
 
 // ************************************************************************* //

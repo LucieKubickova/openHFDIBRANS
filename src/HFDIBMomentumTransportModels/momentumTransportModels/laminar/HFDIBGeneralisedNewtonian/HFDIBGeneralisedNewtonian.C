@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2019-2020 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2018-2020 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -23,8 +23,12 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "HFDIBGiesekus.H"
-#include "addToRunTimeSelectionTable.H"
+#include "HFDIBGeneralisedNewtonian.H"
+#include "volFields.H"
+#include "surfaceFields.H"
+#include "fvcGrad.H"
+#include "fvcDiv.H"
+#include "fvmLaplacian.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -33,74 +37,81 @@ namespace Foam
 namespace HFDIBLaminarModels
 {
 
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
-
-template<class BasicMomentumTransportModel>
-tmp<fvSymmTensorMatrix>
-HFDIBGiesekus<BasicMomentumTransportModel>::sigmaSource
-(
-    const label modei,
-    volSymmTensorField& sigma
-) const
-{
-    return fvm::Su
-    (
-        this->alpha_*this->rho_
-       *alphaGs_[modei]*innerSqr(sigma)/this->nuM_, sigma
-    )
-  - fvm::Sp(this->alpha_*this->rho_/this->lambdas_[modei], sigma);
-}
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-HFDIBGiesekus<BasicMomentumTransportModel>::HFDIBGiesekus
+HFDIBGeneralisedNewtonian<BasicMomentumTransportModel>::HFDIBGeneralisedNewtonian
 (
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const viscosity& viscosity,
-    const word& type
+    const viscosity& viscosity
 )
 :
-    HFDIBMaxwell<BasicMomentumTransportModel>
+    linearViscousStress<HFDIBLaminarModel<BasicMomentumTransportModel>>
     (
+        typeName,
         alpha,
         rho,
         U,
         alphaRhoPhi,
         phi,
-        viscosity,
-        type
+        viscosity
     ),
 
-    alphaGs_(this->readModeCoefficients("alphaG", dimless))
-{
-    if (type == typeName)
-    {
-        this->printCoeffs(type);
-    }
-}
+    viscosityModel_
+    (
+        Foam::laminarModels::generalisedNewtonianViscosityModel::New
+        (
+            this->coeffDict_,
+            viscosity,
+            U
+        )
+    )
+{}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-bool HFDIBGiesekus<BasicMomentumTransportModel>::read()
+bool HFDIBGeneralisedNewtonian<BasicMomentumTransportModel>::read()
 {
-    if (HFDIBMaxwell<BasicMomentumTransportModel>::read())
-    {
-        alphaGs_ = this->readModeCoefficients("alphaG", dimless);
+    viscosityModel_->read(this->coeffDict_);
 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return true;
+}
+
+
+template<class BasicMomentumTransportModel>
+tmp<volScalarField>
+HFDIBGeneralisedNewtonian<BasicMomentumTransportModel>::nuEff() const
+{
+    return volScalarField::New
+    (
+        IOobject::groupName("nuEff", this->alphaRhoPhi_.group()),
+        viscosityModel_->nu()
+    );
+}
+
+
+template<class BasicMomentumTransportModel>
+tmp<scalarField>
+HFDIBGeneralisedNewtonian<BasicMomentumTransportModel>::nuEff
+(
+    const label patchi
+) const
+{
+    return viscosityModel_->nu(patchi);
+}
+
+
+template<class BasicMomentumTransportModel>
+void HFDIBGeneralisedNewtonian<BasicMomentumTransportModel>::correct()
+{
+    viscosityModel_->correct();
+    HFDIBLaminarModel<BasicMomentumTransportModel>::correct();
 }
 
 

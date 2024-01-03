@@ -24,7 +24,8 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "HFDIBMaxwell.H"
-#include "fvOptions.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 #include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -37,7 +38,7 @@ namespace HFDIBLaminarModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
-Foam::PtrList<Foam::dimensionedScalar>
+PtrList<dimensionedScalar>
 HFDIBMaxwell<BasicMomentumTransportModel>::readModeCoefficients
 (
     const word& name,
@@ -108,7 +109,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::HFDIBMaxwell
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -120,7 +121,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::HFDIBMaxwell
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     ),
 
     modeCoefficients_
@@ -135,15 +136,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::HFDIBMaxwell
 
     nModes_(modeCoefficients_.size() ? modeCoefficients_.size() : 1),
 
-    nuM_
-    (
-        dimensioned<scalar>
-        (
-            "nuM",
-            dimViscosity,
-            this->coeffDict_.lookup("nuM")
-        )
-    ),
+    nuM_("nuM", dimViscosity, this->coeffDict_.lookup("nuM")),
 
     lambdas_(readModeCoefficients("lambda", dimTime)),
 
@@ -166,7 +159,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::HFDIBMaxwell
 
         forAll(sigmas_, modei)
         {
-            IOobject header
+            typeIOobject<volSymmTensorField> header
             (
                 IOobject::groupName("sigma" + name(modei), alphaRhoPhi.group()),
                 this->runTime_.timeName(),
@@ -175,7 +168,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::HFDIBMaxwell
             );
 
             // Check if mode field exists and can be read
-            if (header.typeHeaderOk<volSymmTensorField>(true))
+            if (header.headerOk())
             {
                 Info<< "    Reading mode stress field "
                     << header.name() << endl;
@@ -238,7 +231,7 @@ bool HFDIBMaxwell<BasicMomentumTransportModel>::read()
             this->coeffDict().lookup("modes") >> modeCoefficients_;
         }
 
-        nuM_.readIfPresent(this->coeffDict());
+        nuM_.read(this->coeffDict());
 
         lambdas_ = readModeCoefficients("lambda", dimTime);
 
@@ -252,16 +245,35 @@ bool HFDIBMaxwell<BasicMomentumTransportModel>::read()
 
 
 template<class BasicMomentumTransportModel>
-tmp<Foam::volSymmTensorField>
-HFDIBMaxwell<BasicMomentumTransportModel>::sigma() const
+tmp<volScalarField> HFDIBMaxwell<BasicMomentumTransportModel>::nuEff() const
+{
+    return volScalarField::New
+    (
+        IOobject::groupName("nuEff", this->alphaRhoPhi_.group()),
+        this->nu()
+    );
+}
+
+
+template<class BasicMomentumTransportModel>
+tmp<scalarField> HFDIBMaxwell<BasicMomentumTransportModel>::nuEff
+(
+    const label patchi
+) const
+{
+    return this->nu(patchi);
+}
+
+
+template<class BasicMomentumTransportModel>
+tmp<volSymmTensorField> HFDIBMaxwell<BasicMomentumTransportModel>::sigma() const
 {
     return sigma_;
 }
 
 
 template<class BasicMomentumTransportModel>
-tmp<Foam::volSymmTensorField>
-HFDIBMaxwell<BasicMomentumTransportModel>::devTau() const
+tmp<volSymmTensorField> HFDIBMaxwell<BasicMomentumTransportModel>::devTau() const
 {
     return volSymmTensorField::New
     (
@@ -274,8 +286,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::devTau() const
 
 
 template<class BasicMomentumTransportModel>
-tmp<Foam::fvVectorMatrix>
-HFDIBMaxwell<BasicMomentumTransportModel>::divDevTau
+tmp<fvVectorMatrix> HFDIBMaxwell<BasicMomentumTransportModel>::divDevTau
 (
     volVectorField& U
 ) const
@@ -294,7 +305,7 @@ HFDIBMaxwell<BasicMomentumTransportModel>::divDevTau
 
 
 template<class BasicMomentumTransportModel>
-tmp<Foam::fvVectorMatrix>
+tmp<fvVectorMatrix>
 HFDIBMaxwell<BasicMomentumTransportModel>::divDevTau
 (
     const volScalarField& rho,
@@ -322,7 +333,11 @@ void HFDIBMaxwell<BasicMomentumTransportModel>::correct()
     const rhoField& rho = this->rho_;
     const surfaceScalarField& alphaRhoPhi = this->alphaRhoPhi_;
     const volVectorField& U = this->U_;
-    fv::options& fvOptions(fv::options::New(this->mesh_));
+    const Foam::fvModels& fvModels(Foam::fvModels::New(this->mesh_));
+    const Foam::fvConstraints& fvConstraints
+    (
+        Foam::fvConstraints::New(this->mesh_)
+    );
 
     HFDIBLaminarModel<BasicMomentumTransportModel>::correct();
 
@@ -369,13 +384,13 @@ void HFDIBMaxwell<BasicMomentumTransportModel>::correct()
          ==
             alpha*rho*P
           + sigmaSource(modei, sigma)
-          + fvOptions(alpha, rho, sigma)
+          + fvModels.source(alpha, rho, sigma)
         );
 
         sigmaEqn.relax();
-        fvOptions.constrain(sigmaEqn);
+        fvConstraints.constrain(sigmaEqn);
         sigmaEqn.solve("sigma");
-        fvOptions.correct(sigma);
+        fvConstraints.constrain(sigma);
     }
 
     if (sigmas_.size())

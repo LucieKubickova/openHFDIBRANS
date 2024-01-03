@@ -35,7 +35,7 @@ SourceFiles
 #ifndef HFDIBLaminarModel_H
 #define HFDIBLaminarModel_H
 
-#include "HFDIBMomentumTransportModel.H"
+#include "HFDIBmomentumTransportModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,7 +43,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBLaminarModel Declaration
+                        Class HFDIBLaminarModel Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicHFDIBMomentumTransportModel>
@@ -76,7 +76,6 @@ public:
 
     typedef typename BasicHFDIBMomentumTransportModel::alphaField alphaField;
     typedef typename BasicHFDIBMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicHFDIBMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information
@@ -96,9 +95,9 @@ public:
                 const volVectorField& U,
                 const surfaceScalarField& alphaRhoPhi,
                 const surfaceScalarField& phi,
-                const transportModel& transport
+                const viscosity& viscosity
             ),
-            (alpha, rho, U, alphaRhoPhi, phi, transport)
+            (alpha, rho, U, alphaRhoPhi, phi, viscosity)
         );
 
 
@@ -113,7 +112,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
         //- Disallow default bitwise copy construction
@@ -130,7 +129,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
 
@@ -144,42 +143,43 @@ public:
         //- Read model coefficients if they have changed
         virtual bool read();
 
+        //- Const access to the coefficients dictionary
+        virtual const dictionary& coeffDict() const
+        {
+            return coeffDict_;
+        }
 
-        // Access
+        //- Return the turbulence viscosity, i.e. 0 for HFDIBLaminar flow
+        virtual tmp<volScalarField> nut() const;
 
-            //- Const access to the coefficients dictionary
-            virtual const dictionary& coeffDict() const
-            {
-                return coeffDict_;
-            }
+        //- Return the turbulence viscosity on patch
+        virtual tmp<scalarField> nut(const label patchi) const;
 
-            //- Return the turbulence viscosity, i.e. 0 for HFDIBLaminar flow
-            virtual tmp<volScalarField> nut() const;
+        //- Return the effective viscosity, i.e. the HFDIBLaminar viscosity
+        virtual tmp<volScalarField> nuEff() const = 0;
 
-            //- Return the turbulence viscosity on patch
-            virtual tmp<scalarField> nut(const label patchi) const;
+        //- Return the effective viscosity on patch
+        virtual tmp<scalarField> nuEff(const label patchi) const = 0;
 
-            //- Return the effective viscosity, i.e. the HFDIBLaminar viscosity
-            virtual tmp<volScalarField> nuEff() const;
+        //- Return the turbulence kinetic energy, i.e. 0 for HFDIBLaminar flow
+        virtual tmp<volScalarField> k() const;
 
-            //- Return the effective viscosity on patch
-            virtual tmp<scalarField> nuEff(const label patchi) const;
+        //- Return the turbulence kinetic energy dissipation rate,
+        //  i.e. 0 for HFDIBLaminar flow
+        virtual tmp<volScalarField> epsilon() const;
 
-            //- Return the turbulence kinetic energy, i.e. 0 for HFDIBLaminar flow
-            virtual tmp<volScalarField> k() const;
+        //- Return the turbulence specific dissipation rate,
+        //  i.e. 0 for laminar flow
+        virtual tmp<volScalarField> omega() const;
 
-            //- Return the turbulence kinetic energy dissipation rate,
-            //  i.e. 0 for HFDIBLaminar flow
-            virtual tmp<volScalarField> epsilon() const;
+        //- Return the stress tensor [m^2/s^2], i.e. 0 for HFDIBLaminar flow
+        virtual tmp<volSymmTensorField> sigma() const;
 
-            //- Return the stress tensor [m^2/s^2], i.e. 0 for HFDIBLaminar flow
-            virtual tmp<volSymmTensorField> sigma() const;
+        //- Correct the HFDIBLaminar viscosity
+        virtual void correct();
 
-            //- Correct the HFDIBLaminar transport
-            virtual void correct();
-
-            //- second image of the correct function to accept arguments
-            virtual void correct(openHFDIBRANS& HFDIBRANS);
+        //- second image of the correct function to accept arguments
+        virtual void correct(openHFDIBRANS& HFDIBRANS);
 
 
     // Member Operators

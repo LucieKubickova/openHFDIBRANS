@@ -39,18 +39,18 @@ namespace HFDIBLaminarModels
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-template<class BasicMomentumTransportModel>
-HFDIBStokes<BasicMomentumTransportModel>::HFDIBStokes
+template<class BasicHFDIBMomentumTransportModel>
+HFDIBStokes<BasicHFDIBMomentumTransportModel>::HFDIBStokes
 (
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport
+    const viscosity& viscosity
 )
 :
-    linearViscousStress<HFDIBLaminarModel<BasicMomentumTransportModel>>
+    linearViscousStress<HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>>
     (
         typeName,
         alpha,
@@ -58,58 +58,29 @@ HFDIBStokes<BasicMomentumTransportModel>::HFDIBStokes
         U,
         alphaRhoPhi,
         phi,
-        transport
+        viscosity
     )
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class BasicMomentumTransportModel>
-const dictionary&
-HFDIBStokes<BasicMomentumTransportModel>::coeffDict() const
+template<class BasicHFDIBMomentumTransportModel>
+const dictionary& HFDIBStokes<BasicHFDIBMomentumTransportModel>::coeffDict() const
 {
     return dictionary::null;
 }
 
 
-template<class BasicMomentumTransportModel>
-bool HFDIBStokes<BasicMomentumTransportModel>::read()
+template<class BasicHFDIBMomentumTransportModel>
+bool HFDIBStokes<BasicHFDIBMomentumTransportModel>::read()
 {
     return true;
 }
 
 
-template<class BasicMomentumTransportModel>
-tmp<volScalarField>
-HFDIBStokes<BasicMomentumTransportModel>::nut() const
-{
-    return volScalarField::New
-    (
-        IOobject::groupName("nut", this->alphaRhoPhi_.group()),
-        this->mesh_,
-        dimensionedScalar(dimViscosity, 0)
-    );
-}
-
-
-template<class BasicMomentumTransportModel>
-tmp<scalarField>
-HFDIBStokes<BasicMomentumTransportModel>::nut
-(
-    const label patchi
-) const
-{
-    return tmp<scalarField>
-    (
-        new scalarField(this->mesh_.boundary()[patchi].size(), 0.0)
-    );
-}
-
-
-template<class BasicMomentumTransportModel>
-tmp<volScalarField>
-HFDIBStokes<BasicMomentumTransportModel>::nuEff() const
+template<class BasicHFDIBMomentumTransportModel>
+tmp<volScalarField> HFDIBStokes<BasicHFDIBMomentumTransportModel>::nuEff() const
 {
     return volScalarField::New
     (
@@ -119,9 +90,8 @@ HFDIBStokes<BasicMomentumTransportModel>::nuEff() const
 }
 
 
-template<class BasicMomentumTransportModel>
-tmp<scalarField>
-HFDIBStokes<BasicMomentumTransportModel>::nuEff
+template<class BasicHFDIBMomentumTransportModel>
+tmp<scalarField> HFDIBStokes<BasicHFDIBMomentumTransportModel>::nuEff
 (
     const label patchi
 ) const
@@ -130,49 +100,10 @@ HFDIBStokes<BasicMomentumTransportModel>::nuEff
 }
 
 
-template<class BasicMomentumTransportModel>
-tmp<volScalarField>
-HFDIBStokes<BasicMomentumTransportModel>::k() const
+template<class BasicHFDIBMomentumTransportModel>
+void HFDIBStokes<BasicHFDIBMomentumTransportModel>::correct()
 {
-    return volScalarField::New
-    (
-        IOobject::groupName("k", this->alphaRhoPhi_.group()),
-        this->mesh_,
-        dimensionedScalar(sqr(this->U_.dimensions()), 0)
-    );
-}
-
-
-template<class BasicMomentumTransportModel>
-tmp<volScalarField>
-HFDIBStokes<BasicMomentumTransportModel>::epsilon() const
-{
-    return volScalarField::New
-    (
-        IOobject::groupName("epsilon", this->alphaRhoPhi_.group()),
-        this->mesh_,
-        dimensionedScalar(sqr(this->U_.dimensions())/dimTime, 0)
-    );
-}
-
-
-template<class BasicMomentumTransportModel>
-tmp<volSymmTensorField>
-HFDIBStokes<BasicMomentumTransportModel>::sigma() const
-{
-    return volSymmTensorField::New
-    (
-        IOobject::groupName("R", this->alphaRhoPhi_.group()),
-        this->mesh_,
-        dimensionedSymmTensor(sqr(this->U_.dimensions()), Zero)
-    );
-}
-
-
-template<class BasicMomentumTransportModel>
-void HFDIBStokes<BasicMomentumTransportModel>::correct()
-{
-    HFDIBLaminarModel<BasicMomentumTransportModel>::correct();
+    HFDIBLaminarModel<BasicHFDIBMomentumTransportModel>::correct();
 }
 
 

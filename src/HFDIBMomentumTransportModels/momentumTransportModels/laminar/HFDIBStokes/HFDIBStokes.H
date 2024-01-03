@@ -59,7 +59,6 @@ public:
 
     typedef typename BasicMomentumTransportModel::alphaField alphaField;
     typedef typename BasicMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information
@@ -76,7 +75,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
 
@@ -90,7 +89,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport
+            const viscosity& viscosity
         );
 
 
@@ -107,27 +106,11 @@ public:
         //- Read momentumTransport dictionary
         virtual bool read();
 
-        //- Return the turbulence viscosity, i.e. 0 for HFDIBStokes flow
-        virtual tmp<volScalarField> nut() const;
-
-        //- Return the turbulence viscosity on patch
-        virtual tmp<scalarField> nut(const label patchi) const;
-
         //- Return the effective viscosity, i.e. the HFDIBStokes viscosity
         virtual tmp<volScalarField> nuEff() const;
 
         //- Return the effective viscosity on patch
         virtual tmp<scalarField> nuEff(const label patchi) const;
-
-        //- Return the turbulence kinetic energy, i.e. 0 for HFDIBStokes flow
-        virtual tmp<volScalarField> k() const;
-
-        //- Return the turbulence kinetic energy dissipation rate,
-        //  i.e. 0 for HFDIBStokes flow
-        virtual tmp<volScalarField> epsilon() const;
-
-        //- Return the stress tensor [m^2/s^2], i.e. 0 for HFDIBStokes flow
-        virtual tmp<volSymmTensorField> sigma() const;
 
         //- Correct the HFDIBStokes viscosity
         virtual void correct();

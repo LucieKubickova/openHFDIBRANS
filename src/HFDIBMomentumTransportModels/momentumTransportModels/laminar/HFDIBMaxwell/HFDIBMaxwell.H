@@ -111,7 +111,7 @@ protected:
             const dimensionSet& dims
         ) const;
 
-        //- Return the turbulence viscosity
+        //- Return the non-Newtonian viscosity
         tmp<volScalarField> nu0() const
         {
             return this->nu() + nuM_;
@@ -128,7 +128,6 @@ public:
 
     typedef typename BasicMomentumTransportModel::alphaField alphaField;
     typedef typename BasicMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicMomentumTransportModel::transportModel transportModel;
 
 
     //- Runtime type information
@@ -145,7 +144,7 @@ public:
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
             const surfaceScalarField& phi,
-            const transportModel& transport,
+            const viscosity& viscosity,
             const word& type = typeName
         );
 
@@ -159,6 +158,12 @@ public:
 
         //- Read model coefficients if they have changed
         virtual bool read();
+
+        //- Return the effective viscosity, i.e. the laminar viscosity
+        virtual tmp<volScalarField> nuEff() const;
+
+        //- Return the effective viscosity on patch
+        virtual tmp<scalarField> nuEff(const label patchi) const;
 
         //- Return the stress tensor [m^2/s^2]
         virtual tmp<volSymmTensorField> sigma() const;

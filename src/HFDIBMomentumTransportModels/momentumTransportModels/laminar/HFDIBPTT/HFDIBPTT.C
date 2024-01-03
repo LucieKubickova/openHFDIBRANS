@@ -63,7 +63,7 @@ HFDIBPTT<BasicMomentumTransportModel>::HFDIBPTT
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
     const surfaceScalarField& phi,
-    const transportModel& transport,
+    const viscosity& viscosity,
     const word& type
 )
 :
@@ -74,7 +74,7 @@ HFDIBPTT<BasicMomentumTransportModel>::HFDIBPTT
         U,
         alphaRhoPhi,
         phi,
-        transport,
+        viscosity,
         type
     ),
 
