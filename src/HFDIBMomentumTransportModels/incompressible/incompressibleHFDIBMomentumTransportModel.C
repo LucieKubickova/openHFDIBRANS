@@ -35,73 +35,101 @@ Contributors
 \*---------------------------------------------------------------------------*/
 
 #include "incompressibleHFDIBMomentumTransportModel.H"
+#include "fvMatrix.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-namespace Foam
-{
-    defineTypeNameAndDebug(incompressibleHFDIBMomentumTransportModel, 0);
-}
+// namespace Foam
+// {
+//     defineTypeNameAndDebug(incompressibleHFDIBMomentumTransportModel, 0);
+// }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::incompressibleHFDIBMomentumTransportModel::incompressibleHFDIBMomentumTransportModel
 (
-    const geometricOneField&,
+    const word& type,
+    const geometricOneField& alpha,
+    const geometricOneField& rho,
     const volVectorField& U,
     const surfaceScalarField& alphaRhoPhi,
-    const surfaceScalarField& phi
+    const surfaceScalarField& phi,
+    const viscosity& viscosity
 )
 :
-    HFDIBmomentumTransportModel
-    (
-        U,
-        alphaRhoPhi,
-        phi
-    )
+    HFDIBmomentumTransportModel(U, alphaRhoPhi, phi, viscosity),
+    alpha_(alpha),
+    rho_(rho)
 {}
 
 
-Foam::tmp<Foam::volScalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::mu() const
+// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
+
+Foam::autoPtr<Foam::incompressibleHFDIBMomentumTransportModel>
+Foam::incompressibleHFDIBMomentumTransportModel::New
+(
+    const volVectorField& U,
+    const surfaceScalarField& phi,
+    const viscosity& viscosity
+)
 {
-    return nu();
+    return HFDIBmomentumTransportModel::New<incompressibleHFDIBMomentumTransportModel>
+    (
+        geometricOneField(),
+        geometricOneField(),
+        U,
+        phi,
+        phi,
+        viscosity
+    );
 }
 
 
-Foam::tmp<Foam::scalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::mu(const label patchi) const
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::tmp<Foam::volSymmTensorField>
+Foam::incompressibleHFDIBMomentumTransportModel::devSigma() const
 {
-    return nu(patchi);
+    return devTau();
 }
 
 
-Foam::tmp<Foam::volScalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::mut() const
+Foam::tmp<Foam::fvVectorMatrix>
+Foam::incompressibleHFDIBMomentumTransportModel::divDevSigma(volVectorField& U) const
 {
-    return nut();
+    return divDevTau(U);
 }
 
 
-Foam::tmp<Foam::scalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::mut(const label patchi) const
+Foam::tmp<Foam::volSymmTensorField>
+Foam::incompressibleHFDIBMomentumTransportModel::devTau() const
 {
-    return nut(patchi);
+    NotImplemented;
+    return devSigma();
 }
 
 
-Foam::tmp<Foam::volScalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::muEff() const
+Foam::tmp<Foam::fvVectorMatrix>
+Foam::incompressibleHFDIBMomentumTransportModel::divDevTau
+(
+    volVectorField& U
+) const
 {
-    return nuEff();
+    NotImplemented;
+    return divDevSigma(U);
 }
 
 
-Foam::tmp<Foam::scalarField>
-Foam::incompressibleHFDIBMomentumTransportModel::muEff(const label patchi) const
+Foam::tmp<Foam::fvVectorMatrix>
+Foam::incompressibleHFDIBMomentumTransportModel::divDevTau
+(
+    const volScalarField& rho,
+    volVectorField& U
+) const
 {
-    return nuEff(patchi);
+    NotImplemented;
+    return divDevSigma(U);
 }
 
 

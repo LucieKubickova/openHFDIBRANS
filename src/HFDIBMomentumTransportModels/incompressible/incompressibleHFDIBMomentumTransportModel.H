@@ -39,53 +39,84 @@ Contributors
 
 #include "momentumTransportModel.H"
 #include "HFDIBmomentumTransportModel.H"
-#include "geometricOneField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// Forward declarations
-class fvMesh;
-
 /*---------------------------------------------------------------------------*\
-                Class incompressibleHFDIBMomentumTransportModel Declaration
+            Class incompressibleHFDIBMomentumTransportModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class incompressibleHFDIBMomentumTransportModel
 :
     public HFDIBmomentumTransportModel
 {
+
+public:
+
+    typedef geometricOneField alphaField;
+    typedef geometricOneField rhoField;
+
+
 protected:
 
     // Protected data
 
-        geometricOneField rho_;
+        alphaField alpha_;
+        rhoField rho_;
 
 
 public:
 
     //- Runtime type information
-    TypeName(HFDIBmomentumTransportModel::typeName_());
+    // TypeName(HFDIBmomentumTransportModel::typeName_());
+
+
+    // Declare run-time constructor selection table
+
+        declareRunTimeNewSelectionTable
+        (
+            autoPtr,
+            incompressibleHFDIBMomentumTransportModel,
+            dictionary,
+            (
+                const alphaField& alpha,
+                const rhoField& rho,
+                const volVectorField& U,
+                const surfaceScalarField& alphaRhoPhi,
+                const surfaceScalarField& phi,
+                const viscosity& viscosity
+            ),
+            (alpha, rho, U, alphaRhoPhi, phi, viscosity)
+        );
 
 
     // Constructors
 
-        //- Construct from components
+        //- Construct
         incompressibleHFDIBMomentumTransportModel
         (
+            const word& type,
+            const geometricOneField& alpha,
             const geometricOneField& rho,
             const volVectorField& U,
             const surfaceScalarField& alphaRhoPhi,
-            const surfaceScalarField& phi
+            const surfaceScalarField& phi,
+            const viscosity& viscosity
         );
 
-        //- Disallow default bitwise copy construction
-        incompressibleHFDIBMomentumTransportModel
+
+    // Selectors
+
+        //- Return a reference to the selected turbulence model
+        static autoPtr<incompressibleHFDIBMomentumTransportModel> New
         (
-            const incompressibleHFDIBMomentumTransportModel&
-        ) = delete;
+            const volVectorField& U,
+            const surfaceScalarField& phi,
+            const viscosity& viscosity
+        );
 
 
     //- Destructor
@@ -95,41 +126,62 @@ public:
 
     // Member Functions
 
-        //- Return the laminar dynamic viscosity
-        virtual tmp<volScalarField> mu() const;
+        //- Access function to phase fraction
+        const alphaField& alpha() const
+        {
+            return alpha_;
+        }
 
-        //- Return the laminar dynamic viscosity on patch
-        virtual tmp<scalarField> mu(const label patchi) const;
+        //- Return the density field
+        const rhoField& rho() const
+        {
+            return rho_;
+        }
 
-        //- Return the turbulence dynamic viscosity
-        virtual tmp<volScalarField> mut() const;
-
-        //- Return the turbulence dynamic viscosity on patch
-        virtual tmp<scalarField> mut(const label patchi) const;
-
-        //- Return the effective dynamic viscosity
-        virtual tmp<volScalarField> muEff() const;
-
-        //- Return the effective dynamic viscosity on patch
-        virtual tmp<scalarField> muEff(const label patchi) const;
-
-        //- Return the effective stress tensor including the laminar stress
-        virtual tmp<volSymmTensorField> devSigma() const = 0;
+        //- Return the effective stress tensor
+        virtual tmp<volSymmTensorField> devSigma() const;
 
         //- Return the source term for the momentum equation
-        virtual tmp<fvVectorMatrix> divDevSigma(volVectorField& U) const = 0;
+        virtual tmp<fvVectorMatrix> divDevSigma(volVectorField& U) const;
 
+        //- Return the effective stress tensor
+        virtual tmp<volSymmTensorField> devTau() const;
 
-    // Member Operators
+        //- Return the source term for the momentum equation
+        virtual tmp<fvVectorMatrix> divDevTau(volVectorField& U) const;
 
-        //- Disallow default bitwise assignment
-        void operator=(const incompressibleHFDIBMomentumTransportModel&) = delete;
+        //- Return the source term for the momentum equation
+        virtual tmp<fvVectorMatrix> divDevTau
+        (
+            const volScalarField& rho,
+            volVectorField& U
+        ) const;
 };
+
+
+namespace incompressible
+{
+    typedef incompressibleHFDIBMomentumTransportModel HFDIBmomentumTransportModel;
+
+    template<class IncompressibleHFDIBMomentumTransportModel>
+    autoPtr<IncompressibleHFDIBMomentumTransportModel> New
+    (
+        const volVectorField& U,
+        const surfaceScalarField& phi,
+        const viscosity& viscosity
+    );
+}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#ifdef NoRepository
+    #include "incompressibleHFDIBMomentumTransportModelTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
