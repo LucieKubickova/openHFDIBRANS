@@ -85,19 +85,18 @@ volVectorField f
 
 #include "createPhi.H"
 
-label pRefCell = 0;
-scalar pRefValue = 0.0;
-setRefCell(p, simple.dict(), pRefCell, pRefValue);
-mesh.setFluxRequired(p.name());
+pressureReference pressureReference(p, simple.dict());
 
-#include "readGravitationalAcceleration.H"
+mesh.schemes().setFluxRequired(p.name());
 
-singlePhaseTransportModel laminarTransport(U, phi);
+autoPtr<viscosityModel> viscosity(viscosityModel::New(mesh));
 
 autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
 (
-    incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+    incompressible::HFDIBmomentumTransportModel::New(U, phi, viscosity)
 );
 
+#include "readGravitationalAcceleration.H"
 #include "createMRF.H"
-#include "createFvOptions.H"
+#include "createFvModels.H"
+#include "createFvConstraints.H"

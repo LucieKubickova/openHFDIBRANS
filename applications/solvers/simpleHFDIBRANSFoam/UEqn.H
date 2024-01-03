@@ -1,37 +1,41 @@
-// Momentum predictor
-fvVectorMatrix UEqn
-(
-    fvm::div(phi, U)
-  + MRF.DDt(U)
-  + turbulence->divDevSigma(U)
- ==
-    fvOptions(U)
-  + g
-);
+    // Momentum predictor
 
-UEqn.relax();
+    MRF.correctBoundaryVelocity(U);
 
-fvOptions.constrain(UEqn);
+    tmp<fvVectorMatrix> tUEqn
+    (
+        fvm::div(phi, U)
+      + MRF.DDt(U)
+      + turbulence->divDevSigma(U)
+     ==
+        fvModels.source(U)
+      + g
+    );
+    fvVectorMatrix& UEqn = tUEqn.ref();
 
-HFDIBRANS.computeUi(U, Ui);
-HFDIBRANS.updateSurface(surface, surfaceType);
+    UEqn.relax();
 
-if (simple.momentumPredictor())
-{
-    for (label nCorr = 0; nCorr < maxUEqnIters; nCorr++)
+    fvConstraints.constrain(UEqn);
+
+    HFDIBRANS.computeUi(U, Ui);
+    HFDIBRANS.updateSurface(surface, surfaceType);
+    
+    if (simple.momentumPredictor())
     {
-        f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
-        solve(UEqn == -fvc::grad(p) + f);
-
-        if (max(mag(surface*(Ui - U))).value() < tolUEqn)
+        for (label nCorr = 0; nCorr < maxUEqnIters; nCorr++)
         {
-            Info << "HFDIBRAS: U converged to Ui within max tolerance " << tolUEqn << endl;
-            break;
+            f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+            solve(UEqn == -fvc::grad(p) + f);
+    
+            if (max(mag(surface*(Ui - U))).value() < tolUEqn)
+            {
+                Info << "HFDIBRAS: U converged to Ui within max tolerance " << tolUEqn << endl;
+                break;
+            }
+    
+            // apply correction 
+            U += 1.0*surface*(Ui - U);
         }
-
-        // apply correction 
-        U += 1.0*surface*(Ui - U);
+    
+        fvConstraints.constrain(U);
     }
-
-    fvOptions.correct(U);
-}

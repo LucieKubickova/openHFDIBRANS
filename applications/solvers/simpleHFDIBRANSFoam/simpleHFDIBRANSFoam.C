@@ -35,18 +35,18 @@ Contributors
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-#include "singlePhaseTransportModel.H"
-#include "kinematicHFDIBMomentumTransportModel.H"
+#include "viscosityModel.H"
+#include "incompressibleHFDIBMomentumTransportModels.H"
 #include "simpleControl.H"
-#include "fvOptions.H"
+#include "pressureReference.H"
+#include "fvModels.H"
+#include "fvConstraints.H"
 
-#include "addToRunTimeSelectionTable.H"
-#include "HFDIBMomentumTransportModel.H"
-#include "IncompressibleHFDIBMomentumTransportModel.H"
-#include "transportModel.H"
+#include "HFDIBmomentumTransportModel.H"
 #include "HFDIBRASModel.H"
+#include "HFDIBLaminarModel.H"
 
-#include "triSurfaceMesh.H"
+#include "surfMesh.H"
 #include "openHFDIBRANS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -87,11 +87,15 @@ int main(int argc, char *argv[])
     {
         Info << "Time = " << runTime.timeName() << nl << endl;
 
-        // --- Pressure-velocity SIMPLE corrector
-        #include "UEqn.H"
-        #include "pEqn.H"
+        fvModels.correct();
 
-        laminarTransport.correct();
+        // --- Pressure-velocity SIMPLE corrector
+        {
+            #include "UEqn.H"
+            #include "pEqn.H"
+        }
+
+        viscosity->correct();
         turbulence->correct(HFDIBRANS);
 
         runTime.write();
