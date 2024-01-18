@@ -91,15 +91,29 @@ HFDIBDEMDict_
         IOobject::MUST_READ,
         IOobject::NO_WRITE
     )
+),
+fvSchemes_
+(
+    IOobject
+    (
+        "fvSchemes",
+        "system",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
 )
 {
 	// read HFDIBDEM dictionary
-    HFDIBInterpDict_ = HFDIBDEMDict_.subDict("interpolationSchemes");
+    excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
     HFDIBCutCellDict_ = HFDIBDEMDict_.subDict("cutCellCorrection");
     ccDS_ = readScalar(HFDIBCutCellDict_.lookup("ds"));
+
+    // read fvSchemes
+    HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
 
     // compute average cell volume
     VAve_ = 0.0;

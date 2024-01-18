@@ -65,6 +65,7 @@ class ibInterpolation
     volVectorField surfNorm_;
     scalar thrSurf_;
     scalar intSpan_;
+    bool excludeWalls_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
@@ -76,7 +77,8 @@ class ibInterpolation
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
-    dictionary HFDIBInterpDict_;
+    IOdictionary fvSchemes_;
+    dictionary HFDIBInnerSchemes_;
     dictionary HFDIBCutCellDict_;
 
     // cut cell correction

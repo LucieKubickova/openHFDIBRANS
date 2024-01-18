@@ -71,10 +71,10 @@ ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, boundaryAlpha_),
 ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, boundaryAlpha_)
 {
     // read HFDIBDEM dictionary
-    HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
+    save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
 
     // read fvSchemes
-    HFDIBSchemes_ = fvSchemes_.subDict("HFDIBSchemes");
+    HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
 
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
@@ -206,7 +206,7 @@ void openHFDIBRANS::computeKi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream kIBScheme = HFDIBSchemes_.lookup("k");
+    ITstream kIBScheme = HFDIBOuterSchemes_.lookup("k");
     word interpType = kIBScheme[0].wordToken();
 
     // interpolation

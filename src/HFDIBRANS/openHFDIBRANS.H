@@ -60,7 +60,7 @@ class openHFDIBRANS
     // dictionaries
     IOdictionary HFDIBDEMDict_;
     IOdictionary fvSchemes_;
-    dictionary HFDIBSchemes_;
+    dictionary HFDIBOuterSchemes_;
 
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
