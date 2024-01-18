@@ -150,7 +150,7 @@ void openHFDIBRANS::computeUi
     }
 
     // read interpolation schemes from fvSchemes
-    ITstream UIBScheme = HFDIBSchemes_.lookup("U");
+    ITstream UIBScheme = HFDIBOuterSchemes_.lookup("U");
     word interpType = UIBScheme[0].wordToken();
 
     // interpolation
