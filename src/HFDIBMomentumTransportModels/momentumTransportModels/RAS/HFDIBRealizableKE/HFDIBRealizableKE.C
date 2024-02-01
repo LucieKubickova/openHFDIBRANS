@@ -467,6 +467,8 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
         kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
         solve(kEqn == kQ_);
 
+        Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki - k)).value()) << endl;
+
         if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
         {
             Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
