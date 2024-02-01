@@ -137,8 +137,9 @@ class ibInterpolation
     void saveBoundaryCells();
     void saveCellSet(List<label>& listToSave, word fileName);
 
-    // force processing
+    // cutting fields in normal direction
     void cutFInBoundaryCells(volVectorField& f);
+    void cutUInBoundaryCells(volVectorField& U);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

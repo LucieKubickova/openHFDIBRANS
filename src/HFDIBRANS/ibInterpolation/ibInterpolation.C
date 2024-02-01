@@ -832,4 +832,31 @@ void ibInterpolation::cutFInBoundaryCells
     }
 }
 
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutUInBoundaryCells
+(
+    volVectorField& U
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell labels
+        //~ label cellI = boundaryCells_[bCell].first();
+        label outCellI = boundaryCells_[bCell].first();
+        label inCellI = boundaryCells_[bCell].second();
+
+        // compute scalar product
+        //~ scalar prodUNorm = U[cellI] & surfNorm_[cellI];
+        scalar prodUNorm = U[inCellI] & surfNorm_[outCellI];
+
+        // cut U if it aims in opposite to surfNorm
+        if (prodUNorm < 0.0)
+        {
+            //~ U[cellI] -= (U[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
+            U[inCellI] -= (U[inCellI] & surfNorm_[outCellI])*surfNorm_[outCellI];
+        }
+    }
+}
+
 // ************************************************************************* //

@@ -102,8 +102,12 @@ class openHFDIBRANS
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
 
-    // force processing
+    // cutting fields in normal direction 
     void cutFInBoundaryCells(volVectorField& f);
+    void cutUInBoundaryCells(volVectorField& U);
+
+    // enforcing Ui
+    void enforceUiInBody(volVectorField& U, volVectorField& Ui);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
