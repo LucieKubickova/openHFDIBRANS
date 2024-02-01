@@ -3,8 +3,7 @@
                        | | | |  __|  _ \_   _|  __ \  __ \  _  \ \  | |/  _  \
   ___  _ __   ___ _ __ | |_| | |_ | | | || | | |_/ / |_/ / |_| |  \ | |  |_|_/
  / _ \| '_ \ / _ \ '_ \|  _  |  _|| | | || | |  __ \  _ ||  _  | \ \| |\___  \
-| (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
- \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
+| (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  | \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
       |_|                    with R eynolds A veraged N avier S tokes equations          
 -------------------------------------------------------------------------------
@@ -75,6 +74,8 @@ int main(int argc, char *argv[])
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
     scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
     scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
+    scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
+    bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
@@ -88,8 +89,16 @@ int main(int argc, char *argv[])
         Info << "Time = " << runTime.timeName() << nl << endl;
 
         // --- Pressure-velocity SIMPLE corrector
+        //~ for (label nCorr = 0; nCorr < nUPIters; nCorr++)
+        //~ {
+            //~ #include "UEqn.H"
+            //~ #include "pEqn.H"
+        //~ }
         #include "UEqn.H"
         #include "pEqn.H"
+        //~ {
+        //~ #include "UEqn.H"
+        //~ }
 
         laminarTransport.correct();
         turbulence->correct(HFDIBRANS);

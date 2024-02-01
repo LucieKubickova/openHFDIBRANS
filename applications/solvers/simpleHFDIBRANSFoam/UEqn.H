@@ -21,7 +21,13 @@ if (simple.momentumPredictor())
     for (label nCorr = 0; nCorr < maxUEqnIters; nCorr++)
     {
         f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        if (cutForce)
+        {
+            HFDIBRANS.cutFInBoundaryCells(f);
+        }
         solve(UEqn == -fvc::grad(p) + f);
+
+        Info << "HFDIBRANS: Max error in U -> Ui is " << (max(mag(surface*(Ui - U))).value()) << endl;
 
         if (max(mag(surface*(Ui - U))).value() < tolUEqn)
         {

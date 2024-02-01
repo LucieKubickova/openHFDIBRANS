@@ -63,6 +63,7 @@ class ibInterpolation
     volVectorField surfNorm_;
     scalar thrSurf_;
     scalar intSpan_;
+    bool excludeWalls_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
@@ -83,7 +84,13 @@ class ibInterpolation
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibInterpolation
+    (
+        const fvMesh& mesh,
+        const volScalarField& body,
+        DynamicList<Tuple2<label,label>>& boundaryCells,
+        List<Tuple2<scalar,scalar>>& boundaryDists
+    );
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();
@@ -129,6 +136,9 @@ class ibInterpolation
     void saveInterpolationInfo(word outDir, word fileName);
     void saveBoundaryCells();
     void saveCellSet(List<label>& listToSave, word fileName);
+
+    // force processing
+    void cutFInBoundaryCells(volVectorField& f);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

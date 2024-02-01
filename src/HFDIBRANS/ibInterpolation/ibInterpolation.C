@@ -88,6 +88,7 @@ fvSchemes_
 )
 {
 	// read HFDIBDEM dictionary
+    excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
@@ -477,40 +478,40 @@ void ibInterpolation::findBoundaryCells
                     //~ break;
                 //~ }
             //~ }
+        }
 
-            // check whether the cell is adjecent to a regular wall
-            if (toInclude)
+        // check whether the cell is adjecent to a regular wall
+        if (toInclude and excludeWalls_)
+        {
+            forAll(mesh_.cells()[cellI], f)
             {
-                forAll(mesh_.cells()[cellI], f)
+                // get face label
+                label faceI = mesh_.cells()[cellI][f];
+
+                if (faceI >= mesh_.owner().size())
                 {
-                    // get face label
-                    label faceI = mesh_.cells()[cellI][f];
+                    bool wallFace(false);
 
-                    if (faceI >= mesh_.owner().size())
+                    // loop over patches of type wall
+                    forAll(wPatchIs, pI)
                     {
-                        bool wallFace(false);
+                        // get patch label
+                        label patchI = wPatchIs[pI];
 
-                        // loop over patches of type wall
-                        forAll(wPatchIs, pI)
+                        // get start and end face index
+                        label startI = mesh_.boundary()[patchI].start();
+                        label endI = startI + mesh_.boundary()[patchI].Cf().size();
+
+                        if (faceI >= startI and faceI < endI)
                         {
-                            // get patch label
-                            label patchI = wPatchIs[pI];
-
-                            // get start and end face index
-                            label startI = mesh_.boundary()[patchI].start();
-                            label endI = startI + mesh_.boundary()[patchI].Cf().size();
-
-                            if (faceI >= startI and faceI < endI)
-                            {
-                                wallFace = true;
-                            }
+                            wallFace = true;
                         }
+                    }
 
-                        // exclude wall faces
-                        if (wallFace)
-                        {
-                            toInclude = false;
-                        }
+                    // exclude wall faces
+                    if (wallFace)
+                    {
+                        toInclude = false;
                     }
                 }
             }
@@ -812,6 +813,23 @@ void ibInterpolation::saveCellSet
     setToSave.writeHeader(outFile);
     outFile << listToSave << endl;
     outFile << "// ************************************************************************* //";
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutFInBoundaryCells
+(
+    volVectorField& f
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // cut f
+        f[cellI] = (f[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
+    }
 }
 
 // ************************************************************************* //

@@ -50,3 +50,7 @@ fvOptions.correct(U);
 
 // Sync proc-proc boundaries
 f.correctBoundaryConditions();
+
+// update new field
+//~ f += 0.8*lambda*(Ui - U);
+//~ f += surface*(Ui - U)/dummyTime;

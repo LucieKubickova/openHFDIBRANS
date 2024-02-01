@@ -188,44 +188,109 @@ void ibDirichletBCs::updateUTauAtIB
         // get cell label
         label cellI = boundaryCells_[bCell].first();
 
-        // initialize
-        scalar totA(0.0);
+        // NOTE: not averaging
+        uTauAtIB_[bCell] = Cmu25_*Foam::sqrt(k[cellI]);
 
-        // loop over faces
-        forAll(mesh_.cells()[cellI], fI)
-        {
-            // get face label
-            label faceI = mesh_.cells()[cellI][fI];
+        //~ // initialize
+        //~ scalar totA(0.0);
 
-            // skip boundary faces
-            if (faceI >= mesh_.faceNeighbour().size())
-            {
-                continue;
-            }
+        //~ // loop over faces
+        //~ forAll(mesh_.cells()[cellI], fI)
+        //~ {
+            //~ // get face label
+            //~ label faceI = mesh_.cells()[cellI][fI];
 
-            // get cell labels
-            label owner = mesh_.faceOwner()[faceI];
-            label neighbor = mesh_.faceNeighbour()[faceI];
+            //~ // skip boundary faces
+            //~ if (faceI >= mesh_.faceNeighbour().size())
+            //~ {
+                //~ continue;
+            //~ }
 
-            // skip in-solid cells
-            if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
-            {
-                continue;
-            }
+            //~ // get cell labels
+            //~ label owner = mesh_.faceOwner()[faceI];
+            //~ label neighbor = mesh_.faceNeighbour()[faceI];
 
-            // get uTau values
-            scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
-            scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
+            //~ // skip in-solid cells
+            //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
+            //~ {
+                //~ continue;
+            //~ }
 
-            // calculate the average value
-            uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
+            //~ // get uTau values
+            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
+            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
 
-            // add face area to total
-            totA += mag(mesh_.Sf()[faceI]);
-        }
+            //~ // calculate the average value
+            //~ uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
 
-        // divide by total area
-        uTauAtIB_[bCell] /= totA;
+            //~ // add face area to total
+            //~ totA += mag(mesh_.Sf()[faceI]);
+        //~ }
+
+        // loop over boundary cells -- does not make a difference
+        //~ forAll(boundaryCells_, nCell)
+        //~ {
+            //~ // get the cell label
+            //~ label cellN = boundaryCells_[nCell].first();
+
+            //~ // flag
+            //~ bool isNeigh = false;
+
+            //~ // loop over neighbor cells
+            //~ forAll(mesh_.cellCells()[cellN], cN)
+            //~ {
+                //~ if (cellI == mesh_.cellCells()[cellN][cN])
+                //~ {
+                    //~ isNeigh = true;
+                    //~ break;
+                //~ }
+            //~ }
+
+            //~ // for neighbors add to uTau
+            //~ if (isNeigh)
+            //~ {
+                //~ // find common face
+                //~ label faceI;
+                //~ forAll(mesh_.cells()[cellI], fI)
+                //~ {
+                    //~ // flag
+                    //~ bool found = false;
+
+                    //~ // get the face label
+                    //~ faceI = mesh_.cells()[cellI][fI];
+
+                    //~ forAll(mesh_.cells()[cellN], fN)
+                    //~ {
+                        //~ // get the face label
+                        //~ label faceN = mesh_.cells()[cellN][fN];
+
+                        //~ if (faceI == faceN)
+                        //~ {
+                            //~ found = true;
+                            //~ break;
+                        //~ }
+                    //~ }
+
+                    //~ if (found)
+                    //~ {
+                        //~ break;
+                    //~ }
+                //~ }
+
+                //~ // compute uTau for each cell
+                //~ scalar uTauO = Cmu25_*Foam::sqrt(k[cellI]);
+                //~ scalar uTauN = Cmu25_*Foam::sqrt(k[cellN]);
+
+                //~ // add to total uTau
+                //~ uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[cellN]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[cellI]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[cellN]) + mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]));
+
+                //~ // add face area to total
+                //~ totA += mag(mesh_.Sf()[faceI]);
+            //~ }
+        //~ }
+
+        //~ // divide by total area
+        //~ uTauAtIB_[bCell] /= totA;
     }
 }
 //---------------------------------------------------------------------------//

@@ -71,7 +71,7 @@ ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
 ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
 {
     // read HFDIBDEM dictionary
-    HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
+    save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -311,7 +311,7 @@ void openHFDIBRANS::correctOmegaG
         }
     }
 
-    // correct the inner boudnary cells
+    // correct the inner boundary cells
     forAll(boundaryCells_, bCell)
     {
         // get cell labels
@@ -418,6 +418,15 @@ void openHFDIBRANS::updateSurface
     {
         ibInterpolation_.updateSwitchSurface(surface, ibDirichletBCs_.getYPlusi(), ibDirichletBCs_.getYPlusLam());
     }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS:: cutFInBoundaryCells
+(
+    volVectorField& f
+)
+{
+    ibInterpolation_.cutFInBoundaryCells(f);
 }
 
 // ************************************************************************* //
