@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
     scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
     scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
     bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
+    bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
+    bool enforceVelocity HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);

@@ -48,6 +48,17 @@ U = HbyA - rAU*fvc::grad(p) + rAU*f;
 U.correctBoundaryConditions();
 fvOptions.correct(U);
 
+// HFDIBRANS
+if (cutVelocity)
+{
+    HFDIBRANS.cutUInBoundaryCells(U);
+}
+
+if (enforceVelocity)
+{
+    HFDIBRANS.enforceUiInBody(U, Ui);
+}
+
 // Sync proc-proc boundaries
 f.correctBoundaryConditions();
 

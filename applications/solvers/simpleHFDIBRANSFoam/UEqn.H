@@ -31,7 +31,7 @@ if (simple.momentumPredictor())
 
         if (max(mag(surface*(Ui - U))).value() < tolUEqn)
         {
-            Info << "HFDIBRAS: U converged to Ui within max tolerance " << tolUEqn << endl;
+            Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolUEqn << endl;
             break;
         }
 
