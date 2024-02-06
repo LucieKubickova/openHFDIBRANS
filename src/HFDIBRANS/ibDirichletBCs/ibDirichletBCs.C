@@ -211,45 +211,6 @@ void ibDirichletBCs::updateUTauAtIB
         {
             uTauAtIB_[bCell] = Cmu25_*Foam::sqrt(k[haloI]);
         }
-
-        //~ // initialize
-        //~ scalar totA(0.0);
-
-        //~ // loop over faces
-        //~ forAll(mesh_.cells()[cellI], fI)
-        //~ {
-            //~ // get face label
-            //~ label faceI = mesh_.cells()[cellI][fI];
-
-            //~ // skip boundary faces
-            //~ if (faceI >= mesh_.faceNeighbour().size())
-            //~ {
-                //~ continue;
-            //~ }
-
-            //~ // get cell labels
-            //~ label owner = mesh_.faceOwner()[faceI];
-            //~ label neighbor = mesh_.faceNeighbour()[faceI];
-
-            //~ // skip in-solid cells
-            //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
-            //~ {
-                //~ continue;
-            //~ }
-
-            //~ // get uTau values
-            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
-            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
-
-            //~ // calculate the average value
-            //~ uTauAtIB_[bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
-
-            //~ // add face area to total
-            //~ totA += mag(mesh_.Sf()[faceI]);
-        //~ }
-
-        //~ // divide by total area
-        //~ uTauAtIB_[bCell] /= totA;
     }
 }
 //---------------------------------------------------------------------------//
@@ -419,7 +380,6 @@ void ibDirichletBCs::omegaGAtIB
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI]; // Note: do not use unless you know where to get k
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
             
@@ -528,7 +488,6 @@ void ibDirichletBCs::epsilonGAtIB
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI]; // Note: do not use unless you know where to get k
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
 
