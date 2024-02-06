@@ -315,7 +315,6 @@ void ibDirichletBCs::correctNutAtIB
             scalar ds = boundaryDists_[bCell].first();
 
             // get the friction velocity
-            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
             scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
@@ -353,7 +352,6 @@ void ibDirichletBCs::kAtIB
             scalar ds = boundaryDists_[bCell].first();
 
             // get the friction velocity
-            //~ scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
             scalar uTau = uTauAtIB_[bCell];
 
             // compute yPlus
@@ -477,7 +475,6 @@ void ibDirichletBCs::omegaGAtIB
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
             
@@ -571,7 +568,6 @@ void ibDirichletBCs::epsilonGAtIB
             scalar uTau = uTauAtIB_[bCell];
 
             // compute local Reynolds number
-            //~ scalar Rey = ds*Foam::sqrt(k[cellI])/nu[cellI];
             scalar Rey = ds*uTau/nu[cellI];
             Rey /= Cmu25_;
 
@@ -593,7 +589,7 @@ void ibDirichletBCs::epsilonGAtIB
             else
             {
                 epsilonIB[bCell] = 2.0*k[cellI]*nu[cellI]/sqr(ds);
-                GIB[bCell] = G[cellI]; // NOTE: not sure about this
+                GIB[bCell] = G[cellI];
             }
         }
     }
