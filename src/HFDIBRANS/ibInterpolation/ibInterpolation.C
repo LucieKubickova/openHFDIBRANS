@@ -72,7 +72,7 @@ surfNorm_
         "surfNorm",
         mesh_.time().timeName(),
         mesh_,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh_,
@@ -106,6 +106,7 @@ fvSchemes_
 {
 	// read HFDIBDEM dictionary
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
+    readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
@@ -602,12 +603,15 @@ void ibInterpolation::calculateSurfNorm
 (
 )
 {
-    // stabilisation
-    dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
+    if (not readSurfNorm_)
+    {
+        // stabilisation
+        dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
 
-    // calculate the surface normal based on the body gradient
-    surfNorm_ = -fvc::grad(body_);
-    surfNorm_ /= (mag(surfNorm_) + deltaN);
+        // calculate the surface normal based on the body gradient
+        surfNorm_ = -fvc::grad(body_);
+        surfNorm_ /= (mag(surfNorm_) + deltaN);
+    }
 }
 
 //---------------------------------------------------------------------------//

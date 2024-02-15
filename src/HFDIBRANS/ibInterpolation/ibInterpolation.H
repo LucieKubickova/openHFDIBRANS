@@ -66,6 +66,7 @@ class ibInterpolation
     scalar thrSurf_;
     scalar intSpan_;
     bool excludeWalls_;
+    bool readSurfNorm_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
