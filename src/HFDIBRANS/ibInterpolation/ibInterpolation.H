@@ -64,6 +64,7 @@ class ibInterpolation
     scalar thrSurf_;
     scalar intSpan_;
     bool excludeWalls_;
+    bool readSurfNorm_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
@@ -140,6 +141,7 @@ class ibInterpolation
     // cutting fields in normal direction
     void cutFInBoundaryCells(volVectorField& f);
     void cutUInBoundaryCells(volVectorField& U);
+    void cutPhiInBoundaryCells(surfaceScalarField& phi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

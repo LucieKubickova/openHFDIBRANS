@@ -56,7 +56,7 @@ surfNorm_
         "surfNorm",
         mesh_.time().timeName(),
         mesh_,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh_,
@@ -89,6 +89,7 @@ fvSchemes_
 {
 	// read HFDIBDEM dictionary
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
+    readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
@@ -627,12 +628,15 @@ void ibInterpolation::calculateSurfNorm
 (
 )
 {
-    // stabilisation
-    dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
+    if (not readSurfNorm_)
+    {
+        // stabilisation
+        dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
 
-    // calculate the surface normal based on the body gradient
-    surfNorm_ = -fvc::grad(body_);
-    surfNorm_ /= (mag(surfNorm_) + deltaN);
+        // calculate the surface normal based on the body gradient
+        surfNorm_ = -fvc::grad(body_);
+        surfNorm_ /= (mag(surfNorm_) + deltaN);
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -855,6 +859,66 @@ void ibInterpolation::cutUInBoundaryCells
         {
             //~ U[cellI] -= (U[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
             U[inCellI] -= (U[inCellI] & surfNorm_[outCellI])*surfNorm_[outCellI];
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutPhiInBoundaryCells
+(
+    surfaceScalarField& phi
+)
+{
+    // loop over cells
+    forAll(mesh_.C(), cellI)
+    {
+        // skip outer cells
+        if (body_[cellI] < 0.5)
+        {
+            continue;
+        }
+        
+        // check if it is a boundary cell
+        bool isBoundary = false;
+        forAll(boundaryCells_, bCell)
+        {
+            // get the cell label
+            label cellB = boundaryCells_[bCell].second();
+
+            if (cellI == cellB)
+            {
+                isBoundary = true;
+            }
+        }
+
+        // loop over faces
+        forAll(mesh_.cells()[cellI], fI)
+        {
+            // get the face label
+            label faceI = mesh_.cells()[cellI][fI];
+
+            // skip non-internal faces
+            if (faceI > mesh_.nInternalFaces())
+            {
+                continue;
+            }
+
+            if (isBoundary)
+            {
+                // get the face normal
+                vector Sf = mesh_.Sf()[faceI];
+
+                // turn off phi for inner faces
+                if ((Sf & surfNorm_[cellI]) < 0.0)
+                {
+                    phi[faceI] = 1e-20;
+                }
+            }
+
+            else
+            {
+                phi[faceI] = 1e-20;
+            }
         }
     }
 }
