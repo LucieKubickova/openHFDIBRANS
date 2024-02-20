@@ -38,6 +38,11 @@ while (simple.correctNonOrthogonal())
     }
 }
 
+if (cutPhi)
+{
+    HFDIBRANS.cutPhiInBoundaryCells(phi);
+}
+
 #include "continuityErrs.H"
 
 // Explicitly relax pressure for momentum corrector

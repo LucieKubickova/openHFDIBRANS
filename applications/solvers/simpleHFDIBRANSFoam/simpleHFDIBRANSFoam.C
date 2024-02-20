@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
     scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
     bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
     bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
-    bool enforceVelocity HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
+    bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
+    bool enforceVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
@@ -91,16 +92,8 @@ int main(int argc, char *argv[])
         Info << "Time = " << runTime.timeName() << nl << endl;
 
         // --- Pressure-velocity SIMPLE corrector
-        //~ for (label nCorr = 0; nCorr < nUPIters; nCorr++)
-        //~ {
-            //~ #include "UEqn.H"
-            //~ #include "pEqn.H"
-        //~ }
         #include "UEqn.H"
         #include "pEqn.H"
-        //~ {
-        //~ #include "UEqn.H"
-        //~ }
 
         laminarTransport.correct();
         turbulence->correct(HFDIBRANS);
