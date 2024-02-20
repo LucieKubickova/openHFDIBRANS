@@ -72,6 +72,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
 {
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
+    cpOmegaToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyOmegaToInner", false);
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -169,6 +170,11 @@ void openHFDIBRANS::computeUi
         ibInterpolation_.outerInnerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "inner")
+    {
+        ibInterpolation_.innerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
+    }
+
     else
     {
         FatalError << "Interpolation type " << UIBScheme << " for field U not implemented" << exit(FatalError);
@@ -228,6 +234,11 @@ void openHFDIBRANS::computeKi
     else if (interpType == "outerInner")
     {
         ibInterpolation_.outerInnerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
+    }
+
+    else if (interpType == "inner")
+    {
+        ibInterpolation_.innerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
     else
@@ -312,14 +323,17 @@ void openHFDIBRANS::correctOmegaG
     }
 
     // correct the inner boundary cells
-    forAll(boundaryCells_, bCell)
+    if (cpOmegaToInner_)
     {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell labels
+            label outCellI = boundaryCells_[bCell].first();
+            label inCellI = boundaryCells_[bCell].second();
 
-        // assign
-        omega[inCellI] = omega[outCellI];
+            // assign
+            omega[inCellI] = omega[outCellI];
+        }
     }
 }
 
@@ -366,21 +380,21 @@ void openHFDIBRANS::correctEpsilonG
             if (body_[cellI] >= 0.5)
             {
                 epsilon[cellI] = inEpsilon;
-                G[cellI] = 0.0;
+                G[cellI] = small;
             }
         }
     }
 
-    // correct the inner boudnary cells
-    forAll(boundaryCells_, bCell)
-    {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+    //~ // correct the inner boudnary cells
+    //~ forAll(boundaryCells_, bCell)
+    //~ {
+        //~ // get cell labels
+        //~ label outCellI = boundaryCells_[bCell].first();
+        //~ label inCellI = boundaryCells_[bCell].second();
 
-        // assign
-        epsilon[inCellI] = epsilon[outCellI];
-    }
+        //~ // assign
+        //~ epsilon[inCellI] = epsilon[outCellI];
+    //~ }
 }
 
 //---------------------------------------------------------------------------//
@@ -439,6 +453,15 @@ void openHFDIBRANS::cutUInBoundaryCells
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::cutPhiInBoundaryCells
+(
+    surfaceScalarField& phi
+)
+{
+    ibInterpolation_.cutPhiInBoundaryCells(phi);
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::enforceUiInBody
 (
     volVectorField& U,
@@ -472,6 +495,25 @@ void openHFDIBRANS::enforceUiInBody
         {
             U[cellI] = Ui[cellI];
         }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::bound
+(
+    volScalarField& phi,
+    dimensionedScalar& phiMin
+)
+{
+    // loop over cells
+    forAll(mesh_.C(), cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            continue;
+        }
+
+        phi[cellI] = max(phi[cellI], phiMin.value());
     }
 }
 

@@ -110,6 +110,10 @@ class ibInterpolation
     template <typename Type, typename volTypeField>
     void outerInnerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
+    // inner unifunctional interpolation
+    template <typename Type, typename volTypeField>
+    void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
+
     // TODO: blended interpolation
     
     // identification

@@ -174,4 +174,50 @@ void ibInterpolation::outerInnerInterp
         }
     }
 }
+
+//---------------------------------------------------------------------------//
+template <typename Type, typename volTypeField>
+void ibInterpolation::innerInterp
+(
+    ITstream& ibSchemeName,
+    volTypeField& phi,
+    volTypeField& phii,
+    List<Type>& dirichletVals,
+    List<scalar>& scales,
+    volScalarField& yPlusi,
+    scalar yPlusLam
+)
+{
+    // create interpolator
+    autoPtr<interpolation<Type>> interpPhi =
+                   interpolation<Type>::New(HFDIBInnerSchemes_, phi);
+
+    // read chosen interpolation function
+    word ibSchemeType = ibSchemeName[1].wordToken();
+
+    // prepare chosen interpolation function
+    autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
+
+    // interpolate and assign values to the imposed field
+    forAll(boundaryCells_, bCell)
+    {
+        // get the inner cell label
+        label outCellI = boundaryCells_[bCell].first();
+        label inCellI = boundaryCells_[bCell].second();
+
+        // create new interpolation info to interpolate inside
+        interpolationInfo intInfoToSend(intInfoList_[bCell]);
+        intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
+        intInfoToSend.intPoints_[2] = intInfoList_[bCell].intPoints_[1];
+        intInfoToSend.intCells_[0] = outCellI;
+        intInfoToSend.intCells_[1] = intInfoList_[bCell].intCells_[0];
+
+        // get the inner cell distance
+        scalar dsToSend = -1*boundaryDists_[bCell].second();
+        
+        // NOTE: logarithm of negative number?
+        phii[inCellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);
+    }
+}
+
 // ************************************************************************* //
