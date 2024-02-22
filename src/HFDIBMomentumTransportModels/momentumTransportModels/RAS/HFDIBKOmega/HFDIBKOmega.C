@@ -388,6 +388,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     solve(omegaEqn);
     fvOptions.correct(omega_);
     bound(omega_, this->omegaMin_);
+    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -425,9 +426,10 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
         // apply correction
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
-    
+
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
+    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut();
     HFDIBRANS.correctNut(k_, nu_);
