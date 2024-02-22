@@ -44,7 +44,8 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    labelField& isBoundaryCell
 )
 :
 mesh_(mesh),
@@ -64,6 +65,7 @@ surfNorm_
 ),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+isBoundaryCell_(isBoundaryCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -88,10 +90,14 @@ fvSchemes_
 )
 {
 	// read HFDIBDEM dictionary
+    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "vertex");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
+    aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+    aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
+    nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -106,6 +112,9 @@ fvSchemes_
 
     // calculate surface normals
     calculateSurfNorm();
+
+    // prepare label field
+    isBoundaryCell_.setSize(mesh_.C().size());
 }
 
 //---------------------------------------------------------------------------//
@@ -442,6 +451,7 @@ void ibInterpolation::findBoundaryCells
 
     // preparation
     Tuple2<label,label> toAppend;
+    isBoundaryCell_ = -1;
 
     // loop over cells
     forAll(mesh_.cellCells(), cellI)
@@ -456,29 +466,40 @@ void ibInterpolation::findBoundaryCells
 
         else if (body_[cellI] < thrSurf_)
         {
-            forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+            if (boundarySearch_ == "vertex")
             {
-                label pointI = mesh_.cellPoints()[cellI][pID];
-
-                forAll(mesh_.pointCells()[pointI], cI)
+                forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
                 {
-                    if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                    label pointI = mesh_.cellPoints()[cellI][pID];
+
+                    forAll(mesh_.pointCells()[pointI], cI)
+                    {
+                        if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                        {
+                            toInclude = true;
+                            vertex = mesh_.pointCells()[pointI][cI];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            else if (boundarySearch_ == "neighbor")
+            {
+                forAll(mesh_.cellCells()[cellI], nID) // face neighbours
+                {
+                    if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
                     {
                         toInclude = true;
-                        vertex = mesh_.pointCells()[pointI][cI];
                         break;
                     }
                 }
             }
 
-            //~ forAll(mesh_.cellCells()[cellI], nID) // face neighbours
-            //~ {
-                //~ if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
-                //~ {
-                    //~ toInclude = true;
-                    //~ break;
-                //~ }
-            //~ }
+            else
+            {
+                FatalError << "Boundary cells search " << boundarySearch_ << " not implemented" << exit(FatalError);
+            }
         }
 
         // check whether the cell is adjecent to a regular wall
@@ -544,6 +565,16 @@ void ibInterpolation::findBoundaryCells
 
             boundaryCells_.append(toAppend);
         }
+    }
+
+    // prepare label field
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // assign
+        isBoundaryCell_[cellI] = bCell;
     }
 }
 
@@ -644,16 +675,19 @@ void ibInterpolation::calculateDistToBoundary
 (
 )
 {
+    // loop over boundary cells
     forAll(boundaryCells_, bCell)
     {
+        // get the outer and innter cell label
         label outCellI = boundaryCells_[bCell].first();
         label inCellI = boundaryCells_[bCell].second();
 
+        // prepare
         Tuple2<scalar,scalar> toSave;
-
         scalar ds;
         point surfPoint;
 
+        // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
             ds = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
@@ -665,6 +699,7 @@ void ibInterpolation::calculateDistToBoundary
             toSave.second() = ds;
         }
 
+        // if inner cell is intersected
         else if (body_[inCellI] < 1.0)
         {
             ds = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
@@ -676,11 +711,11 @@ void ibInterpolation::calculateDistToBoundary
             toSave.first() = ds;
         }
 
+        // not intersected outer cells
         else
         {
             // find the shared vertices
             DynamicList<label> sharedVers;
-
             forAll(mesh_.cellPoints()[inCellI], iI)
             {
                 forAll(mesh_.cellPoints()[outCellI], oI)
@@ -709,6 +744,87 @@ void ibInterpolation::calculateDistToBoundary
         }
 
         boundaryDists_[bCell] = toSave;
+    }
+
+    // interpolate orthogonal distance
+    if (aveYOrtho_)
+    {
+        for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
+        {
+            // save old values
+            List<Tuple2<scalar,scalar>> yOld = boundaryDists_;
+
+            // loop over boundary cells
+            forAll(boundaryCells_, bCell)
+            {
+                // get the cell label
+                label cellI = boundaryCells_[bCell].first();
+
+                // prepare
+                scalar yAve(0.0);
+                scalar scalesSum(0.0);
+                label nAdded(0);
+
+                // loop over vertices
+                forAll(mesh_.cellPoints()[cellI], pID)
+                {
+                    // get the point label
+                    label pointI = mesh_.cellPoints()[cellI][pID];
+
+                    // loop over vertex neighbors
+                    forAll(mesh_.pointCells()[pointI], cI)
+                    {
+                        // get the neighbor cell label
+                        label cellN = mesh_.pointCells()[pointI][cI];
+                        
+                        // skip current cell
+                        if (cellI == cellN)
+                        {
+                            continue;
+                        }
+
+                        // skip non boundary cells
+                        if (isBoundaryCell_[cellN] == -1)
+                        {
+                            continue;
+                        }
+
+                        // get local boundary cell label
+                        label nCell = isBoundaryCell_[cellN];
+
+                        // calculate dot product of surf normals
+                        scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
+
+                        // skip if dotNorm negative
+                        if (dotNorm < 0.0)
+                        {
+                            continue;
+                        }
+
+                        // calculate distance of cell centers
+                        scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
+
+                        // add to average y and scales sum
+                        yAve += dotNorm/delta*boundaryDists_[nCell].first();
+                        scalesSum += dotNorm/delta;
+                        nAdded += 1;
+                    }
+                }
+
+                // compute average scale
+                scalar aveScale = scalesSum/nAdded;
+
+                // add current cell
+                yAve += aveCoeff_*aveScale*boundaryDists_[bCell].first();
+                scalesSum += aveCoeff_*aveScale;
+
+                // divide average y by scales sum
+                yAve /= scalesSum;
+
+                // assign
+                boundaryDists_[bCell].first() = yAve;
+            }
+        }
     }
 }
 

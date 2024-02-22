@@ -44,13 +44,15 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    labelField& isBoundaryCell
 )
 :
 mesh_(mesh),
 body_(body),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+isBoundaryCell_(isBoundaryCell),
 turbulenceProperties_
 (
     IOobject

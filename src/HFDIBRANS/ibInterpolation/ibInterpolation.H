@@ -63,12 +63,19 @@ class ibInterpolation
     volVectorField surfNorm_;
     scalar thrSurf_;
     scalar intSpan_;
+
+    // options
+    word boundarySearch_;
     bool excludeWalls_;
     bool readSurfNorm_;
+    bool aveYOrtho_;
+    scalar aveCoeff_;
+    label nAveYOrtho_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    labelField& isBoundaryCell_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -90,7 +97,8 @@ class ibInterpolation
         const fvMesh& mesh,
         const volScalarField& body,
         DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists
+        List<Tuple2<scalar,scalar>>& boundaryDists,
+        labelField& isBoundaryCell
     );
 
     // Destructors -----------------------------------------------------

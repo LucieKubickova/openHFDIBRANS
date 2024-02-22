@@ -67,8 +67,8 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
-ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_),
+ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 {
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
