@@ -69,6 +69,7 @@ class ibInterpolation
     bool excludeWalls_;
     bool readSurfNorm_;
     bool aveYOrtho_;
+    bool totalYOrthoAve_;
     scalar aveCoeff_;
     label nAveYOrtho_;
 

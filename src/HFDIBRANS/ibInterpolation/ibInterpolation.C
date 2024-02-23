@@ -94,6 +94,7 @@ fvSchemes_
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
+    totalYOrthoAve_ = HFDIBDEMDict_.lookupOrDefault<bool>("totalYOrthoAverage", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
@@ -746,8 +747,30 @@ void ibInterpolation::calculateDistToBoundary
         boundaryDists_[bCell] = toSave;
     }
 
-    // interpolate orthogonal distance
-    if (aveYOrtho_)
+    // average orthogonal distance over all boundary cells
+    if (totalYOrthoAve_)
+    {
+        // preparation
+        scalar yAve(0.0);
+
+        // loop over boundary cells
+        forAll(boundaryCells_, bCell)
+        {
+            yAve += boundaryDists_[bCell].first();
+        }
+
+        // calculate average
+        yAve /= boundaryDists_.size();
+
+        // save to all boundary cells
+        forAll(boundaryCells_, bCell)
+        {
+            boundaryDists_[bCell].first() = yAve;
+        }
+    }
+
+    // average orthogonal distance over neighbors
+    else if (aveYOrtho_)
     {
         for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
         {
@@ -962,19 +985,19 @@ void ibInterpolation::cutUInBoundaryCells
     forAll(boundaryCells_, bCell)
     {
         // get the cell labels
-        //~ label cellI = boundaryCells_[bCell].first();
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        label cellI = boundaryCells_[bCell].first();
+        //~ label outCellI = boundaryCells_[bCell].first();
+        //~ label inCellI = boundaryCells_[bCell].second();
 
         // compute scalar product
-        //~ scalar prodUNorm = U[cellI] & surfNorm_[cellI];
-        scalar prodUNorm = U[inCellI] & surfNorm_[outCellI];
+        scalar prodUNorm = U[cellI] & surfNorm_[cellI];
+        //~ scalar prodUNorm = U[inCellI] & surfNorm_[outCellI];
 
         // cut U if it aims in opposite to surfNorm
         if (prodUNorm < 0.0)
         {
-            //~ U[cellI] -= (U[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
-            U[inCellI] -= (U[inCellI] & surfNorm_[outCellI])*surfNorm_[outCellI];
+            U[cellI] -= (U[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
+            //~ U[inCellI] -= (U[inCellI] & surfNorm_[outCellI])*surfNorm_[outCellI];
         }
     }
 }
