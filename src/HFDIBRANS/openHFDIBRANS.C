@@ -306,8 +306,8 @@ void openHFDIBRANS::correctOmegaG
         scalar V = mesh_.V()[cellI];
 
         // assign
-        omega[cellI] = omegaIB[bCell]*yOrtho/Foam::pow(V,0.333);
-        G[cellI] = GIB[bCell]*yOrtho/Foam::pow(V,0.333);
+        omega[cellI] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
+        G[cellI] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
     }
 
     // calculate maximum omega
