@@ -447,4 +447,3 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct()
 } // End namespace Foam
 
 // ************************************************************************* //
-

@@ -492,8 +492,8 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
 {
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
-    HFDIBRASDict.lookup("disSurfaceType") >> omegaSurfaceType_;
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
+    HFDIBRASDict.lookup("disSurfaceType") >> omegaSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
     omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
@@ -627,6 +627,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     solve(omegaEqn);
     fvOptions.correct(omega_);
     bound(omega_, this->omegaMin_);
+    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -667,7 +668,8 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
 
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    
+    //~ HFDIBRANS.bound(k_, this->kMin_);
+
     correctNut(S2, F23);
     HFDIBRANS.correctNut(k_, nu_);
 }

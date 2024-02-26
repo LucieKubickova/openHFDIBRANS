@@ -301,9 +301,13 @@ void openHFDIBRANS::correctOmegaG
         // get cell label
         label cellI = boundaryCells_[bCell].first();
 
+        // get cell scales
+        scalar yOrtho = boundaryDists_[bCell].first();
+        scalar V = mesh_.V()[cellI];
+
         // assign
-        omega[cellI] = omegaIB[bCell];
-        G[cellI] = GIB[bCell];
+        omega[cellI] = omegaIB[bCell]*yOrtho/Foam::pow(V,0.333);
+        G[cellI] = GIB[bCell]*yOrtho/Foam::pow(V,0.333);
     }
 
     // calculate maximum omega

@@ -128,6 +128,7 @@ public:
     //- Runtime type information
     TypeName("HFDIBRealizableKE");
 
+
     // Constructors
 
         //- Construct from components
@@ -190,7 +191,6 @@ public:
 
         //- second image of the correct function to accept arguments
         virtual void correct(openHFDIBRANS& HFDIBRANS);
-
 };
 
 

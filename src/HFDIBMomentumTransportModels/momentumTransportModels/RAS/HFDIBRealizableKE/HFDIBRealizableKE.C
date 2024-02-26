@@ -441,6 +441,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     solve(epsEqn);
     fvOptions.correct(epsilon_);
     bound(epsilon_, this->epsilonMin_);
+    //~ HFDIBRANS.bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -481,6 +482,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
+    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut(tgradU(), S2, magS);
     HFDIBRANS.correctNut(k_, nu_);
