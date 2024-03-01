@@ -492,6 +492,7 @@ void ibInterpolation::findBoundaryCells
                     if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
                     {
                         toInclude = true;
+                        vertex = mesh_.cellCells()[cellI][nID];
                         break;
                     }
                 }
@@ -562,6 +563,12 @@ void ibInterpolation::findBoundaryCells
             {
                 toAppend.first() = cellI;
                 toAppend.second() = vertex;
+            }
+
+            // fix non-existent inner cells
+            if (toAppend.second() == -1)
+            {
+                toAppend.second() = toAppend.first();
             }
 
             boundaryCells_.append(toAppend);
