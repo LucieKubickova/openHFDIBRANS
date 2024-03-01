@@ -411,24 +411,29 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     kEqn.relax();
     fvOptions.constrain(kEqn);
 
-    for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
+    if (useKQ_)
     {
-        if (useKQ_)
+        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
             kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            solve(kEqn == kQ_);
+
+            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+
+            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
+            {
+                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+                break;
+            }
+
+            // apply correction
+            k_ += 1.0*kSurface_*(ki_ - k_);
         }
-        solve(kEqn == kQ_);
+    }
 
-        Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
-
-        if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
-        {
-            Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-            break;
-        }
-
-        // apply correction
-        k_ += 1.0*kSurface_*(ki_ - k_);
+    else
+    {
+        solve(kEqn);
     }
 
     fvOptions.correct(k_);
