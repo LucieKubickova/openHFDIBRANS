@@ -93,6 +93,9 @@ protected:
             scalar tolKEqn_;
             label maxKEqnIters_;
 
+        // Options
+            bool useKQ_;
+
     // Protected Member Functions
 
         virtual void correctNut();

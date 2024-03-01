@@ -288,6 +288,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
+    bool useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound
     bound(k_, this->kMin_);
@@ -412,7 +413,10 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
     {
-        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+        if (useKQ_)
+        {
+            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+        }
         solve(kEqn == kQ_);
 
         Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
