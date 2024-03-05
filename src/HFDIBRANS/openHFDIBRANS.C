@@ -295,6 +295,21 @@ void openHFDIBRANS::correctOmegaG
     // calculate values at the immersed boundary
     ibDirichletBCs_.omegaGAtIB(omegaIB, GIB, G, U, k, nu);
 
+    // omega scaling
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // get cell scales
+        scalar yOrtho = boundaryDists_[bCell].first();
+        scalar V = mesh_.V()[cellI];
+
+        // assign
+        omegaIB[bCell] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
+        GIB[bCell] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
+    }
+
     // assign the values for boundary cells
     forAll(boundaryCells_, bCell)
     {
@@ -306,8 +321,8 @@ void openHFDIBRANS::correctOmegaG
         scalar V = mesh_.V()[cellI];
 
         // assign
-        omega[cellI] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
-        G[cellI] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
+        omega[cellI] = omegaIB[bCell];
+        G[cellI] = GIB[bCell];
     }
 
     // calculate maximum omega
