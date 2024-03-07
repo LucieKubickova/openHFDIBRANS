@@ -309,8 +309,11 @@ void openHFDIBRANS::correctOmegaG
             scalar V = mesh_.V()[cellI];
 
             // assign
-            omegaIB[bCell] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
-            GIB[bCell] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
+            //~ omegaIB[bCell] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
+            //~ GIB[bCell] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
+            scalar l = Foam::pow(V, 0.333);
+            omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5);
+            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
         }
     }
 
