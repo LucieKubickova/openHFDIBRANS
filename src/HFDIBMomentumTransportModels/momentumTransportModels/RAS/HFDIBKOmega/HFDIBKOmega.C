@@ -229,11 +229,11 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         this->mesh_,
         dimensionedScalar("zero",dimless,0.0)
     ),
-    omegaSurface_
+    omegaGSurface_
     (
         IOobject
         (
-            "HFDIBKOmega::omegaSurface",
+            "HFDIBKOmega::omegaGSurface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -283,12 +283,12 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
-    HFDIBRASDict.lookup("disSurfaceType") >> omegaSurfaceType_;
+    HFDIBRASDict.lookup("disGSurfaceType") >> omegaGSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
-    omegaBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
+    omegaGBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
-    bool useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
+    useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound
     bound(k_, this->kMin_);
@@ -339,7 +339,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.createBaseSurface(omegaSurface_, omegaSurfaceType_, omegaBoundaryValue_);
+    HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -363,7 +363,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     HFDIBRANS.updateUTau(k_);
 
     // HFDIB: correct omega and G
-    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaSurface_);
+    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
 
     // Turbulence specific dissipation rate equation
     tmp<fvScalarMatrix> omegaEqn
@@ -384,7 +384,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
+    matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
 
     solve(omegaEqn);
     fvOptions.correct(omega_);
@@ -393,7 +393,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
-            
+
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
     (
@@ -442,6 +442,15 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     correctNut();
     HFDIBRANS.correctNut(k_, nu_);
+
+    //~ // save
+    //~ surfaceScalarField fluxK
+    //~ (
+        //~ "fluxK",
+        //~ kEqn.flux()
+    //~ );
+
+    //~ fluxK.write();
 }
 
 template<class BasicMomentumTransportModel>

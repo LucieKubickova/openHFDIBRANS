@@ -76,7 +76,7 @@ class openHFDIBRANS
     // options
     bool save_;
     bool cpOmegaToInner_;
-    bool scaleOmega_;
+    bool scaleDisG_;
 
     // save
     word outDir_;

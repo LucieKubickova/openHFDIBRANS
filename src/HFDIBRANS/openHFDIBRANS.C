@@ -73,7 +73,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
     cpOmegaToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyOmegaToInner", false);
-    scaleOmega_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleOmega", false);
+    scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -297,7 +297,7 @@ void openHFDIBRANS::correctOmegaG
     ibDirichletBCs_.omegaGAtIB(omegaIB, GIB, G, U, k, nu);
 
     // omega scaling
-    if (scaleOmega_)
+    if (scaleDisG_)
     {
         forAll(boundaryCells_, bCell)
         {
@@ -307,13 +307,15 @@ void openHFDIBRANS::correctOmegaG
             // get cell scales
             scalar yOrtho = boundaryDists_[bCell].first();
             scalar V = mesh_.V()[cellI];
+            scalar l = Foam::pow(V, 0.333);
 
             // assign
-            //~ omegaIB[bCell] = omegaIB[bCell]/yOrtho*Foam::pow(V,0.333);
-            //~ GIB[bCell] = GIB[bCell]/yOrtho*Foam::pow(V,0.333);
-            scalar l = Foam::pow(V, 0.333);
-            omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5);
-            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            omegaIB[bCell] = omegaIB[bCell]/yOrtho*l;
+            GIB[bCell] = GIB[bCell]/yOrtho*l;
+            //~ omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5);
+            //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5);
+            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
         }
     }
 
@@ -322,10 +324,6 @@ void openHFDIBRANS::correctOmegaG
     {
         // get cell label
         label cellI = boundaryCells_[bCell].first();
-
-        // get cell scales
-        scalar yOrtho = boundaryDists_[bCell].first();
-        scalar V = mesh_.V()[cellI];
 
         // assign
         omega[cellI] = omegaIB[bCell];
@@ -383,6 +381,29 @@ void openHFDIBRANS::correctEpsilonG
 
     // calculate values at the immersed boundary
     ibDirichletBCs_.epsilonGAtIB(epsilonIB, GIB, G, U, k, nu);
+
+    // epsilon scaling
+    if (scaleDisG_)
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get cell scales
+            scalar yOrtho = boundaryDists_[bCell].first();
+            scalar V = mesh_.V()[cellI];
+            scalar l = Foam::pow(V, 0.333);
+
+            // assign
+            epsilonIB[bCell] = epsilonIB[bCell]/yOrtho*l;
+            GIB[bCell] = GIB[bCell]/yOrtho*l;
+            //~ epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5);
+            //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5);
+            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+        }
+    }
 
     // assign the values for boundary cells
     forAll(boundaryCells_, bCell)

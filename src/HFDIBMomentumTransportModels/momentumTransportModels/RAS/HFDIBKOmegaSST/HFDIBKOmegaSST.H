@@ -95,7 +95,7 @@ protected:
             volScalarField omega_;
 	        volScalarField lambda_;
             volScalarField kSurface_;
-            volScalarField omegaSurface_;
+            volScalarField omegaGSurface_;
 	        volScalarField ki_;
             volScalarField kQ_;
 	        volScalarField nu_;
@@ -106,11 +106,14 @@ protected:
 
         // Equations settings
             word kSurfaceType_;
-            word omegaSurfaceType_;
+            word omegaGSurfaceType_;
             scalar kBoundaryValue_;
-            scalar omegaBoundaryValue_;
+            scalar omegaGBoundaryValue_;
             scalar tolKEqn_;
             label maxKEqnIters_;
+
+        // Options
+            bool useKQ_;
 
     // Protected Member Functions
 
