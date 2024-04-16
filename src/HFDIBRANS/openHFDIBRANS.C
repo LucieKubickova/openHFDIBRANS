@@ -310,11 +310,11 @@ void openHFDIBRANS::correctOmegaG
             scalar l = Foam::pow(V, 0.333);
 
             // assign
-            omegaIB[bCell] = omegaIB[bCell]/yOrtho*l;
-            GIB[bCell] = GIB[bCell]/yOrtho*l;
-            //~ omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5);
-            //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5);
+            //~ omegaIB[bCell] = omegaIB[bCell]/yOrtho*l; // scaling
+            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
+            omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
             //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
         }
     }
@@ -396,11 +396,11 @@ void openHFDIBRANS::correctEpsilonG
             scalar l = Foam::pow(V, 0.333);
 
             // assign
-            epsilonIB[bCell] = epsilonIB[bCell]/yOrtho*l;
-            GIB[bCell] = GIB[bCell]/yOrtho*l;
-            //~ epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5);
-            //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5);
+            //~ epsilonIB[bCell] = epsilonIB[bCell]/yOrtho*l; // scaling
+            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
+            epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
             //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
         }
     }
