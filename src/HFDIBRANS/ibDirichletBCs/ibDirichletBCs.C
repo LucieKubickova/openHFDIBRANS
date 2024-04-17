@@ -147,11 +147,13 @@ void ibDirichletBCs::setSizeToLists
 (
 )
 {
-    // set size to nutAtIB
+    // set size
     nutAtIB_.setSize(boundaryCells_.size());
-
-    // set size to uTauAtIB
     uTauAtIB_.setSize(boundaryCells_.size());
+
+    // reset
+    nutAtIB_ = 0.0;
+    uTauAtIB_ = 0.0;
 }
 
 //---------------------------------------------------------------------------//

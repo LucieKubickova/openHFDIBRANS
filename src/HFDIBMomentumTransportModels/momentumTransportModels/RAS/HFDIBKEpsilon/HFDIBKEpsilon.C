@@ -356,7 +356,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     volScalarField::Internal divU
     (
-        fvc::div(fvc::absolute(this->phi(), U))()
+        fvc::div(fvc::absolute(this->phi(), U))().v()
     );
 
     tmp<volTensorField> tgradU = fvc::grad(U);

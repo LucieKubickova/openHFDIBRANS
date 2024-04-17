@@ -427,7 +427,7 @@ void openHFDIBRANS::correctEpsilonG
             if (body_[cellI] >= 0.5)
             {
                 epsilon[cellI] = inEpsilon;
-                G[cellI] = small;
+                G[cellI] = 0.0;
             }
         }
     }
