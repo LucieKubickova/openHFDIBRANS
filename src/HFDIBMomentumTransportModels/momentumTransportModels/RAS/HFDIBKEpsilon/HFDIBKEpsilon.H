@@ -48,7 +48,7 @@ namespace HFDIBRASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBKEpsilon Declaration
+                          Class HFDIBKEpsilon Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicMomentumTransportModel>

@@ -341,6 +341,7 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
     }
 }
 
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
@@ -360,6 +361,7 @@ bool HFDIBRealizableKE<BasicMomentumTransportModel>::read()
         return false;
     }
 }
+
 
 template<class BasicMomentumTransportModel>
 void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)

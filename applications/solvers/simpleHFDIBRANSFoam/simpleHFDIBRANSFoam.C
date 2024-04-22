@@ -3,7 +3,8 @@
                        | | | |  __|  _ \_   _|  __ \  __ \  _  \ \  | |/  _  \
   ___  _ __   ___ _ __ | |_| | |_ | | | || | | |_/ / |_/ / |_| |  \ | |  |_|_/
  / _ \| '_ \ / _ \ '_ \|  _  |  _|| | | || | |  __ \  _ ||  _  | \ \| |\___  \
-| (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  | \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
+| (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
+ \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
       |_|                    with R eynolds A veraged N avier S tokes equations          
 -------------------------------------------------------------------------------
@@ -44,6 +45,7 @@ Contributors
 #include "IncompressibleHFDIBMomentumTransportModel.H"
 #include "transportModel.H"
 #include "HFDIBRASModel.H"
+#include "HFDIBLaminarModel.H"
 
 #include "triSurfaceMesh.H"
 #include "openHFDIBRANS.H"
