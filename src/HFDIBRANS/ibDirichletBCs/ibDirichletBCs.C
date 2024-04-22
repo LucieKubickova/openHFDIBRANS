@@ -111,11 +111,14 @@ beta1_(0.075)
     turbulenceProperties_.lookup("simulationType") >> simulationType_;
     
     // read HFDIBDEMDict
-    HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
-    HFDIBBCsDict_.lookup("nut") >> nutWF_;
-    HFDIBBCsDict_.lookup("k") >> kWF_;
-    HFDIBBCsDict_.lookup("omega") >> omegaWF_;
-    HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+    if (simulationType_ != "laminar")
+    {
+        HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
+        HFDIBBCsDict_.lookup("nut") >> nutWF_;
+        HFDIBBCsDict_.lookup("k") >> kWF_;
+        HFDIBBCsDict_.lookup("omega") >> omegaWF_;
+        HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+    }
 
     // compute turbulence parameters
     Cmu75_ = Foam::pow(Cmu_, 0.75);
