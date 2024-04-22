@@ -217,15 +217,15 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     ),
     lambda_
     (
-        IOobject
-        (
-            "lambda",
+    	IOobject
+	    (
+	        "lambda",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
             IOobject::NO_WRITE
-        ),
-        this->mesh_
+	    ),
+	    this->mesh_
     ),
     kSurface_
     (
@@ -240,11 +240,11 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
         this->mesh_,
         dimensionedScalar("zero",dimless,0.0)
     ),
-    epsilonSurface_
+    epsilonGSurface_
     (
         IOobject
         (
-            "HFDIBKEpsilon::epsilonSurface",
+            "HFDIBKEpsilon::epsilonGSurface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -257,7 +257,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     (
         IOobject
         (
-            "ki",
+	        "ki",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -270,7 +270,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     (
         IOobject
         (
-            "kQ",
+	        "kQ",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::READ_IF_PRESENT,
@@ -294,11 +294,12 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
-    HFDIBRASDict.lookup("disSurfaceType") >> epsilonSurfaceType_;
+    HFDIBRASDict.lookup("disGSurfaceType") >> epsilonGSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
-    epsilonBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disBoundaryValue"));
+    epsilonGBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
     tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
     maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
+    useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound
     bound(k_, this->kMin_);
@@ -355,7 +356,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.createBaseSurface(epsilonSurface_, epsilonSurfaceType_, epsilonBoundaryValue_);
+    HFDIBRANS.createBaseSurface(epsilonGSurface_, epsilonGSurfaceType_, epsilonGBoundaryValue_);
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -374,12 +375,12 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     // Update epsilon and G at the wall
     epsilon_.boundaryFieldRef().updateCoeffs();
-    
+
     // HFDIB: update uTau
     HFDIBRANS.updateUTau(k_);
 
     // HFDIB: correct epsilon and G
-    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonSurface_);
+    HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonGSurface_);
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn
@@ -400,11 +401,12 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     epsEqn.ref().boundaryManipulate(epsilon_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(epsEqn.ref(), epsilon_, epsilonSurface_);
+    matrixManipulate(epsEqn.ref(), epsilon_, epsilonGSurface_);
 
     solve(epsEqn);
     fvConstraints.constrain(epsilon_);
     bound(epsilon_, this->epsilonMin_);
+    //~ HFDIBRANS.bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -426,23 +428,34 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     kEqn.relax();
     fvConstraints.constrain(kEqn);
 
-    for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
+    if (useKQ_)
     {
-        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-        solve(kEqn == kQ_);
-
-        if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
+        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
-            Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-            break;
-        }
+            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            solve(kEqn == kQ_);
 
-        // apply correction
-        k_ += 1.0*kSurface_*(ki_ - k_);
+            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+
+            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
+            {
+                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+                break;
+            }
+
+            // apply correction
+            k_ += 1.0*kSurface_*(ki_ - k_);
+        }
     }
-    
+
+    else
+    {
+        solve(kEqn);
+    }
+
     fvConstraints.constrain(k_);
     bound(k_, this->kMin_);
+    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut();
     HFDIBRANS.correctNut(k_, nu_);

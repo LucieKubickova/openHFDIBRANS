@@ -64,9 +64,19 @@ class ibInterpolation
     scalar thrSurf_;
     scalar intSpan_;
 
+    // options
+    word boundarySearch_;
+    bool excludeWalls_;
+    bool readSurfNorm_;
+    bool aveYOrtho_;
+    bool totalYOrthoAve_;
+    scalar aveCoeff_;
+    label nAveYOrtho_;
+
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    labelField& isBoundaryCell_;
 
     // interpolation info lists
     List<interpolationInfo> intInfoList_;
@@ -83,7 +93,14 @@ class ibInterpolation
     public:
 
     // Constructors ----------------------------------------------------
-    ibInterpolation(const fvMesh& mesh, const volScalarField& body, DynamicList<Tuple2<label,label>>& boundaryCells, List<Tuple2<scalar,scalar>>& boundaryDists);
+    ibInterpolation
+    (
+        const fvMesh& mesh,
+        const volScalarField& body,
+        DynamicList<Tuple2<label,label>>& boundaryCells,
+        List<Tuple2<scalar,scalar>>& boundaryDists,
+        labelField& isBoundaryCell
+    );
 
     // Destructors -----------------------------------------------------
     ~ibInterpolation();
@@ -101,6 +118,10 @@ class ibInterpolation
     // outer or inner interpolation, decision based on local yPlus value
     template <typename Type, typename volTypeField>
     void outerInnerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
+
+    // inner unifunctional interpolation
+    template <typename Type, typename volTypeField>
+    void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
     // TODO: blended interpolation
     
@@ -129,6 +150,11 @@ class ibInterpolation
     void saveInterpolationInfo(word outDir, word fileName);
     void saveBoundaryCells();
     void saveCellSet(List<label>& listToSave, word fileName);
+
+    // cutting fields in normal direction
+    void cutFInBoundaryCells(volVectorField& f);
+    void cutUInBoundaryCells(volVectorField& U);
+    void cutPhiInBoundaryCells(surfaceScalarField& phi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

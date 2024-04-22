@@ -44,7 +44,8 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists
+    List<Tuple2<scalar,scalar>>& boundaryDists,
+    labelField& isBoundaryCell
 )
 :
 mesh_(mesh),
@@ -56,7 +57,7 @@ surfNorm_
         "surfNorm",
         mesh_.time().timeName(),
         mesh_,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh_,
@@ -64,6 +65,7 @@ surfNorm_
 ),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+isBoundaryCell_(isBoundaryCell),
 HFDIBDEMDict_
 (
     IOobject
@@ -88,8 +90,15 @@ fvSchemes_
 )
 {
 	// read HFDIBDEM dictionary
+    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "vertex");
+    excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
+    readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
+    aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
+    totalYOrthoAve_ = HFDIBDEMDict_.lookupOrDefault<bool>("totalYOrthoAverage", false);
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+    aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
+    nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -104,6 +113,9 @@ fvSchemes_
 
     // calculate surface normals
     calculateSurfNorm();
+
+    // prepare label field
+    isBoundaryCell_.setSize(mesh_.C().size());
 }
 
 //---------------------------------------------------------------------------//
@@ -440,6 +452,7 @@ void ibInterpolation::findBoundaryCells
 
     // preparation
     Tuple2<label,label> toAppend;
+    isBoundaryCell_ = -1;
 
     // loop over cells
     forAll(mesh_.cellCells(), cellI)
@@ -454,63 +467,75 @@ void ibInterpolation::findBoundaryCells
 
         else if (body_[cellI] < thrSurf_)
         {
-            forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+            if (boundarySearch_ == "vertex")
             {
-                label pointI = mesh_.cellPoints()[cellI][pID];
-
-                forAll(mesh_.pointCells()[pointI], cI)
+                forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
                 {
-                    if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                    label pointI = mesh_.cellPoints()[cellI][pID];
+
+                    forAll(mesh_.pointCells()[pointI], cI)
+                    {
+                        if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                        {
+                            toInclude = true;
+                            vertex = mesh_.pointCells()[pointI][cI];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            else if (boundarySearch_ == "neighbor")
+            {
+                forAll(mesh_.cellCells()[cellI], nID) // face neighbours
+                {
+                    if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
                     {
                         toInclude = true;
-                        vertex = mesh_.pointCells()[pointI][cI];
+                        vertex = mesh_.cellCells()[cellI][nID];
                         break;
                     }
                 }
             }
 
-            //~ forAll(mesh_.cellCells()[cellI], nID) // face neighbours
-            //~ {
-                //~ if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
-                //~ {
-                    //~ toInclude = true;
-                    //~ break;
-                //~ }
-            //~ }
-
-            // check whether the cell is adjecent to a regular wall
-            if (toInclude)
+            else
             {
-                forAll(mesh_.cells()[cellI], f)
+                FatalError << "Boundary cells search " << boundarySearch_ << " not implemented" << exit(FatalError);
+            }
+        }
+
+        // check whether the cell is adjecent to a regular wall
+        if (toInclude and excludeWalls_)
+        {
+            forAll(mesh_.cells()[cellI], f)
+            {
+                // get face label
+                label faceI = mesh_.cells()[cellI][f];
+
+                if (faceI >= mesh_.owner().size())
                 {
-                    // get face label
-                    label faceI = mesh_.cells()[cellI][f];
+                    bool wallFace(false);
 
-                    if (faceI >= mesh_.owner().size())
+                    // loop over patches of type wall
+                    forAll(wPatchIs, pI)
                     {
-                        bool wallFace(false);
+                        // get patch label
+                        label patchI = wPatchIs[pI];
 
-                        // loop over patches of type wall
-                        forAll(wPatchIs, pI)
+                        // get start and end face index
+                        label startI = mesh_.boundary()[patchI].start();
+                        label endI = startI + mesh_.boundary()[patchI].Cf().size();
+
+                        if (faceI >= startI and faceI < endI)
                         {
-                            // get patch label
-                            label patchI = wPatchIs[pI];
-
-                            // get start and end face index
-                            label startI = mesh_.boundary()[patchI].start();
-                            label endI = startI + mesh_.boundary()[patchI].Cf().size();
-
-                            if (faceI >= startI and faceI < endI)
-                            {
-                                wallFace = true;
-                            }
+                            wallFace = true;
                         }
+                    }
 
-                        // exclude wall faces
-                        if (wallFace)
-                        {
-                            toInclude = false;
-                        }
+                    // exclude wall faces
+                    if (wallFace)
+                    {
+                        toInclude = false;
                     }
                 }
             }
@@ -540,8 +565,24 @@ void ibInterpolation::findBoundaryCells
                 toAppend.second() = vertex;
             }
 
+            // fix non-existent inner cells
+            if (toAppend.second() == -1)
+            {
+                toAppend.second() = toAppend.first();
+            }
+
             boundaryCells_.append(toAppend);
         }
+    }
+
+    // prepare label field
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // assign
+        isBoundaryCell_[cellI] = bCell;
     }
 }
 
@@ -626,12 +667,15 @@ void ibInterpolation::calculateSurfNorm
 (
 )
 {
-    // stabilisation
-    dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
+    if (not readSurfNorm_)
+    {
+        // stabilisation
+        dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
 
-    // calculate the surface normal based on the body gradient
-    surfNorm_ = -fvc::grad(body_);
-    surfNorm_ /= (mag(surfNorm_) + deltaN);
+        // calculate the surface normal based on the body gradient
+        surfNorm_ = -fvc::grad(body_);
+        surfNorm_ /= (mag(surfNorm_) + deltaN);
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -639,16 +683,19 @@ void ibInterpolation::calculateDistToBoundary
 (
 )
 {
+    // loop over boundary cells
     forAll(boundaryCells_, bCell)
     {
+        // get the outer and innter cell label
         label outCellI = boundaryCells_[bCell].first();
         label inCellI = boundaryCells_[bCell].second();
 
+        // prepare
         Tuple2<scalar,scalar> toSave;
-
         scalar ds;
         point surfPoint;
 
+        // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
             ds = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
@@ -660,6 +707,7 @@ void ibInterpolation::calculateDistToBoundary
             toSave.second() = ds;
         }
 
+        // if inner cell is intersected
         else if (body_[inCellI] < 1.0)
         {
             ds = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
@@ -671,11 +719,11 @@ void ibInterpolation::calculateDistToBoundary
             toSave.first() = ds;
         }
 
+        // not intersected outer cells
         else
         {
             // find the shared vertices
             DynamicList<label> sharedVers;
-
             forAll(mesh_.cellPoints()[inCellI], iI)
             {
                 forAll(mesh_.cellPoints()[outCellI], oI)
@@ -704,6 +752,109 @@ void ibInterpolation::calculateDistToBoundary
         }
 
         boundaryDists_[bCell] = toSave;
+    }
+
+    // average orthogonal distance over all boundary cells
+    if (totalYOrthoAve_)
+    {
+        // preparation
+        scalar yAve(0.0);
+
+        // loop over boundary cells
+        forAll(boundaryCells_, bCell)
+        {
+            yAve += boundaryDists_[bCell].first();
+        }
+
+        // calculate average
+        yAve /= boundaryDists_.size();
+
+        // save to all boundary cells
+        forAll(boundaryCells_, bCell)
+        {
+            boundaryDists_[bCell].first() = yAve;
+        }
+    }
+
+    // average orthogonal distance over neighbors
+    else if (aveYOrtho_)
+    {
+        for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
+        {
+            // save old values
+            List<Tuple2<scalar,scalar>> yOld = boundaryDists_;
+
+            // loop over boundary cells
+            forAll(boundaryCells_, bCell)
+            {
+                // get the cell label
+                label cellI = boundaryCells_[bCell].first();
+
+                // prepare
+                scalar yAve(0.0);
+                scalar scalesSum(0.0);
+                label nAdded(0);
+
+                // loop over vertices
+                forAll(mesh_.cellPoints()[cellI], pID)
+                {
+                    // get the point label
+                    label pointI = mesh_.cellPoints()[cellI][pID];
+
+                    // loop over vertex neighbors
+                    forAll(mesh_.pointCells()[pointI], cI)
+                    {
+                        // get the neighbor cell label
+                        label cellN = mesh_.pointCells()[pointI][cI];
+                        
+                        // skip current cell
+                        if (cellI == cellN)
+                        {
+                            continue;
+                        }
+
+                        // skip non boundary cells
+                        if (isBoundaryCell_[cellN] == -1)
+                        {
+                            continue;
+                        }
+
+                        // get local boundary cell label
+                        label nCell = isBoundaryCell_[cellN];
+
+                        // calculate dot product of surf normals
+                        scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
+
+                        // skip if dotNorm negative
+                        if (dotNorm < 0.0)
+                        {
+                            continue;
+                        }
+
+                        // calculate distance of cell centers
+                        scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
+
+                        // add to average y and scales sum
+                        yAve += dotNorm/delta*boundaryDists_[nCell].first();
+                        scalesSum += dotNorm/delta;
+                        nAdded += 1;
+                    }
+                }
+
+                // compute average scale
+                scalar aveScale = scalesSum/nAdded;
+
+                // add current cell
+                yAve += aveCoeff_*aveScale*boundaryDists_[bCell].first();
+                scalesSum += aveCoeff_*aveScale;
+
+                // divide average y by scales sum
+                yAve /= scalesSum;
+
+                // assign
+                boundaryDists_[bCell].first() = yAve;
+            }
+        }
     }
 }
 
@@ -812,6 +963,110 @@ void ibInterpolation::saveCellSet
     setToSave.writeHeader(outFile);
     outFile << listToSave << endl;
     outFile << "// ************************************************************************* //";
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutFInBoundaryCells
+(
+    volVectorField& f
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // cut f
+        f[cellI] = (f[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutUInBoundaryCells
+(
+    volVectorField& U
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_, bCell)
+    {
+        // get the cell labels
+        label cellI = boundaryCells_[bCell].first();
+        //~ label outCellI = boundaryCells_[bCell].first();
+        //~ label inCellI = boundaryCells_[bCell].second();
+
+        // compute scalar product
+        scalar prodUNorm = U[cellI] & surfNorm_[cellI];
+        //~ scalar prodUNorm = U[inCellI] & surfNorm_[outCellI];
+
+        // cut U if it aims in opposite to surfNorm
+        if (prodUNorm < 0.0)
+        {
+            U[cellI] -= (U[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
+            //~ U[inCellI] -= (U[inCellI] & surfNorm_[outCellI])*surfNorm_[outCellI];
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::cutPhiInBoundaryCells
+(
+    surfaceScalarField& phi
+)
+{
+    // loop over cells
+    forAll(mesh_.C(), cellI)
+    {
+        // skip outer cells
+        if (body_[cellI] < 0.5)
+        {
+            continue;
+        }
+        
+        // check if it is a boundary cell
+        bool isBoundary = false;
+        forAll(boundaryCells_, bCell)
+        {
+            // get the cell label
+            label cellB = boundaryCells_[bCell].second();
+
+            if (cellI == cellB)
+            {
+                isBoundary = true;
+            }
+        }
+
+        // loop over faces
+        forAll(mesh_.cells()[cellI], fI)
+        {
+            // get the face label
+            label faceI = mesh_.cells()[cellI][fI];
+
+            // skip non-internal faces
+            if (faceI > mesh_.nInternalFaces())
+            {
+                continue;
+            }
+
+            if (isBoundary)
+            {
+                // get the face normal
+                vector Sf = mesh_.Sf()[faceI];
+
+                // turn off phi for inner faces
+                if ((Sf & surfNorm_[cellI]) < 0.0)
+                {
+                    phi[faceI] = 1e-20;
+                }
+            }
+
+            else
+            {
+                phi[faceI] = 1e-20;
+            }
+        }
+    }
 }
 
 // ************************************************************************* //

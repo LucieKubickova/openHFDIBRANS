@@ -92,6 +92,7 @@ class ibDirichletBCs
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    labelField& isBoundaryCell_;
 
     // dictionaries
     IOdictionary turbulenceProperties_;
@@ -152,7 +153,8 @@ class ibDirichletBCs
         const fvMesh& mesh,
         const volScalarField& body,
         DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists
+        List<Tuple2<scalar,scalar>>& boundaryDists,
+        labelField& isBoundaryCell
     );
 
     // Destructors -----------------------------------------------------
