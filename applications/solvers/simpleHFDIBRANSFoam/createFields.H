@@ -100,3 +100,6 @@ autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
 #include "createMRF.H"
 #include "createFvModels.H"
 #include "createFvConstraints.H"
+
+// dummy time
+dimensionedScalar dummyTime = dimensionedScalar("dummy", dimTime, 1.0);
