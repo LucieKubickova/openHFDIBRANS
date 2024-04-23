@@ -56,6 +56,7 @@ class openHFDIBRANS
 
     // lambda related
     const volScalarField& body_;
+    scalar thrSurf_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;

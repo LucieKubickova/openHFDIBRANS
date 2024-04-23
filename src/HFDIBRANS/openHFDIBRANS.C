@@ -74,6 +74,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
     cpOmegaToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyOmegaToInner", false);
     scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
+    thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -310,12 +311,17 @@ void openHFDIBRANS::correctOmegaG
             scalar l = Foam::pow(V, 0.333);
 
             // assign
-            //~ omegaIB[bCell] = omegaIB[bCell]/yOrtho*l; // scaling
-            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
-            omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
-            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
-            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            if (body_[cellI] > thrSurf_) // yOrtho < l
+            {
+                omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+                GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            }
+
+            else // yOrtho > l
+            {
+                omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
+                GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            }
         }
     }
 
@@ -396,12 +402,17 @@ void openHFDIBRANS::correctEpsilonG
             scalar l = Foam::pow(V, 0.333);
 
             // assign
-            //~ epsilonIB[bCell] = epsilonIB[bCell]/yOrtho*l; // scaling
-            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
-            epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
-            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
-            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            if (body_[cellI] > thrSurf_) // yOrtho < l
+            {
+                epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+                GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            }
+
+            else // yOrtho > l
+            {
+                epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
+                GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            }
         }
     }
 
