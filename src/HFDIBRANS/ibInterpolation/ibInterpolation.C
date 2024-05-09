@@ -692,31 +692,26 @@ void ibInterpolation::calculateDistToBoundary
 
         // prepare
         Tuple2<scalar,scalar> toSave;
-        scalar ds;
+        scalar sigma;
+        scalar yOrtho;
         point surfPoint;
+        scalar l = Foam::pow(mesh_.V()[outCellI], 0.333);
 
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            ds = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
-            toSave.first() = ds;
-
-            surfPoint = mesh_.C()[outCellI];
-            surfPoint -= surfNorm_[outCellI]*ds;
-            ds = -1*surfNorm_[outCellI] & (mesh_.C()[inCellI] - surfPoint);
-            toSave.second() = ds;
+            sigma = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
+            yOrtho = 0.5*(sigma + l*0.5);
         }
 
         // if inner cell is intersected
         else if (body_[inCellI] < 1.0)
         {
-            ds = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
-            toSave.second() = ds;
-
+            sigma = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
             surfPoint = mesh_.C()[inCellI];
-            surfPoint += surfNorm_[inCellI]*ds;
-            ds = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
-            toSave.first() = ds;
+            surfPoint += surfNorm_[inCellI]*sigma;
+            sigma = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
+            yOrtho = 0.5*(sigma + l*0.5);
         }
 
         // not intersected outer cells
@@ -744,13 +739,12 @@ void ibInterpolation::calculateDistToBoundary
             center /= sharedVers.size();
 
             // compute ds as a distance from the cell center to the averaged vertex
-            ds = mag(mesh_.C()[inCellI] - center);
-            toSave.second() = ds;
-
-            ds = mag(mesh_.C()[outCellI] - center);
-            toSave.first() = ds;
+            sigma = mag(mesh_.C()[inCellI] - center);
+            yOrtho = mag(mesh_.C()[outCellI] - center);
         }
 
+        toSave.first() = yOrtho;
+        toSave.second() = sigma;
         boundaryDists_[bCell] = toSave;
     }
 
