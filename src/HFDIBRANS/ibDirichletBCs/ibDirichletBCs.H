@@ -84,6 +84,7 @@ class ibDirichletBCs
 
     // lambda related things
     const volScalarField& body_;
+    scalar thrSurf_;
 
     // fields
     List<scalar> nutAtIB_;
