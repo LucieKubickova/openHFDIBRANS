@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
     scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
     scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
-    scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
+    //~ scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
     bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
     bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
     bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
