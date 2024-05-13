@@ -72,6 +72,7 @@ class ibInterpolation
     bool totalYOrthoAve_;
     scalar aveCoeff_;
     label nAveYOrtho_;
+    bool averageV_;
 
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;

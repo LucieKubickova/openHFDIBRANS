@@ -105,11 +105,14 @@ fvSchemes_
 
     // compute average cell volume
     VAve_ = 0.0;
-    forAll(mesh_.V(), i)
+    if (averageV_)
     {
-        VAve_ += mesh_.V()[i];
+        forAll(mesh_.V(), i)
+        {
+            VAve_ += mesh_.V()[i];
+        }
+        VAve_ /= mesh_.V().size();
     }
-    VAve_ /= mesh_.V().size();
 
     // calculate surface normals
     calculateSurfNorm();
@@ -146,7 +149,16 @@ void ibInterpolation::calculateInterpolationPoints
         DynamicList<point> intPoints;
         DynamicList<label> intCells;
 
-        scalar intDist = Foam::pow(VAve_,0.333);
+        // prepare reference distance
+        scalar intDist;
+        if (averageV_)
+        {
+            intDist = Foam::pow(VAve_,0.333);
+        }
+        else
+        {
+            intDist = Foam::pow(mesh_.V()[cellI],0.333);
+        }
         intDist *= 0.5;
 
         // add to list
@@ -549,7 +561,15 @@ void ibInterpolation::findBoundaryCells
                 Tuple2<label,label> helpTup(cellI,-1);
                 Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
 
-                scalar intDist = Foam::pow(VAve_,0.333);
+                scalar intDist;
+                if (averageV_)
+                {
+                    intDist = Foam::pow(VAve_,0.333);
+                }
+                else
+                {
+                    intDist = Foam::pow(mesh_.V()[cellI],0.333);
+                }
                 intDist *= 0.5;
 
                 vector surfNormToSend(-surfNorm_[cellI]);
@@ -700,14 +720,32 @@ void ibInterpolation::calculateDistToBoundary
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            sigma = Foam::atanh(1-2*body_[outCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
+            scalar l;
+            if (averageV_)
+            {
+                l = Foam::pow(VAve_, 0.333);
+            }
+            else
+            {
+                l = Foam::pow(mesh_.V()[outCellI], 0.333);
+            }
+            sigma = Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y > 1 for lambda < 0.5
             yOrtho = 0.5*(sigma + l*0.5);
         }
 
         // if inner cell is intersected
         else if (body_[inCellI] < 1.0)
         {
-            sigma = -1*Foam::atanh(1-2*body_[inCellI])*Foam::pow(VAve_,0.333)/intSpan_; // y > 1 for lambda < 0.5
+            scalar l;
+            if (averageV_)
+            {
+                l = Foam::pow(VAve_, 0.333);
+            }
+            else
+            {
+                l = Foam::pow(mesh_.V()[inCellI], 0.333);
+            }
+            sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda < 0.5
             surfPoint = mesh_.C()[inCellI];
             surfPoint += surfNorm_[inCellI]*sigma;
             sigma = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
