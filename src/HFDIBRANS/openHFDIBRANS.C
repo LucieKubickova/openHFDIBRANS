@@ -72,8 +72,10 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 {
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
-    cpOmegaToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyOmegaToInner", false);
+    cpDisToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyDisToInner", false);
     scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
+    scaleCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeff", 1.0);
+    thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -309,13 +311,30 @@ void openHFDIBRANS::correctOmegaG
             scalar V = mesh_.V()[cellI];
             scalar l = Foam::pow(V, 0.333);
 
+            // user-defined scaling
+            omegaIB[bCell] = omegaIB[bCell]*scaleCoeff_;
+            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+
+            // old versions
+            //~ omegaIB[bCell] = omegaIB[bCell]*(2*yOrtho)/l;
+            //~ GIB[bCell] = GIB[bCell]*(2*yOrtho)/l;
+            //~ omegaIB[bCell] = omegaIB[bCell]*l/(2*yOrtho); // scalingRight
+            //~ GIB[bCell] = GIB[bCell]*l/(2*yOrtho);
+
             // assign
-            //~ omegaIB[bCell] = omegaIB[bCell]/yOrtho*l; // scaling
-            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
-            omegaIB[bCell] = omegaIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
-            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
-            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            //~ if (body_[cellI] > thrSurf_) // yOrtho < l
+            //~ {
+                //~ omegaIB[bCell] = omegaIB[bCell]*l/(2*yOrtho); // scalingRight
+                //~ GIB[bCell] = GIB[bCell]*l/(2*yOrtho);
+            //~ }
+
+            //~ else // yOrtho > l
+            //~ {
+                //~ omegaIB[bCell] = omegaIB[bCell]/l*(2*yOrtho); // scalingRightInverse
+                //~ GIB[bCell] = GIB[bCell]/l*(2*yOrtho);
+                //~ //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho); // NOTE: Martins function
+                //~ //~ GIB[bCell] = GIB[bCell]/l*(yOrtho);
+            //~ }
         }
     }
 
@@ -347,7 +366,7 @@ void openHFDIBRANS::correctOmegaG
     }
 
     // correct the inner boundary cells
-    if (cpOmegaToInner_)
+    if (cpDisToInner_)
     {
         forAll(boundaryCells_, bCell)
         {
@@ -395,13 +414,22 @@ void openHFDIBRANS::correctEpsilonG
             scalar V = mesh_.V()[cellI];
             scalar l = Foam::pow(V, 0.333);
 
-            // assign
-            //~ epsilonIB[bCell] = epsilonIB[bCell]/yOrtho*l; // scaling
-            //~ GIB[bCell] = GIB[bCell]/yOrtho*l;
-            epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
-            GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
-            //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
-            //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            // user-defined scaling
+            epsilonIB[bCell] = epsilonIB[bCell]*scaleCoeff_;
+            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+
+            //~ // old
+            //~ if (body_[cellI] > thrSurf_) // yOrtho < l
+            //~ {
+                //~ epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+                //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ }
+
+            //~ else // yOrtho > l
+            //~ {
+                //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
+                //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            //~ }
         }
     }
 
@@ -432,16 +460,19 @@ void openHFDIBRANS::correctEpsilonG
         }
     }
 
-    //~ // correct the inner boudnary cells
-    //~ forAll(boundaryCells_, bCell)
-    //~ {
-        //~ // get cell labels
-        //~ label outCellI = boundaryCells_[bCell].first();
-        //~ label inCellI = boundaryCells_[bCell].second();
+    // correct the inner boudnary cells
+    if (cpDisToInner_)
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell labels
+            label outCellI = boundaryCells_[bCell].first();
+            label inCellI = boundaryCells_[bCell].second();
 
-        //~ // assign
-        //~ epsilon[inCellI] = epsilon[outCellI];
-    //~ }
+            // assign
+            epsilon[inCellI] = epsilon[outCellI];
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//

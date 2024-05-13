@@ -56,6 +56,7 @@ class openHFDIBRANS
 
     // lambda related
     const volScalarField& body_;
+    scalar thrSurf_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -75,8 +76,9 @@ class openHFDIBRANS
 
     // options
     bool save_;
-    bool cpOmegaToInner_;
+    bool cpDisToInner_;
     bool scaleDisG_;
+    scalar scaleCoeff_;
 
     // save
     word outDir_;
