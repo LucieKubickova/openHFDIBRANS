@@ -21,7 +21,7 @@ solvers
     {
         solver          GAMG;
         tolerance       1e-10;
-        relTol          0.005;
+        relTol          0.0;
         smoother        symGaussSeidel;
         nPreSweeps      0;
         nPostSweeps     2;

@@ -14,6 +14,7 @@ FoamFile
     object      HFDIBDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 surfaceThreshold    1e-4;
 sdBasedLambda       true;
 interfaceSpan       1.0;

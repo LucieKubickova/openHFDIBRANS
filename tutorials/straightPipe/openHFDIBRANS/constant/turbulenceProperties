@@ -21,8 +21,8 @@ HFDIBRAS
     HFDIBRASModel	    HFDIBKOmega;
     turbulence          on;
     printCoeffs         on;
-    disSurfaceType      setValue;
-    disBoundaryValue    1.0;
+    disGSurfaceType     setValue;
+    disGBoundaryValue   1.0;
     kSurfaceType        setValue;
     kBoundaryValue      0.0;
     tolKEqn             1e-4;
