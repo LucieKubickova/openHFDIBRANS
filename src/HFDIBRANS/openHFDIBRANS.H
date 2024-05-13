@@ -56,6 +56,7 @@ class openHFDIBRANS
 
     // lambda related
     const volScalarField& body_;
+    scalar thrSurf_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -65,6 +66,7 @@ class openHFDIBRANS
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
     List<Tuple2<scalar,scalar>> boundaryDists_;
+    labelField isBoundaryCell_;
 
     // interpolation class
     ibInterpolation ibInterpolation_;
@@ -72,8 +74,13 @@ class openHFDIBRANS
     // wall functions class
     ibDirichletBCs ibDirichletBCs_;
 
-    // save
+    // options
     bool save_;
+    bool cpDisToInner_;
+    bool scaleDisG_;
+    scalar scaleCoeff_;
+
+    // save
     word outDir_;
 
     public:
@@ -101,6 +108,17 @@ class openHFDIBRANS
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
+
+    // cutting fields in normal direction 
+    void cutFInBoundaryCells(volVectorField& f);
+    void cutUInBoundaryCells(volVectorField& U);
+    void cutPhiInBoundaryCells(surfaceScalarField& phi);
+
+    // enforcing Ui
+    void enforceUiInBody(volVectorField& U, volVectorField& Ui);
+
+    // bound fields
+    void bound(volScalarField& phi, dimensionedScalar& phiMin);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

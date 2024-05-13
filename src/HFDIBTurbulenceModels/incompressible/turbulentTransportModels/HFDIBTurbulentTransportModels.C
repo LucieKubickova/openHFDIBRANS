@@ -31,8 +31,7 @@ Description
 
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
-\*---------------------------------------------------------------------------*/
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*) \*---------------------------------------------------------------------------*/
 
 #include "HFDIBTurbulentTransportModels.H"
 

@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    Info<< "\nStarting time loop\n" << endl;
+    Info << "\nStarting time loop\n" << endl;
 
     // read simple dict
     dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
@@ -81,6 +81,11 @@ int main(int argc, char *argv[])
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
     scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
     scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
+    //~ scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
+    bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
+    bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
+    bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
+    bool enforceVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
@@ -91,7 +96,7 @@ int main(int argc, char *argv[])
 
     while (simple.loop())
     {
-        Info<< "Time = " << runTime.timeName() << nl << endl;
+        Info << "Time = " << runTime.timeName() << nl << endl;
 
         // --- Pressure-velocity SIMPLE corrector
         {
@@ -107,10 +112,9 @@ int main(int argc, char *argv[])
         runTime.printExecutionTime(Info);
     }
 
-    Info<< "End\n" << endl;
+    Info << "End\n" << endl;
 
     return 0;
 }
-
 
 // ************************************************************************* //

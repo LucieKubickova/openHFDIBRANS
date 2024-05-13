@@ -207,11 +207,11 @@ HFDIBKOmega<BasicTurbulenceModel>::HFDIBKOmega
         this->mesh_,
         dimensionedScalar("zero",dimless,0.0)
     ),
-    omegaSurface_
+    omegaGSurface_
     (
         IOobject
         (
-            "HFDIBKOmega::omegaSurface",
+            "HFDIBKOmega::omegaGSurface",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -261,11 +261,12 @@ HFDIBKOmega<BasicTurbulenceModel>::HFDIBKOmega
     // read dictionaries
     dictionary HFDIBRASDict = this->HFDIBRASDict_;
     HFDIBRASDict.readEntry("kSurfaceType", kSurfaceType_);
-    HFDIBRASDict.readEntry("disSurfaceType", omegaSurfaceType_);
+    HFDIBRASDict.readEntry("disGSurfaceType", omegaGSurfaceType_);
     HFDIBRASDict.readEntry("kBoundaryValue", kBoundaryValue_);
-    HFDIBRASDict.readEntry("disBoundaryValue", omegaBoundaryValue_);
+    HFDIBRASDict.readEntry("disGBoundaryValue", omegaGBoundaryValue_);
     HFDIBRASDict.readEntry("tolKEqn", tolKEqn_);
     HFDIBRASDict.readEntry("maxKEqnIters", maxKEqnIters_);
+    useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound
     bound(k_, this->kMin_);
@@ -276,7 +277,6 @@ HFDIBKOmega<BasicTurbulenceModel>::HFDIBKOmega
         this->printCoeffs(type);
     }
 }
-
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -316,7 +316,7 @@ void HFDIBKOmega<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.createBaseSurface(omegaSurface_, omegaSurfaceType_, omegaBoundaryValue_);
+    HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
 
     eddyViscosity<HFDIBRASModel<BasicTurbulenceModel>>::correct();
 
@@ -340,7 +340,7 @@ void HFDIBKOmega<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
     HFDIBRANS.updateUTau(k_);
 
     // HFDIB: correct omega and G
-    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaSurface_);
+    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
 
     // Turbulence specific dissipation rate equation
     tmp<fvScalarMatrix> omegaEqn
@@ -360,15 +360,16 @@ void HFDIBKOmega<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, omegaSurface_);
+    matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
 
     solve(omegaEqn);
     fvOptions.correct(omega_);
     bound(omega_, this->omegaMin_);
+    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
-            
+
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
     (
@@ -385,23 +386,34 @@ void HFDIBKOmega<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
     kEqn.relax();
     fvOptions.constrain(kEqn);
 
-    for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
+    if (useKQ_)
     {
-        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-        solve(kEqn == kQ_);
-
-        if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
+        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
-            Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-            break;
-        }
+            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            solve(kEqn == kQ_);
 
-        // apply correction
-        k_ += 1.0*kSurface_*(ki_ - k_);
+            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+
+            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
+            {
+                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+                break;
+            }
+
+            // apply correction
+            k_ += 1.0*kSurface_*(ki_ - k_);
+        }
     }
-    
+
+    else
+    {
+        solve(kEqn);
+    }
+
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
+    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut();
     HFDIBRANS.correctNut(k_, nu_);

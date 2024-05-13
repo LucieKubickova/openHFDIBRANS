@@ -67,11 +67,15 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_),
-ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_)
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_),
+ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 {
     // read HFDIBDEM dictionary
-    HFDIBDEMDict_.lookup("saveIntInfo") >> save_;
+    save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
+    cpDisToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyDisToInner", false);
+    scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
+    scaleCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeff", 1.0);
+    thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -169,6 +173,11 @@ void openHFDIBRANS::computeUi
         ibInterpolation_.outerInnerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "inner")
+    {
+        ibInterpolation_.innerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
+    }
+
     else
     {
         FatalError << "Interpolation type " << UIBScheme << " for field U not implemented" << exit(FatalError);
@@ -230,6 +239,11 @@ void openHFDIBRANS::computeKi
         ibInterpolation_.outerInnerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "inner")
+    {
+        ibInterpolation_.innerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
+    }
+
     else
     {
         FatalError << "Interpolation type " << kIBScheme << " for field k not implemented" << exit(FatalError);
@@ -284,6 +298,46 @@ void openHFDIBRANS::correctOmegaG
     // calculate values at the immersed boundary
     ibDirichletBCs_.omegaGAtIB(omegaIB, GIB, G, U, k, nu);
 
+    // omega scaling
+    if (scaleDisG_)
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get cell scales
+            scalar yOrtho = boundaryDists_[bCell].first();
+            scalar V = mesh_.V()[cellI];
+            scalar l = Foam::pow(V, 0.333);
+
+            // user-defined scaling
+            omegaIB[bCell] = omegaIB[bCell]*scaleCoeff_;
+            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+
+            // old versions
+            //~ omegaIB[bCell] = omegaIB[bCell]*(2*yOrtho)/l;
+            //~ GIB[bCell] = GIB[bCell]*(2*yOrtho)/l;
+            //~ omegaIB[bCell] = omegaIB[bCell]*l/(2*yOrtho); // scalingRight
+            //~ GIB[bCell] = GIB[bCell]*l/(2*yOrtho);
+
+            // assign
+            //~ if (body_[cellI] > thrSurf_) // yOrtho < l
+            //~ {
+                //~ omegaIB[bCell] = omegaIB[bCell]*l/(2*yOrtho); // scalingRight
+                //~ GIB[bCell] = GIB[bCell]*l/(2*yOrtho);
+            //~ }
+
+            //~ else // yOrtho > l
+            //~ {
+                //~ omegaIB[bCell] = omegaIB[bCell]/l*(2*yOrtho); // scalingRightInverse
+                //~ GIB[bCell] = GIB[bCell]/l*(2*yOrtho);
+                //~ //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho); // NOTE: Martins function
+                //~ //~ GIB[bCell] = GIB[bCell]/l*(yOrtho);
+            //~ }
+        }
+    }
+
     // assign the values for boundary cells
     forAll(boundaryCells_, bCell)
     {
@@ -311,15 +365,18 @@ void openHFDIBRANS::correctOmegaG
         }
     }
 
-    // correct the inner boudnary cells
-    forAll(boundaryCells_, bCell)
+    // correct the inner boundary cells
+    if (cpDisToInner_)
     {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell labels
+            label outCellI = boundaryCells_[bCell].first();
+            label inCellI = boundaryCells_[bCell].second();
 
-        // assign
-        omega[inCellI] = omega[outCellI];
+            // assign
+            omega[inCellI] = omega[outCellI];
+        }
     }
 }
 
@@ -343,6 +400,38 @@ void openHFDIBRANS::correctEpsilonG
 
     // calculate values at the immersed boundary
     ibDirichletBCs_.epsilonGAtIB(epsilonIB, GIB, G, U, k, nu);
+
+    // epsilon scaling
+    if (scaleDisG_)
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get cell scales
+            scalar yOrtho = boundaryDists_[bCell].first();
+            scalar V = mesh_.V()[cellI];
+            scalar l = Foam::pow(V, 0.333);
+
+            // user-defined scaling
+            epsilonIB[bCell] = epsilonIB[bCell]*scaleCoeff_;
+            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+
+            //~ // old
+            //~ if (body_[cellI] > thrSurf_) // yOrtho < l
+            //~ {
+                //~ epsilonIB[bCell] = epsilonIB[bCell]*l/(yOrtho + l*0.5); // scalingRight
+                //~ GIB[bCell] = GIB[bCell]*l/(yOrtho + l*0.5);
+            //~ }
+
+            //~ else // yOrtho > l
+            //~ {
+                //~ epsilonIB[bCell] = epsilonIB[bCell]/l*(yOrtho + l*0.5); // scalingRightInverse
+                //~ GIB[bCell] = GIB[bCell]/l*(yOrtho + l*0.5);
+            //~ }
+        }
+    }
 
     // assign the values for boundary cells
     forAll(boundaryCells_, bCell)
@@ -372,14 +461,17 @@ void openHFDIBRANS::correctEpsilonG
     }
 
     // correct the inner boudnary cells
-    forAll(boundaryCells_, bCell)
+    if (cpDisToInner_)
     {
-        // get cell labels
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell labels
+            label outCellI = boundaryCells_[bCell].first();
+            label inCellI = boundaryCells_[bCell].second();
 
-        // assign
-        epsilon[inCellI] = epsilon[outCellI];
+            // assign
+            epsilon[inCellI] = epsilon[outCellI];
+        }
     }
 }
 
@@ -417,6 +509,89 @@ void openHFDIBRANS::updateSurface
     if (surfType == "switched")
     {
         ibInterpolation_.updateSwitchSurface(surface, ibDirichletBCs_.getYPlusi(), ibDirichletBCs_.getYPlusLam());
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::cutFInBoundaryCells
+(
+    volVectorField& f
+)
+{
+    ibInterpolation_.cutFInBoundaryCells(f);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::cutUInBoundaryCells
+(
+    volVectorField& U
+)
+{
+    ibInterpolation_.cutUInBoundaryCells(U);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::cutPhiInBoundaryCells
+(
+    surfaceScalarField& phi
+)
+{
+    ibInterpolation_.cutPhiInBoundaryCells(phi);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::enforceUiInBody
+(
+    volVectorField& U,
+    volVectorField& Ui
+)
+{
+    // loop over cells
+    forAll(mesh_.C(), cellI)
+    {
+        if (body_[cellI] < 1.0)
+        {
+            continue;
+        }
+
+        // check if cellI is an inner boundary cell
+        bool toCont = false;
+        forAll(boundaryCells_, bCell)
+        {
+            // get the cell label
+            label cellB = boundaryCells_[bCell].second();
+
+            // check
+            if (cellB == cellI)
+            {
+                toCont = true;
+                break;
+            }
+        }
+
+        if (not toCont)
+        {
+            U[cellI] = Ui[cellI];
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::bound
+(
+    volScalarField& phi,
+    dimensionedScalar& phiMin
+)
+{
+    // loop over cells
+    forAll(mesh_.C(), cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            continue;
+        }
+
+        phi[cellI] = max(phi[cellI], phiMin.value());
     }
 }
 

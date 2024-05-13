@@ -1,4 +1,4 @@
-Info<< "Reading field p\n" << endl;
+Info << "Reading field p\n" << endl;
 volScalarField p
 (
     IOobject
@@ -12,7 +12,7 @@ volScalarField p
     mesh
 );
 
-Info<< "Reading field U\n" << endl;
+Info << "Reading field U\n" << endl;
 volVectorField U
 (
     IOobject
@@ -85,7 +85,6 @@ volVectorField f
 
 #include "createPhi.H"
 
-
 label pRefCell = 0;
 scalar pRefValue = 0.0;
 setRefCell(p, simple.dict(), pRefCell, pRefValue);
@@ -102,3 +101,6 @@ autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 
 #include "createMRF.H"
 #include "createFvOptions.H"
+
+// dummy time
+dimensionedScalar dummyTime = dimensionedScalar("dummy", dimTime, 1.0);
