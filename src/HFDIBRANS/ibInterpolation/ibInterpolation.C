@@ -99,6 +99,7 @@ fvSchemes_
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
     nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
+    averageV_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageVolume", false);
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
