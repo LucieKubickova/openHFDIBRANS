@@ -14,10 +14,13 @@ FoamFile
     object      HFDIBDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 surfaceThreshold    1e-4;
 sdBasedLambda       true;
 interfaceSpan       1.0;
 saveIntInfo         false;
+scaleDisG           true;
+scaleCoeff          1.4142135623730951; // sqrt(2)
 
 wallFunctions
 {
