@@ -25,9 +25,9 @@ scaleCoeff          1.4142135623730951; // sqrt(2)
 wallFunctions
 {
     nut		nutkWallFunction;
-	k		kLowReWallFunction;
-	omega	omegaWallFunction;
-	epsilon	epsilonWallFunction;
+    k       kLowReWallFunction;
+    omega   omegaWallFunction;
+    epsilon epsilonWallFunction;
 }
 
 // ************************************************************************* //
