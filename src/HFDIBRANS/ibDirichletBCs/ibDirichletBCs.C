@@ -171,6 +171,16 @@ void ibDirichletBCs::UAtIB
     {
         forAll(UIB, bCell)
         {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get distance to the surface
+            scalar yOrtho = boundaryDists_[bCell].first();
+
+            // saves for later interpolation
+            yOrthoi_[cellI] = yOrtho;
+
+            // assign zero
             UIB[bCell] = ibZero(UIB[bCell]);
         }
     }
