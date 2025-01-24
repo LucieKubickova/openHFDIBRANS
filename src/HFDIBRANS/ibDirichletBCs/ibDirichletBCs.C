@@ -88,19 +88,6 @@ yPlusi_
     mesh_,
     dimensionedScalar("zero", dimless, -1.0)
 ),
-yOrthoi_
-(
-    IOobject
-    (
-        "yOrthoi",
-        mesh_.time().timeName(),
-        mesh_,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh_,
-    dimensionedScalar("zero", dimless, -1.0)
-),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -169,19 +156,10 @@ void ibDirichletBCs::UAtIB
 {
     if (simulationType_ == "laminar" or BCType == "noSlip")
     {
-        forAll(UIB, bCell)
+        forAll(UIB, uCell)
         {
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
-
-            // get distance to the surface
-            scalar yOrtho = boundaryDists_[bCell].first();
-
-            // saves for later interpolation
-            yOrthoi_[cellI] = yOrtho;
-
             // assign zero
-            UIB[bCell] = ibZero(UIB[bCell]);
+            UIB[uCell] = ibZero(UIB[uCell]);
         }
     }
 
@@ -340,7 +318,6 @@ void ibDirichletBCs::correctNutAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -377,7 +354,6 @@ void ibDirichletBCs::kAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -505,7 +481,6 @@ void ibDirichletBCs::omegaGAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (blended)
@@ -598,7 +573,6 @@ void ibDirichletBCs::epsilonGAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             if (yPlus > yPlusLam_)
             {

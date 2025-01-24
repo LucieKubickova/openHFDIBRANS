@@ -68,7 +68,39 @@ void ibInterpolation::unifunctionalInterp
         label cellI = boundaryCells_[bCell].first();
 
         // interpolate
-        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
+        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
+    }
+}
+
+//---------------------------------------------------------------------------//
+template <typename Type, typename volTypeField>
+void ibInterpolation::lambdaBasedInterp
+(
+    ITstream& ibSchemeName,
+    volTypeField& phi,
+    volTypeField& phii,
+    List<Type>& dirichletVals,
+    List<scalar>& scales
+)
+{
+    // create interpolator
+    autoPtr<interpolation<Type>> interpPhi =
+                   interpolation<Type>::New(HFDIBInnerSchemes_, phi);
+
+    // read chosen interpolation function
+    word ibSchemeType = ibSchemeName[1].wordToken();
+
+    // prepare chosen interpolation function
+    autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
+
+    // interpolate and assign values to the imposed field
+    forAll(surfaceCells_, sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[sCell];
+
+        // interpolate
+        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[sCell], scales[sCell], surfaceDists_[sCell], intInfoListSurface_[sCell], cellI);
     }
 }
 
@@ -106,12 +138,12 @@ void ibInterpolation::switchedInterp
         // switch based on yPlus value
         if (yPlusi[cellI] > yPlusLam)
         {
-            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
+            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
         }
 
         else
         {
-            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], cellI);
+            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
         }
     }
 }
@@ -154,11 +186,11 @@ void ibInterpolation::outerInnerInterp
             label inCellI = boundaryCells_[bCell].second();
 
             // create new interpolation info to interpolate inside
-            interpolationInfo intInfoToSend(intInfoList_[bCell]);
+            interpolationInfo intInfoToSend(intInfoListBoundary_[bCell]);
             intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
-            intInfoToSend.intPoints_[2] = intInfoList_[bCell].intPoints_[1];
+            intInfoToSend.intPoints_[2] = intInfoListBoundary_[bCell].intPoints_[1];
             intInfoToSend.intCells_[0] = outCellI;
-            intInfoToSend.intCells_[1] = intInfoList_[bCell].intCells_[0];
+            intInfoToSend.intCells_[1] = intInfoListBoundary_[bCell].intCells_[0];
 
             // get the inner cell distance
             scalar dsToSend = -1*boundaryDists_[bCell].second();
@@ -170,7 +202,7 @@ void ibInterpolation::outerInnerInterp
 
         else
         {
-            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoList_[bCell], outCellI);
+            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], outCellI);
         }
     }
 }
@@ -206,11 +238,11 @@ void ibInterpolation::innerInterp
         label inCellI = boundaryCells_[bCell].second();
 
         // create new interpolation info to interpolate inside
-        interpolationInfo intInfoToSend(intInfoList_[bCell]);
+        interpolationInfo intInfoToSend(intInfoListBoundary_[bCell]);
         intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
-        intInfoToSend.intPoints_[2] = intInfoList_[bCell].intPoints_[1];
+        intInfoToSend.intPoints_[2] = intInfoListBoundary_[bCell].intPoints_[1];
         intInfoToSend.intCells_[0] = outCellI;
-        intInfoToSend.intCells_[1] = intInfoList_[bCell].intCells_[0];
+        intInfoToSend.intCells_[1] = intInfoListBoundary_[bCell].intCells_[0];
 
         // get the inner cell distance
         scalar dsToSend = -1*boundaryDists_[bCell].second();

@@ -48,7 +48,7 @@ namespace HFDIBRASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBKOmega Declaration
+                          Class HFDIBKOmega Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicHFDIBMomentumTransportModel>

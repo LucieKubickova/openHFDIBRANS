@@ -90,6 +90,7 @@ protected:
             //  Note: different to wall distance in parent RASModel
             //  which is for near-wall cells only
             const volScalarField& y_;
+            volScalarField yIB_;
 
             volScalarField k_;
             volScalarField omega_;
@@ -114,6 +115,7 @@ protected:
 
         // Options
             bool useKQ_;
+            bool correctFs_;
 
     // Protected Member Functions
 

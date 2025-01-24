@@ -13,7 +13,7 @@ UEqn.relax();
 
 fvOptions.constrain(UEqn);
 
-HFDIBRANS.computeUi(U, Ui);
+HFDIBRANS.computeUi(U, Ui, surfaceType);
 HFDIBRANS.updateSurface(surface, surfaceType);
 
 if (simple.momentumPredictor())
