@@ -98,6 +98,7 @@ class openHFDIBRANS
     // compute imposed fields
     void computeUi(volVectorField& U, volVectorField& Ui, word surfType);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
+    void computeTi(volScalarField& T, volScalarField& Ti);
 
     // update friction velocity
     void updateUTau(volScalarField& k);

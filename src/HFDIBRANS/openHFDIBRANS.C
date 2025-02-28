@@ -280,6 +280,40 @@ void openHFDIBRANS::computeKi
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::computeTi
+(
+    volScalarField& T,
+    volScalarField& Ti
+)
+{
+    // reset imposed field
+    Ti *= 0.0;
+
+    // calculate values at the immersed boundary
+    List<scalar> TIB;
+    TIB.setSize(boundaryCells_.size()); // dummy
+
+    // calculate log scales for interpolation
+    List<scalar> logScales;
+    logScales.setSize(boundaryCells_.size()); // dummy
+
+    // read interpolation schemes from fvSchemes
+    ITstream TIBScheme = HFDIBOuterSchemes_.lookup("T");
+    word interpType = TIBScheme[0].wordToken();
+
+    // use boundary condition
+    if (interpType == "unifunctional")
+    {
+        ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+    }
+
+    else
+    {
+        FatalError << "Interpolation type " << TIBScheme << " for field T not implemented" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::updateUTau
 (
     volScalarField& k

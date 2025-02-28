@@ -42,6 +42,8 @@ Contributors
 #include "linearScheme.H"
 #include "quadraticScheme.H"
 #include "logarithmicScheme.H"
+#include "fixedGradientScheme.H"
+#include "zeroGradientScheme.H"
 
 #define ORDER 2
 

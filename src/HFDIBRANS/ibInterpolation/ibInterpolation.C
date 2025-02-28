@@ -1038,6 +1038,16 @@ autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
         funcPtr.set(new logarithmicScheme());
     }
 
+    else if (name == "fixedGradient")
+    {
+        funcPtr.set(new fixedGradientScheme());
+    }
+
+    else if (name == "zeroGradient")
+    {
+        funcPtr.set(new zeroGradientScheme());
+    }
+
     else
     {
         FatalError << "Interpolation function " << name << " not implemented" << exit(FatalError);
