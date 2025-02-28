@@ -195,7 +195,7 @@ void ibInterpolation::calculateInterpolationPoints
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::getInterpolationPoint // HERE fix
+void ibInterpolation::getInterpolationPoint
 (
     label cellI,
     point surfPoint,
@@ -271,7 +271,7 @@ void ibInterpolation::getInterpolationPoint // HERE fix
 }
     
 //---------------------------------------------------------------------------//
-void ibInterpolation::setInterpolationOrder // HERE fix
+void ibInterpolation::setInterpolationOrder
 (
     List<interpolationInfo>& intInfoList
 )
