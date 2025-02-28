@@ -378,49 +378,49 @@ void ibDirichletBCs::kAtIB
         }
 
         // save kIB
-        word fileName = "k.dat";
-        word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
+        //~ word fileName = "k.dat";
+        //~ word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
 
-        // prepare outFile
-        autoPtr<OFstream> outFilePtr;
-        outFilePtr.reset(new OFstream(outDir/fileName));
-        outFilePtr() << "cellI,x,y,z,V,k" << endl;
+        //~ // prepare outFile
+        //~ autoPtr<OFstream> outFilePtr;
+        //~ outFilePtr.reset(new OFstream(outDir/fileName));
+        //~ outFilePtr() << "cellI,x,y,z,V,k" << endl;
 
-        // loop over cells
-        forAll(boundaryCells_, bCell)
-        {
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
+        //~ // loop over cells
+        //~ forAll(boundaryCells_, bCell)
+        //~ {
+            //~ // get cell label
+            //~ label cellI = boundaryCells_[bCell].first();
 
-            // get distance to the surface
-            scalar yOrtho = boundaryDists_[bCell].first();
+            //~ // get distance to the surface
+            //~ scalar yOrtho = boundaryDists_[bCell].first();
 
-            // get coordinates and volume
-            scalar x = mesh_.C()[cellI].x();
-            scalar y = mesh_.C()[cellI].y();
-            if (y < 0.0) // UGLYYYYYYYYYYYY
-            {
-                y -= yOrtho;
-            }
-            else
-            {
-                y += yOrtho;
-            }
-            scalar z = mesh_.C()[cellI].z();
-            scalar V = mesh_.V()[cellI];
+            //~ // get coordinates and volume
+            //~ scalar x = mesh_.C()[cellI].x();
+            //~ scalar y = mesh_.C()[cellI].y();
+            //~ if (y < 0.0) // UGLYYYYYYYYYYYY
+            //~ {
+                //~ y -= yOrtho;
+            //~ }
+            //~ else
+            //~ {
+                //~ y += yOrtho;
+            //~ }
+            //~ scalar z = mesh_.C()[cellI].z();
+            //~ scalar V = mesh_.V()[cellI];
 
-            // get the fields value
-            scalar kk = kIB[bCell];
+            //~ // get the fields value
+            //~ scalar kk = kIB[bCell];
 
-            // write
-            outFilePtr() << cellI
-                << "," << x
-                << "," << y
-                << "," << z
-                << "," << V
-                << "," << kk
-                << endl;
-        }
+            //~ // write
+            //~ outFilePtr() << cellI
+                //~ << "," << x
+                //~ << "," << y
+                //~ << "," << z
+                //~ << "," << V
+                //~ << "," << kk
+                //~ << endl;
+        //~ }
     }
 
     else
