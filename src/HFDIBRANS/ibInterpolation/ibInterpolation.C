@@ -158,9 +158,9 @@ void ibInterpolation::calculateInterpolationPoints
         // get origin cell label
         label cellI = boundaryCells_[bCell].first();
 
-        // find surf point // WRONG: need fix
+        // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar ds = boundaryDists_[bCell].first();
+        scalar ds = boundaryDists_[bCell].second();
         vector surfNormToSend = surfNorm_[cellI];
         surfPoint -= surfNormToSend*ds;
 
