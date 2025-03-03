@@ -563,7 +563,7 @@ void ibInterpolation::findBoundaryCells
                 }
             }
 
-            else if (boundarySearch_ == "neighbor")
+            else if (boundarySearch_ == "face")
             {
                 forAll(mesh_.cellCells()[cellI], nID) // face neighbours
                 {
