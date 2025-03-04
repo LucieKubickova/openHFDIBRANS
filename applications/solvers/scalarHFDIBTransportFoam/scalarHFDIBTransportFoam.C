@@ -55,12 +55,12 @@ int main(int argc, char *argv[])
     #include "CourantNo.H"
 
     // read simple dict
-    dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
+    dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB").subDict("T");
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-    scalar tolTEqn = readScalar(HFDIBSIMPLEDict.lookup("tolTEqn"));
-    scalar maxTEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxTEqnIters"));
+    scalar tolEqn = readScalar(HFDIBSIMPLEDict.lookup("tolEqn"));
+    scalar maxEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxEqnIters"));
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
             TEqn.relax();
             fvOptions.constrain(TEqn);
 
-            for (label nCorr = 0; nCorr < maxTEqnIters; nCorr++)
+            for (label nCorr = 0; nCorr < maxEqnIters; nCorr++)
             {
                 // HFDIBRANS: update source
                 Tq = surface*(TEqn.A()*Ti - TEqn.H());
@@ -99,9 +99,9 @@ int main(int argc, char *argv[])
 
                 Info << "HFDIB: Max error in T -> Ti is " << (max(mag(surface*(Ti - T))).value()) << endl;
 
-                if (max(surface*(Ti - T)).value() < tolTEqn)
+                if (max(surface*(Ti - T)).value() < tolEqn)
                 {
-                    Info << "HFDIB: T converged to Ti within max tolerance " << tolTEqn << endl;
+                    Info << "HFDIB: T converged to Ti within max tolerance " << tolEqn << endl;
                     break;
                 }
 
