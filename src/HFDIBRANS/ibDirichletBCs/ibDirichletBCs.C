@@ -138,13 +138,16 @@ void ibDirichletBCs::setSizeToLists
 (
 )
 {
-    // set size
-    nutAtIB_.setSize(boundaryCells_.size());
-    uTauAtIB_.setSize(boundaryCells_.size());
+    if (simulationType_ != "laminar")
+    {
+        // set size
+        nutAtIB_.setSize(boundaryCells_.size());
+        uTauAtIB_.setSize(boundaryCells_.size());
 
-    // reset
-    nutAtIB_ = 0.0;
-    uTauAtIB_ = 0.0;
+        // reset
+        nutAtIB_ = 0.0;
+        uTauAtIB_ = 0.0;
+    }
 }
 
 //---------------------------------------------------------------------------//
