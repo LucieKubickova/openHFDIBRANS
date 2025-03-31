@@ -51,12 +51,11 @@ Type zeroGradientScheme::interpolateT
 )
 {
     // check whether there are enough interpolation points
-    //~ if (intInfo.order_ == 0)
-    //~ {
-        //~ return dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
-        //~ return linear<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
-    //~ }
-
+    if (intInfo.order_ == 0)
+    {
+        return 0.0*dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
+    }
+    
     if (intInfo.order_ == 1)
     {
         // value in the interpolation point
