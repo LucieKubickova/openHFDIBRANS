@@ -45,6 +45,8 @@ ibInterpolation::ibInterpolation
     const volScalarField& body,
     DynamicList<Tuple2<label,label>>& boundaryCells,
     List<Tuple2<scalar,scalar>>& boundaryDists,
+    DynamicList<label>& surfaceCells,
+    List<scalar>& surfaceDists,
     labelField& isBoundaryCell
 )
 :
@@ -63,8 +65,23 @@ surfNorm_
     mesh_,
     dimensionedVector("zero", dimless/dimLength, vector::zero)
 ),
+yOrthoi_
+(
+    IOobject
+    (
+        "yOrthoi",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, -1.0)
+),
 boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
+surfaceCells_(surfaceCells),
+surfaceDists_(surfaceDists),
 isBoundaryCell_(isBoundaryCell),
 HFDIBDEMDict_
 (
@@ -132,9 +149,10 @@ void ibInterpolation::calculateInterpolationPoints
 (
 )
 {
-    // prepare interpolation info list
-    intInfoList_.setSize(boundaryCells_.size());
+    // prepare boundary interpolation info list
+    intInfoListBoundary_.setSize(boundaryCells_.size());
 
+    // loop over boundary cells
     forAll(boundaryCells_, bCell)
     {
         // get origin cell label
@@ -142,86 +160,131 @@ void ibInterpolation::calculateInterpolationPoints
 
         // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar ds = boundaryDists_[bCell].first();
+        scalar ds = boundaryDists_[bCell].second();
         vector surfNormToSend = surfNorm_[cellI];
         surfPoint -= surfNormToSend*ds;
 
-        // create vector for points and cells and add to main vectors
-        DynamicList<point> intPoints;
-        DynamicList<label> intCells;
-
-        // prepare reference distance
-        scalar intDist;
-        if (averageV_)
-        {
-            intDist = Foam::pow(VAve_,0.333);
-        }
-        else
-        {
-            intDist = Foam::pow(mesh_.V()[cellI],0.333);
-        }
-        intDist *= 0.5;
-
-        // add to list
-        intPoints.append(surfPoint);
-        if (mag(surfNormToSend) > SMALL)
-        {
-            Tuple2<label,label> helpTup(cellI, -1);
-            Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
-
-            // add other interpolation points
-            for (int order=0;order<ORDER;order++)
-            {
-                startCell = findCellCustom(startCell.first(),startCell.second().first(),startCell.second().second(),surfNormToSend,intDist);
-                surfPoint = startCell.first();
-                cellI = startCell.second().first();
-
-                if (startCell.second().second() == -1)
-                {
-                    if (startCell.second().first() != -1)
-                    {
-                        if (body_[cellI] >= 0.5)
-                        {
-                            order--;
-                            continue;
-                        }
-                    }
-
-                    intPoints.append(surfPoint);
-                    intCells.append(cellI);
-                }
-
-                else
-                {
-                    intPoints.append(surfPoint);
-                    intCells.append(-1);
-                }
-            }
-        }
-
-        else
-        {
-            for (int order=0;order<ORDER;order++)
-            {
-                intPoints.append(surfPoint);
-                intCells.append(-1);
-            }
-        }
-        
-        // assign to global variables
-        intInfoList_[bCell].intPoints_ = intPoints;
-        intInfoList_[bCell].intCells_ = intCells;
+        // get interpolation point
+        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListBoundary_[bCell]);
     }
+
+    // set interpolation order
+    setInterpolationOrder(intInfoListBoundary_);
+
+    // prepare surface interpolation info list
+    intInfoListSurface_.setSize(surfaceCells_.size());
+
+    // loop over surface cells
+    forAll(surfaceCells_, sCell)
+    {
+        // get origin cell label
+        label cellI = surfaceCells_[sCell];
+
+        // find surf point
+        point surfPoint = mesh_.C()[cellI];
+        scalar ds = surfaceDists_[sCell];
+        vector surfNormToSend = surfNorm_[cellI];
+        surfPoint -= surfNormToSend*ds;
+
+        // get interpolation point
+        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListSurface_[sCell]);
+    }
+
+    // set interpolation order
+    setInterpolationOrder(intInfoListSurface_);
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::getInterpolationPoint
+(
+    label cellI,
+    point surfPoint,
+    vector surfNormToSend,
+    interpolationInfo& intInfo
+)
+{
+   // create vector for points and cells and add to main vectors
+   DynamicList<point> intPoints;
+   DynamicList<label> intCells;
+
+   // prepare reference distance
+   scalar intDist;
+   if (averageV_)
+   {
+       intDist = Foam::pow(VAve_,0.333);
+   }
+   else
+   {
+       intDist = Foam::pow(mesh_.V()[cellI],0.333);
+   }
+   intDist *= 0.5;
+
+   // add to list
+   intPoints.append(surfPoint);
+   if (mag(surfNormToSend) > SMALL)
+   {
+       Tuple2<label,label> helpTup(cellI, -1);
+       Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
+
+       // add other interpolation points
+       for (int order=0;order<ORDER;order++)
+       {
+           startCell = findCellCustom(startCell.first(),startCell.second().first(),startCell.second().second(),surfNormToSend,intDist);
+           surfPoint = startCell.first();
+           cellI = startCell.second().first();
+
+           if (startCell.second().second() == -1)
+           {
+               if (startCell.second().first() != -1)
+               {
+                   if (body_[cellI] >= 0.5)
+                   {
+                       order--;
+                       continue;
+                   }
+               }
+
+               intPoints.append(surfPoint);
+               intCells.append(cellI);
+           }
+
+           else
+           {
+               intPoints.append(surfPoint);
+               intCells.append(-1);
+           }
+       }
+   }
+
+   else
+   {
+       for (int order=0;order<ORDER;order++)
+       {
+           intPoints.append(surfPoint);
+           intCells.append(-1);
+       }
+   }
+   
+   // assign to global variables
+   intInfo.intPoints_ = intPoints;
+   intInfo.intCells_ = intCells;
+}
     
+//---------------------------------------------------------------------------//
+void ibInterpolation::setInterpolationOrder
+(
+    List<interpolationInfo>& intInfoList
+)
+{
     // decide which order should be used
-    for (label infoI = 0; infoI < intInfoList_.size(); infoI++)
+    for (label infoI = 0; infoI < intInfoList.size(); infoI++)
     {
         List<bool> allowedOrder;
         allowedOrder.setSize(ORDER);
 
         for (int intPoint=0;intPoint<ORDER;intPoint++)
         {
-            if (intInfoList_[infoI].intCells_[intPoint] == -1)
+            if (intInfoList[infoI].intCells_[intPoint] == -1)
             {
                 allowedOrder[intPoint] = false;
             }
@@ -232,25 +295,26 @@ void ibInterpolation::calculateInterpolationPoints
             }
         }
 
-        intInfoList_[infoI].order_ = 2;
+        intInfoList[infoI].order_ = 2;
         if ( allowedOrder[1] == false)
         {
-            intInfoList_[infoI].order_ = 1;
+            intInfoList[infoI].order_ = 1;
         }
 
         // check if first order is possible
         if ( allowedOrder[0] == false)
         {
-            intInfoList_[infoI].order_ = 0;
+            intInfoList[infoI].order_ = 0;
         }
 
-        if (intInfoList_[infoI].order_ == 2)
+        if (intInfoList[infoI].order_ == 2)
         {
-            if (intInfoList_[infoI].intCells_[0] == intInfoList_[infoI].intCells_[1])
-                intInfoList_[infoI].order_ = 1;
+            if (intInfoList[infoI].intCells_[0] == intInfoList[infoI].intCells_[1])
+                intInfoList[infoI].order_ = 1;
         }
     }
 }
+
 //---------------------------------------------------------------------------//
 // Custom function to find cell containing point
 // Note: this is much cheaper than standard OF functions
@@ -448,6 +512,7 @@ Tuple2<vector,Tuple2<label,label>> ibInterpolation::findCellCustom
     }
     return tupleToReturn;
 }
+
 //---------------------------------------------------------------------------//
 void ibInterpolation::findBoundaryCells
 (
@@ -498,7 +563,7 @@ void ibInterpolation::findBoundaryCells
                 }
             }
 
-            else if (boundarySearch_ == "neighbor")
+            else if (boundarySearch_ == "face")
             {
                 forAll(mesh_.cellCells()[cellI], nID) // face neighbours
                 {
@@ -608,6 +673,25 @@ void ibInterpolation::findBoundaryCells
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::findSurfaceCells
+(
+)
+{
+    // loop over all cells
+    forAll(body_, cellI)
+    {
+        // check lambda
+        if (body_[cellI] >= thrSurf_)
+        {
+            if (body_[cellI] <= (1 - thrSurf_))
+            {
+                surfaceCells_.append(cellI);
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibInterpolation::setUpSurface
 (
     volScalarField& surface,
@@ -656,6 +740,7 @@ void ibInterpolation::setLambdaBasedSurface
         }
     }
 }
+
 //---------------------------------------------------------------------------//
 void ibInterpolation::updateSwitchSurface
 (
@@ -700,7 +785,7 @@ void ibInterpolation::calculateSurfNorm
 }
 
 //---------------------------------------------------------------------------//
-void ibInterpolation::calculateDistToBoundary
+void ibInterpolation::calculateBoundaryDist
 (
 )
 {
@@ -716,12 +801,11 @@ void ibInterpolation::calculateDistToBoundary
         scalar sigma;
         scalar yOrtho;
         point surfPoint;
-        scalar l = Foam::pow(mesh_.V()[outCellI], 0.333);
+        scalar l;
 
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            scalar l;
             if (averageV_)
             {
                 l = Foam::pow(VAve_, 0.333);
@@ -731,13 +815,13 @@ void ibInterpolation::calculateDistToBoundary
                 l = Foam::pow(mesh_.V()[outCellI], 0.333);
             }
             sigma = Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y > 1 for lambda < 0.5
+            //~ yOrtho = sigma; // standard approach
             yOrtho = 0.5*(sigma + l*0.5);
         }
 
         // if inner cell is intersected
         else if (body_[inCellI] < 1.0)
         {
-            scalar l;
             if (averageV_)
             {
                 l = Foam::pow(VAve_, 0.333);
@@ -749,8 +833,9 @@ void ibInterpolation::calculateDistToBoundary
             sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda < 0.5
             surfPoint = mesh_.C()[inCellI];
             surfPoint += surfNorm_[inCellI]*sigma;
-            sigma = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
-            yOrtho = 0.5*(sigma + l*0.5);
+            //~ yOrtho = sigma; // standard approach
+            yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
+            yOrtho = 0.5*(yOrtho + l*0.5);
         }
 
         // not intersected outer cells
@@ -892,6 +977,40 @@ void ibInterpolation::calculateDistToBoundary
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::calculateSurfaceDist
+(
+)
+{
+    // prepare
+    scalar sigma;
+
+    // loop over surface cells
+    forAll(surfaceCells_, sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[sCell];
+
+        // get cell dimension
+        scalar l;
+        if (averageV_)
+        {
+            l = Foam::pow(VAve_, 0.333);
+        }
+        else
+        {
+            l = Foam::pow(mesh_.V()[cellI], 0.333);
+        }
+
+        // calculate signed distance
+        sigma = Foam::atanh(1-2*body_[cellI])*l/intSpan_;
+
+        // assign
+        surfaceDists_[sCell] = sigma;
+        yOrthoi_[cellI] = sigma;
+    }
+}
+
+//---------------------------------------------------------------------------//
 autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
 (
     word name
@@ -919,6 +1038,16 @@ autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
         funcPtr.set(new logarithmicScheme());
     }
 
+    else if (name == "fixedGradient")
+    {
+        funcPtr.set(new fixedGradientScheme());
+    }
+
+    else if (name == "zeroGradient")
+    {
+        funcPtr.set(new zeroGradientScheme());
+    }
+
     else
     {
         FatalError << "Interpolation function " << name << " not implemented" << exit(FatalError);
@@ -931,21 +1060,48 @@ autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
 void ibInterpolation::saveInterpolationInfo
 (
     word outDir,
-    word fileName
+    word name
 )
 {
+    // prepare file
     autoPtr<OFstream> outFilePtr;
-
+    word fileName = name + "_boundary.dat";
     outFilePtr.reset(new OFstream(outDir/fileName));
-    outFilePtr() << "cellI,cellCenter,order,intPoints,intCells" << endl;
+    outFilePtr() << "cellI,inCellI,cellCenter,surfNorm,surfNormIn,bodyOut,bodyIn,yOrtho,sigma,order,intPoints,intCells" << endl;
 
+    // loop over boundary cells
     forAll(boundaryCells_, bCell)
     {
         outFilePtr() << boundaryCells_[bCell].first() << ","
+            << boundaryCells_[bCell].second() << ","
             << mesh_.C()[boundaryCells_[bCell].first()] << ","
-            << intInfoList_[bCell].order_ << ","
-            << intInfoList_[bCell].intPoints_ << ","
-            << intInfoList_[bCell].intCells_ << endl;
+            << surfNorm_[boundaryCells_[bCell].first()] << ","
+            << surfNorm_[boundaryCells_[bCell].second()] << ","
+            << body_[boundaryCells_[bCell].first()] << ","
+            << body_[boundaryCells_[bCell].second()] << ","
+            << boundaryDists_[bCell].first() << ","
+            << boundaryDists_[bCell].second() << ","
+            << intInfoListBoundary_[bCell].order_ << ","
+            << intInfoListBoundary_[bCell].intPoints_ << ","
+            << intInfoListBoundary_[bCell].intCells_ << endl;
+    }
+
+    // prepare file
+    fileName = name + "_surface.dat";
+    outFilePtr.reset(new OFstream(outDir/fileName));
+    outFilePtr() << "cellI,cellCenter,surfNorm,body,sigma,order,intPoints,intCells" << endl;
+
+    // loop over surface cells
+    forAll(surfaceCells_, sCell)
+    {
+        outFilePtr () << surfaceCells_[sCell] << ","
+            << mesh_.C()[surfaceCells_[sCell]] << ","
+            << surfNorm_[surfaceCells_[sCell]] << ","
+            << body_[surfaceCells_[sCell]] << ","
+            << surfaceDists_[sCell] << ","
+            << intInfoListSurface_[sCell].order_ << ","
+            << intInfoListSurface_[sCell].intPoints_ << ","
+            << intInfoListSurface_[sCell].intCells_ << endl;
     }
 }
 
@@ -965,6 +1121,21 @@ void ibInterpolation::saveBoundaryCells
 
     saveCellSet(saveOutCells, "outerBoundaryCells");
     saveCellSet(saveInCells, "innerBoundaryCells");
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::saveSurfaceCells
+(
+)
+{
+    List<label> saveCells(surfaceCells_.size());
+
+    forAll(surfaceCells_, sCell)
+    {
+        saveCells[sCell] = surfaceCells_[sCell];
+    }
+
+    saveCellSet(saveCells, "surfaceCells");
 }
 
 //---------------------------------------------------------------------------//

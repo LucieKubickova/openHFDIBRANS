@@ -88,19 +88,6 @@ yPlusi_
     mesh_,
     dimensionedScalar("zero", dimless, -1.0)
 ),
-yOrthoi_
-(
-    IOobject
-    (
-        "yOrthoi",
-        mesh_.time().timeName(),
-        mesh_,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh_,
-    dimensionedScalar("zero", dimless, -1.0)
-),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -151,13 +138,16 @@ void ibDirichletBCs::setSizeToLists
 (
 )
 {
-    // set size
-    nutAtIB_.setSize(boundaryCells_.size());
-    uTauAtIB_.setSize(boundaryCells_.size());
+    if (simulationType_ != "laminar")
+    {
+        // set size
+        nutAtIB_.setSize(boundaryCells_.size());
+        uTauAtIB_.setSize(boundaryCells_.size());
 
-    // reset
-    nutAtIB_ = 0.0;
-    uTauAtIB_ = 0.0;
+        // reset
+        nutAtIB_ = 0.0;
+        uTauAtIB_ = 0.0;
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -169,9 +159,10 @@ void ibDirichletBCs::UAtIB
 {
     if (simulationType_ == "laminar" or BCType == "noSlip")
     {
-        forAll(UIB, bCell)
+        forAll(UIB, uCell)
         {
-            UIB[bCell] = ibZero(UIB[bCell]);
+            // assign zero
+            UIB[uCell] = ibZero(UIB[uCell]);
         }
     }
 
@@ -330,7 +321,6 @@ void ibDirichletBCs::correctNutAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -367,7 +357,6 @@ void ibDirichletBCs::kAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (yPlus > yPlusLam_)
@@ -392,49 +381,49 @@ void ibDirichletBCs::kAtIB
         }
 
         // save kIB
-        word fileName = "k.dat";
-        word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
+        //~ word fileName = "k.dat";
+        //~ word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
 
-        // prepare outFile
-        autoPtr<OFstream> outFilePtr;
-        outFilePtr.reset(new OFstream(outDir/fileName));
-        outFilePtr() << "cellI,x,y,z,V,k" << endl;
+        //~ // prepare outFile
+        //~ autoPtr<OFstream> outFilePtr;
+        //~ outFilePtr.reset(new OFstream(outDir/fileName));
+        //~ outFilePtr() << "cellI,x,y,z,V,k" << endl;
 
-        // loop over cells
-        forAll(boundaryCells_, bCell)
-        {
-            // get cell label
-            label cellI = boundaryCells_[bCell].first();
+        //~ // loop over cells
+        //~ forAll(boundaryCells_, bCell)
+        //~ {
+            //~ // get cell label
+            //~ label cellI = boundaryCells_[bCell].first();
 
-            // get distance to the surface
-            scalar yOrtho = boundaryDists_[bCell].first();
+            //~ // get distance to the surface
+            //~ scalar yOrtho = boundaryDists_[bCell].first();
 
-            // get coordinates and volume
-            scalar x = mesh_.C()[cellI].x();
-            scalar y = mesh_.C()[cellI].y();
-            if (y < 0.0) // UGLYYYYYYYYYYYY
-            {
-                y -= yOrtho;
-            }
-            else
-            {
-                y += yOrtho;
-            }
-            scalar z = mesh_.C()[cellI].z();
-            scalar V = mesh_.V()[cellI];
+            //~ // get coordinates and volume
+            //~ scalar x = mesh_.C()[cellI].x();
+            //~ scalar y = mesh_.C()[cellI].y();
+            //~ if (y < 0.0) // UGLYYYYYYYYYYYY
+            //~ {
+                //~ y -= yOrtho;
+            //~ }
+            //~ else
+            //~ {
+                //~ y += yOrtho;
+            //~ }
+            //~ scalar z = mesh_.C()[cellI].z();
+            //~ scalar V = mesh_.V()[cellI];
 
-            // get the fields value
-            scalar kk = kIB[bCell];
+            //~ // get the fields value
+            //~ scalar kk = kIB[bCell];
 
-            // write
-            outFilePtr() << cellI
-                << "," << x
-                << "," << y
-                << "," << z
-                << "," << V
-                << "," << kk
-                << endl;
-        }
+            //~ // write
+            //~ outFilePtr() << cellI
+                //~ << "," << x
+                //~ << "," << y
+                //~ << "," << z
+                //~ << "," << V
+                //~ << "," << kk
+                //~ << endl;
+        //~ }
     }
 
     else
@@ -495,7 +484,6 @@ void ibDirichletBCs::omegaGAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             // compute the values at the surface
             if (blended)
@@ -588,7 +576,6 @@ void ibDirichletBCs::epsilonGAtIB
 
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
-            yOrthoi_[cellI] = yOrtho;
 
             if (yPlus > yPlusLam_)
             {

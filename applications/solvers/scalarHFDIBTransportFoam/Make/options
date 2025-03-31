@@ -1,0 +1,20 @@
+EXE_INC = \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I../../../src/HFDIBRANS/lnInclude \
+    -I../../../src/HFDIBMomentumTransportModels/momentumTransportModels/lnInclude \
+    -I../../../src/HFDIBMomentumTransportModels/incompressible/lnInclude
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lfvModels \
+    -lfvConstraints \
+    -lsampling \
+    -lsurfMesh \
+    -L$(FOAM_USER_LIBBIN) \
+    -lHFDIBRANS \
+    -lHFDIBmomentumTransportModels \
+    -lincompressibleHFDIBMomentumTransportModels

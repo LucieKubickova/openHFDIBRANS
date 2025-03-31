@@ -67,7 +67,7 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_),
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, isBoundaryCell_),
 ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 {
     // read HFDIBDEM dictionary
@@ -82,10 +82,12 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 
     // identify boundary cells
     ibInterpolation_.findBoundaryCells();
+    ibInterpolation_.findSurfaceCells();
     if (save_)
     {
         // save boundary cells as cell sets
         ibInterpolation_.saveBoundaryCells();
+        ibInterpolation_.saveSurfaceCells();
     }
 
     // set size to lists
@@ -93,7 +95,9 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 
     // compute distance to the immersed boundary
     boundaryDists_.setSize(boundaryCells_.size());
-    ibInterpolation_.calculateDistToBoundary();
+    ibInterpolation_.calculateBoundaryDist();
+    surfaceDists_.setSize(surfaceCells_.size());
+    ibInterpolation_.calculateSurfaceDist();
 
     // calculate interpolation points
     ibInterpolation_.calculateInterpolationPoints();
@@ -109,7 +113,7 @@ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
         }
 
         // save interpolation data
-        ibInterpolation_.saveInterpolationInfo(outDir, "interpolationInfo.dat");
+        ibInterpolation_.saveInterpolationInfo(outDir, "interpolationInfo");
     }
 }
 
@@ -122,7 +126,8 @@ openHFDIBRANS::~openHFDIBRANS()
 void openHFDIBRANS::computeUi
 (
     volVectorField& U,
-    volVectorField& Ui
+    volVectorField& Ui,
+    word surfType
 )
 {
     // reset imposed field
@@ -130,7 +135,15 @@ void openHFDIBRANS::computeUi
 
     // calculate values at the immersed boundary
     List<vector> UIB;
-    UIB.setSize(boundaryCells_.size());
+    if (surfType == "lambdaBased")
+    {
+        UIB.setSize(surfaceCells_.size());
+    }
+    else
+    {
+        UIB.setSize(boundaryCells_.size());
+    }
+
     ibDirichletBCs_.UAtIB(UIB, "noSlip");
 
     // get references
@@ -139,18 +152,21 @@ void openHFDIBRANS::computeUi
         
     // calculate log scales for interpolation
     List<scalar> logScales;
-    logScales.setSize(boundaryCells_.size());
+    logScales.setSize(UIB.size());
 
-    forAll(boundaryCells_, bCell)
+    if (surfType != "lambdaBased")
     {
-        // get cell label
-        label cellI = boundaryCells_[bCell].first();
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
 
-        // get distance to surface
-        scalar ds = boundaryDists_[bCell].first();
+            // get distance to surface
+            scalar ds = boundaryDists_[bCell].first();
 
-        // calculate the local log scale
-        logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_.getE();
+            // calculate the local log scale
+            logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_.getE();
+        }
     }
 
     // read interpolation schemes from fvSchemes
@@ -161,6 +177,11 @@ void openHFDIBRANS::computeUi
     if (interpType == "unifunctional")
     {
         ibInterpolation_.unifunctionalInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
+    }
+
+    else if (interpType == "lambdaBased")
+    {
+        ibInterpolation_.lambdaBasedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
     }
 
     else if (interpType == "switched")
@@ -259,6 +280,40 @@ void openHFDIBRANS::computeKi
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::computeTi
+(
+    volScalarField& T,
+    volScalarField& Ti
+)
+{
+    // reset imposed field
+    Ti *= 0.0;
+
+    // calculate values at the immersed boundary
+    List<scalar> TIB;
+    TIB.setSize(boundaryCells_.size()); // dummy
+
+    // calculate log scales for interpolation
+    List<scalar> logScales;
+    logScales.setSize(boundaryCells_.size()); // dummy
+
+    // read interpolation schemes from fvSchemes
+    ITstream TIBScheme = HFDIBOuterSchemes_.lookup("T");
+    word interpType = TIBScheme[0].wordToken();
+
+    // use boundary condition
+    if (interpType == "unifunctional")
+    {
+        ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+    }
+
+    else
+    {
+        FatalError << "Interpolation type " << TIBScheme << " for field T not implemented" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::updateUTau
 (
     volScalarField& k
@@ -304,12 +359,12 @@ void openHFDIBRANS::correctOmegaG
         forAll(boundaryCells_, bCell)
         {
             // get cell label
-            label cellI = boundaryCells_[bCell].first();
+            //~ label cellI = boundaryCells_[bCell].first();
 
             // get cell scales
-            scalar yOrtho = boundaryDists_[bCell].first();
-            scalar V = mesh_.V()[cellI];
-            scalar l = Foam::pow(V, 0.333);
+            //~ scalar yOrtho = boundaryDists_[bCell].first();
+            //~ scalar V = mesh_.V()[cellI];
+            //~ scalar l = Foam::pow(V, 0.333);
 
             // user-defined scaling
             omegaIB[bCell] = omegaIB[bCell]*scaleCoeff_;
@@ -407,12 +462,12 @@ void openHFDIBRANS::correctEpsilonG
         forAll(boundaryCells_, bCell)
         {
             // get cell label
-            label cellI = boundaryCells_[bCell].first();
+            //~ label cellI = boundaryCells_[bCell].first();
 
             // get cell scales
-            scalar yOrtho = boundaryDists_[bCell].first();
-            scalar V = mesh_.V()[cellI];
-            scalar l = Foam::pow(V, 0.333);
+            //~ scalar yOrtho = boundaryDists_[bCell].first();
+            //~ scalar V = mesh_.V()[cellI];
+            //~ scalar l = Foam::pow(V, 0.333);
 
             // user-defined scaling
             epsilonIB[bCell] = epsilonIB[bCell]*scaleCoeff_;
@@ -509,6 +564,22 @@ void openHFDIBRANS::updateSurface
     if (surfType == "switched")
     {
         ibInterpolation_.updateSwitchSurface(surface, ibDirichletBCs_.getYPlusi(), ibDirichletBCs_.getYPlusLam());
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctY
+(
+    volScalarField& y
+)
+{
+    forAll(boundaryCells_, bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[bCell].first();
+
+        // assign distance to boundary
+        y[cellI] = boundaryDists_[bCell].first();
     }
 }
 

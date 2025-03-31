@@ -105,7 +105,6 @@ class ibDirichletBCs
 
     // saves
     volScalarField yPlusi_;
-    volScalarField yOrthoi_;
 
     // RAS wall function names
     word nutWF_;
