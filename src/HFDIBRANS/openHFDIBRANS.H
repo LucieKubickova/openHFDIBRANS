@@ -68,6 +68,7 @@ class openHFDIBRANS
     List<Tuple2<scalar,scalar>> boundaryDists_;
     DynamicList<label> surfaceCells_;
     List<scalar> surfaceDists_;
+    DynamicList<label> internalCells_;
     labelField isBoundaryCell_;
 
     // interpolation class
@@ -98,7 +99,7 @@ class openHFDIBRANS
     // compute imposed fields
     void computeUi(volVectorField& U, volVectorField& Ui, word surfType);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
-    void computeTi(volScalarField& T, volScalarField& Ti);
+    void computeTi(volScalarField& T, volScalarField& Ti, scalar TIn);
 
     // update friction velocity
     void updateUTau(volScalarField& k);

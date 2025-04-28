@@ -84,6 +84,7 @@ class ibInterpolation
     List<Tuple2<scalar,scalar>>& boundaryDists_;
     DynamicList<label>& surfaceCells_;
     List<scalar>& surfaceDists_;
+    DynamicList<label>& internalCells_;
     labelField& isBoundaryCell_;
 
     // interpolation info lists
@@ -110,6 +111,7 @@ class ibInterpolation
         List<Tuple2<scalar,scalar>>& boundaryDists,
         DynamicList<label>& surfaceCells,
         List<scalar>& surfaceDists,
+        DynamicList<label>& internalCells,
         labelField& isBoundaryCell
     );
 

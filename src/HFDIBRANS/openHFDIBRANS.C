@@ -67,7 +67,7 @@ fvSchemes_
         IOobject::NO_WRITE
     )
 ),
-ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, isBoundaryCell_),
+ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_),
 ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
 {
     // read HFDIBDEM dictionary
@@ -283,7 +283,8 @@ void openHFDIBRANS::computeKi
 void openHFDIBRANS::computeTi
 (
     volScalarField& T,
-    volScalarField& Ti
+    volScalarField& Ti,
+    scalar TIn
 )
 {
     // reset imposed field
@@ -292,6 +293,9 @@ void openHFDIBRANS::computeTi
     // calculate values at the immersed boundary
     List<scalar> TIB;
     TIB.setSize(boundaryCells_.size()); // dummy
+
+    // compute values at the immersed boundary
+    ibDirichletBCs_.TAtIB(TIB, TIn);
 
     // calculate log scales for interpolation
     List<scalar> logScales;
@@ -311,6 +315,16 @@ void openHFDIBRANS::computeTi
     {
         FatalError << "Interpolation type " << TIBScheme << " for field T not implemented" << exit(FatalError);
     }
+
+    // assign the values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ti[cellI] = TIn;
+        }
+    }
+
 }
 
 //---------------------------------------------------------------------------//

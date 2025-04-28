@@ -47,6 +47,7 @@ ibInterpolation::ibInterpolation
     List<Tuple2<scalar,scalar>>& boundaryDists,
     DynamicList<label>& surfaceCells,
     List<scalar>& surfaceDists,
+    DynamicList<label>& internalCells,
     labelField& isBoundaryCell
 )
 :
@@ -82,6 +83,7 @@ boundaryCells_(boundaryCells),
 boundaryDists_(boundaryDists),
 surfaceCells_(surfaceCells),
 surfaceDists_(surfaceDists),
+internalCells_(internalCells),
 isBoundaryCell_(isBoundaryCell),
 HFDIBDEMDict_
 (
@@ -686,6 +688,11 @@ void ibInterpolation::findSurfaceCells
             if (body_[cellI] <= (1 - thrSurf_))
             {
                 surfaceCells_.append(cellI);
+            }
+
+            else
+            {
+                internalCells_.append(cellI);
             }
         }
     }

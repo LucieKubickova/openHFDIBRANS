@@ -173,6 +173,20 @@ void ibDirichletBCs::UAtIB
 }
 
 //---------------------------------------------------------------------------//
+void ibDirichletBCs::TAtIB
+(
+    List<scalar>& TIB,
+    scalar TIn
+)
+{
+    forAll(TIB, bCell)
+    {
+        // assign zero
+        TIB[bCell] = TIn;
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibDirichletBCs::updateUTauAtIB
 (
     volScalarField& k
