@@ -66,6 +66,9 @@ class openHFDIBRANS
     // lists of cells relevant to imposed fields
     DynamicList<Tuple2<label,label>> boundaryCells_;
     List<Tuple2<scalar,scalar>> boundaryDists_;
+    DynamicList<label> surfaceCells_;
+    List<scalar> surfaceDists_;
+    DynamicList<label> internalCells_;
     labelField isBoundaryCell_;
 
     // interpolation class
@@ -94,8 +97,9 @@ class openHFDIBRANS
     // Public methods --------------------------------------------------
 
     // compute imposed fields
-    void computeUi(volVectorField& U, volVectorField& Ui);
+    void computeUi(volVectorField& U, volVectorField& Ui, word surfType);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
+    void computeTi(volScalarField& T, volScalarField& Ti, scalar TIn);
 
     // update friction velocity
     void updateUTau(volScalarField& k);
@@ -108,6 +112,9 @@ class openHFDIBRANS
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
+
+    // correct y for blending functions in kOmegaSST
+    void correctY(volScalarField& y);
 
     // cutting fields in normal direction 
     void cutFInBoundaryCells(volVectorField& f);

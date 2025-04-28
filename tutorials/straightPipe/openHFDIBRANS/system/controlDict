@@ -27,8 +27,6 @@ endTime         2000;
 
 deltaT          1;
 
-//~ writeControl    adjustableRunTime;
-
 writeInterval   $endTime;
 
 purgeWrite      0;
@@ -44,12 +42,6 @@ timeFormat      general;
 timePrecision   6;
 
 runTimeModifiable yes;
-
-//~ adjustTimeStep  yes;
-
-//~ maxCo           1;
-
-//~ maxDeltaT       1;
 
 libs
 (

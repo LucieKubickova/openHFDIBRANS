@@ -16,12 +16,12 @@ UEqn.relax();
 
 fvOptions.constrain(UEqn);
 
-HFDIBRANS.computeUi(U, Ui);
+HFDIBRANS.computeUi(U, Ui, surfaceType);
 HFDIBRANS.updateSurface(surface, surfaceType);
 
 if (simple.momentumPredictor())
 {
-    for (label nCorr = 0; nCorr < maxUEqnIters; nCorr++)
+    for (label nCorr = 0; nCorr < maxEqnIters; nCorr++)
     {
         f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
         if (cutForce)
@@ -32,9 +32,9 @@ if (simple.momentumPredictor())
 
         Info << "HFDIBRANS: Max error in U -> Ui is " << (max(mag(surface*(Ui - U))).value()) << endl;
 
-        if (max(mag(surface*(Ui - U))).value() < tolUEqn)
+        if (max(mag(surface*(Ui - U))).value() < tolEqn)
         {
-            Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolUEqn << endl;
+            Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolEqn << endl;
             break;
         }
 

@@ -42,6 +42,8 @@ Contributors
 #include "linearScheme.H"
 #include "quadraticScheme.H"
 #include "logarithmicScheme.H"
+#include "fixedGradientScheme.H"
+#include "zeroGradientScheme.H"
 
 #define ORDER 2
 
@@ -74,13 +76,20 @@ class ibInterpolation
     label nAveYOrtho_;
     bool averageV_;
 
+    // saves
+    volScalarField yOrthoi_;
+
     // references to shared data
     DynamicList<Tuple2<label,label>>& boundaryCells_;
     List<Tuple2<scalar,scalar>>& boundaryDists_;
+    DynamicList<label>& surfaceCells_;
+    List<scalar>& surfaceDists_;
+    DynamicList<label>& internalCells_;
     labelField& isBoundaryCell_;
 
     // interpolation info lists
-    List<interpolationInfo> intInfoList_;
+    List<interpolationInfo> intInfoListBoundary_;
+    List<interpolationInfo> intInfoListSurface_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -100,6 +109,9 @@ class ibInterpolation
         const volScalarField& body,
         DynamicList<Tuple2<label,label>>& boundaryCells,
         List<Tuple2<scalar,scalar>>& boundaryDists,
+        DynamicList<label>& surfaceCells,
+        List<scalar>& surfaceDists,
+        DynamicList<label>& internalCells,
         labelField& isBoundaryCell
     );
 
@@ -111,6 +123,10 @@ class ibInterpolation
     // unifunctional interpolation
     template <typename Type, typename volTypeField>
     void unifunctionalInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
+
+    // lambda based interpolation (unifuncional)
+    template <typename Type, typename volTypeField>
+    void lambdaBasedInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
     // switched, decision based on local yPlus value
     template <typename Type, typename volTypeField>
@@ -128,6 +144,7 @@ class ibInterpolation
     
     // identification
     void findBoundaryCells();
+    void findSurfaceCells();
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
@@ -136,10 +153,13 @@ class ibInterpolation
     // TODO: blended surface
 
     // surface distance calculation
-    void calculateDistToBoundary();
+    void calculateBoundaryDist();
+    void calculateSurfaceDist();
     
     // calculate interpolation points
     void calculateInterpolationPoints();
+    void getInterpolationPoint(label cellI, point surfPoint, vector surfNormToSend, interpolationInfo& intInfo);
+    void setInterpolationOrder(List<interpolationInfo>& intInfoList);
 
     // surface normals
     void calculateSurfNorm();
@@ -150,6 +170,7 @@ class ibInterpolation
     // save
     void saveInterpolationInfo(word outDir, word fileName);
     void saveBoundaryCells();
+    void saveSurfaceCells();
     void saveCellSet(List<label>& listToSave, word fileName);
 
     // cutting fields in normal direction

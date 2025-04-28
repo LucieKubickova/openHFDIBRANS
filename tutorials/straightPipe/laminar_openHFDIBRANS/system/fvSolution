@@ -102,10 +102,13 @@ SIMPLE
 
     HFDIB
     {
-        surfaceType     setValue;
-        boundaryValue   1.0;
-        tolUEqn         1e-4;
-        maxUEqnIters    10;
+        U
+        {
+            surfaceType     setValue;
+            boundaryValue   1.0;
+            tolEqn          1e-6;
+            maxEqnIters     10;
+        }
     }
 }
 

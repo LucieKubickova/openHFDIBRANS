@@ -45,6 +45,7 @@ Contributors
 #include "IncompressibleHFDIBTurbulenceModel.H"
 #include "incompressible/transportModel/transportModel.H"
 #include "HFDIBRASModel.H"
+#include "HFDIBLaminarModel.H"
 
 #include "triSurfaceMesh.H"
 #include "openHFDIBRANS.H"
@@ -75,12 +76,12 @@ int main(int argc, char *argv[])
     Info << "\nStarting time loop\n" << endl;
 
     // read simple dict
-    dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB");
+    dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB").subDict("U");
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-    scalar tolUEqn = readScalar(HFDIBSIMPLEDict.lookup("tolUEqn"));
-    scalar maxUEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxUEqnIters"));
+    scalar tolEqn = readScalar(HFDIBSIMPLEDict.lookup("tolEqn"));
+    scalar maxEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxEqnIters"));
     //~ scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
     bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
     bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);

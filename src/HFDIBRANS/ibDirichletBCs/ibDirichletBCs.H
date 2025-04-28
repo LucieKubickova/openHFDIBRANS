@@ -105,7 +105,6 @@ class ibDirichletBCs
 
     // saves
     volScalarField yPlusi_;
-    volScalarField yOrthoi_;
 
     // RAS wall function names
     word nutWF_;
@@ -168,6 +167,9 @@ class ibDirichletBCs
 
     // velocity boundary condition
     void UAtIB(List<vector>& UIB, word BCType);
+
+    // scalar boundary condition
+    void TAtIB(List<scalar>& TIB, scalar TIn);
 
     // calculate friction velocity
     void updateUTauAtIB(volScalarField& k);
