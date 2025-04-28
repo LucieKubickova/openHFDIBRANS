@@ -88,9 +88,7 @@ volScalarField surface
     dimensionedScalar("zero",dimless,0)
 );
 
-
 Info<< "Reading transportProperties\n" << endl;
-
 IOdictionary transportProperties
 (
     IOobject

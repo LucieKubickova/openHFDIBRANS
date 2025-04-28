@@ -61,11 +61,13 @@ int main(int argc, char *argv[])
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
     scalar tolEqn = readScalar(HFDIBSIMPLEDict.lookup("tolEqn"));
     scalar maxEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxEqnIters"));
+    scalar TIn = readScalar(HFDIBSIMPLEDict.lookup("valInside"));
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
     HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
 
+    // prepare T field
     Ti *= 0.0;
     Ti.correctBoundaryConditions();
 
@@ -74,7 +76,7 @@ int main(int argc, char *argv[])
         Info << "Time = " << runTime.timeName() << nl << endl;
 
         // HFDIBRANS -- NOTE: this before or inside non-orthogonal loop?
-        HFDIBRANS.computeTi(T, Ti);
+        HFDIBRANS.computeTi(T, Ti, TIn);
         HFDIBRANS.updateSurface(surface, surfaceType);
 
         while (simple.correctNonOrthogonal())
