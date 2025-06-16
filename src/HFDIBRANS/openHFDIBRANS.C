@@ -127,7 +127,7 @@ void openHFDIBRANS::computeUi
 (
     volVectorField& U,
     volVectorField& Ui,
-    word surfType
+    word surfType // NOTE: add UIn
 )
 {
     // reset imposed field
@@ -284,22 +284,58 @@ void openHFDIBRANS::computeTi
 (
     volScalarField& T,
     volScalarField& Ti,
+    word surfType,
     scalar TIn
 )
 {
     // reset imposed field
     Ti *= 0.0;
 
+    // assign the values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ti[cellI] = TIn;
+        }
+    }
+
     // calculate values at the immersed boundary
     List<scalar> TIB;
-    TIB.setSize(boundaryCells_.size()); // dummy
+    if (surfType == "lambdaBased")
+    {
+        TIB.setSize(surfaceCells_.size());
+    }
+    else
+    {
+        TIB.setSize(boundaryCells_.size());
+    }
 
     // compute values at the immersed boundary
     ibDirichletBCs_.TAtIB(TIB, TIn);
 
+    // get references
+    volScalarField& yPlusi = ibDirichletBCs_.getYPlusi();
+    scalar yPlusLam = ibDirichletBCs_.getYPlusLam();
+        
     // calculate log scales for interpolation
     List<scalar> logScales;
-    logScales.setSize(boundaryCells_.size()); // dummy
+    logScales.setSize(TIB.size());
+
+    if (surfType != "lambdaBased")
+    {
+        forAll(boundaryCells_, bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[bCell].first();
+
+            // get distance to surface
+            scalar ds = boundaryDists_[bCell].first();
+
+            // calculate the local log scale
+            logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_.getE();
+        }
+    }
 
     // read interpolation schemes from fvSchemes
     ITstream TIBScheme = HFDIBOuterSchemes_.lookup("T");
@@ -311,20 +347,15 @@ void openHFDIBRANS::computeTi
         ibInterpolation_.unifunctionalInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
     }
 
+    else if (interpType == "lambdaBased")
+    {
+        ibInterpolation_.lambdaBasedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+    }
+
     else
     {
         FatalError << "Interpolation type " << TIBScheme << " for field T not implemented" << exit(FatalError);
     }
-
-    // assign the values in in-solid cells
-    forAll(body_, cellI)
-    {
-        if (body_[cellI] >= 0.5)
-        {
-            Ti[cellI] = TIn;
-        }
-    }
-
 }
 
 //---------------------------------------------------------------------------//

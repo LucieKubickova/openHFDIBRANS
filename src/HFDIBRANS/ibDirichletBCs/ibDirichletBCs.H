@@ -168,7 +168,7 @@ class ibDirichletBCs
     // velocity boundary condition
     void UAtIB(List<vector>& UIB, word BCType);
 
-    // scalat boundary condition
+    // scalar boundary condition
     void TAtIB(List<scalar>& TIB, scalar TIn);
 
     // calculate friction velocity
