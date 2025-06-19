@@ -14,4 +14,10 @@ cd $cwd/src/HFDIBTurbulenceModels/incompressible
 cd $cwd/applications/solvers/simpleHFDIBRANSFoam
 ./Allwmake
 
+cd $cwd/applications/solvers/buoyantBoussinesqSimpleHFDIBRANSFoam
+./Allwmake
+
+cd $cwd/applications/solvers/scalarHFDIBTransportFoam
+./Allwmake
+
 cd $cwd

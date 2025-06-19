@@ -97,6 +97,7 @@ class ibDirichletBCs
 
     // dictionaries
     IOdictionary turbulenceProperties_;
+    IOdictionary transportProperties_;
     IOdictionary HFDIBDEMDict_;
     dictionary HFDIBBCsDict_;
 
@@ -108,6 +109,7 @@ class ibDirichletBCs
 
     // RAS wall function names
     word nutWF_;
+    word alphatWF_;
     word kWF_;
     word omegaWF_;
     word epsilonWF_;
@@ -115,6 +117,7 @@ class ibDirichletBCs
     // RAS parameters
     const scalar kappa_;
     const scalar E_;
+    const scalar Prt_;
     const scalar Cmu_;
     const scalar Ceps2_;
     const scalar beta1_;
@@ -125,6 +128,12 @@ class ibDirichletBCs
 
     // private functions
     void calcYPlusLam();
+    scalar yPlusTherm
+    (
+        const scalar P,
+        const scalar Prat
+    ) const;
+
     scalar ibZero(scalar dummy)
     {
         return 0.0;
@@ -176,6 +185,9 @@ class ibDirichletBCs
 
     // correct nut at the immersed boundary
     void correctNutAtIB(volScalarField& k, volScalarField& nu);
+
+    // correct alphat at the immersed boundary
+    void correctAlphatAtIB(List<scalar>& alphatIB, const volScalarField& nu);
 
     // turbulence fields boundary conditions
     void kAtIB
