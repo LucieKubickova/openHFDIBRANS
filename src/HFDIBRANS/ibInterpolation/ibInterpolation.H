@@ -72,6 +72,7 @@ class ibInterpolation
     bool readSurfNorm_;
     bool aveYOrtho_;
     bool totalYOrthoAve_;
+    bool approxCutCellYOrtho_;
     scalar aveCoeff_;
     label nAveYOrtho_;
     bool averageV_;
