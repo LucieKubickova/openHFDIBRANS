@@ -265,7 +265,6 @@ void ibDirichletBCs::updateUTauAtIB
             //~ {
                 //~ continue;
             //~ }
-            //Info << cellI << " " << yPlus << " " << yPlusTherm << endl;
 
             //~ // get cell labels
             //~ label owner = mesh_.faceOwner()[faceI];
@@ -433,7 +432,6 @@ void ibDirichletBCs::correctAlphatAtIB
             // Thermal sublayer thickness
             const scalar P = 9.24*(Foam::pow(Prat, 0.75) - 1.0)*(1.0 + 0.28*Foam::exp(-0.007*Prat)); // Psmooth function in source
             const scalar yPlusTherm = this->yPlusTherm(P, Prat);
-            //~ Info << cellI << " " << yPlus << " " << yPlusTherm << endl;
 
             // Update turbulent thermal conductivity
             if (yPlus > yPlusTherm)
