@@ -803,6 +803,11 @@ void ibInterpolation::calculateBoundaryDist
         label outCellI = boundaryCells_[bCell].first();
         label inCellI = boundaryCells_[bCell].second();
 
+        if (outCellI == 146)
+        {
+            Info << outCellI << " " << inCellI << endl;
+        }
+
         // prepare
         Tuple2<scalar,scalar> toSave;
         scalar sigma;
@@ -843,6 +848,7 @@ void ibInterpolation::calculateBoundaryDist
             //~ yOrtho = sigma; // standard approach
             yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
             yOrtho = 0.5*(yOrtho + l*0.5);
+
         }
 
         // not intersected outer cells
