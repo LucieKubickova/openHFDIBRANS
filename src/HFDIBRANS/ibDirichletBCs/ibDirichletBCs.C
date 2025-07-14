@@ -114,11 +114,11 @@ beta1_(0.075)
     if (simulationType_ != "laminar")
     {
         HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
-        HFDIBBCsDict_.lookup("nut") >> nutWF_;
-        HFDIBBCsDict_.lookup("alphat") >> alphatWF_;
-        HFDIBBCsDict_.lookup("k") >> kWF_;
-        HFDIBBCsDict_.lookup("omega") >> omegaWF_;
-        HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+        nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "");
+        alphatWF_ = HFDIBBCsDict_.lookupOrDefault<word>("alphat", "");
+        kWF_ = HFDIBBCsDict_.lookupOrDefault<word>("k", "");
+        omegaWF_ = HFDIBBCsDict_.lookupOrDefault<word>("omega", "");
+        epsilonWF_ = HFDIBBCsDict_.lookupOrDefault<word>("epsilon", "");
     }
 
     // compute turbulence parameters
