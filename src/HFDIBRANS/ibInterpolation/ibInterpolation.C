@@ -108,6 +108,10 @@ fvSchemes_
     )
 )
 {
+    // initiate lists
+    intInfoListBoundary_.setSize(Pstream::nProcs());
+    intInfoListSurface_.setSize(Pstream::nProcs());
+
 	// read HFDIBDEM dictionary
     boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "vertex");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
@@ -152,7 +156,7 @@ void ibInterpolation::calculateInterpolationPoints
 )
 {
     // prepare boundary interpolation info list
-    intInfoListBoundary_.setSize(boundaryCells_[Pstream::myProcNo()].size());
+    intInfoListBoundary_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
 
     // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -167,14 +171,14 @@ void ibInterpolation::calculateInterpolationPoints
         surfPoint -= surfNormToSend*ds;
 
         // get interpolation point
-        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListBoundary_[bCell]);
+        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListBoundary_[Pstream::myProcNo()][bCell]);
     }
 
     // set interpolation order
-    setInterpolationOrder(intInfoListBoundary_);
+    setInterpolationOrder(intInfoListBoundary_[Pstream::myProcNo()]);
 
     // prepare surface interpolation info list
-    intInfoListSurface_.setSize(surfaceCells_[Pstream::myProcNo()].size());
+    intInfoListSurface_[Pstream::myProcNo()].setSize(surfaceCells_[Pstream::myProcNo()].size());
 
     // loop over surface cells
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
@@ -189,11 +193,11 @@ void ibInterpolation::calculateInterpolationPoints
         surfPoint -= surfNormToSend*ds;
 
         // get interpolation point
-        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListSurface_[sCell]);
+        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListSurface_[Pstream::myProcNo()][sCell]);
     }
 
     // set interpolation order
-    setInterpolationOrder(intInfoListSurface_);
+    setInterpolationOrder(intInfoListSurface_[Pstream::myProcNo()]);
 }
 
 //---------------------------------------------------------------------------//
@@ -1088,9 +1092,9 @@ void ibInterpolation::saveInterpolationInfo
             << body_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
             << boundaryDists_[Pstream::myProcNo()][bCell].first() << ","
             << boundaryDists_[Pstream::myProcNo()][bCell].second() << ","
-            << intInfoListBoundary_[bCell].order_ << ","
-            << intInfoListBoundary_[bCell].intPoints_ << ","
-            << intInfoListBoundary_[bCell].intCells_ << endl;
+            << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
+            << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
+            << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
     }
 
     // prepare file
@@ -1106,9 +1110,9 @@ void ibInterpolation::saveInterpolationInfo
             << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
             << body_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
             << surfaceDists_[Pstream::myProcNo()][sCell] << ","
-            << intInfoListSurface_[sCell].order_ << ","
-            << intInfoListSurface_[sCell].intPoints_ << ","
-            << intInfoListSurface_[sCell].intCells_ << endl;
+            << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
+            << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
+            << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
     }
 }
 

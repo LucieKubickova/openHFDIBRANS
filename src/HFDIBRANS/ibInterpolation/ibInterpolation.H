@@ -88,8 +88,8 @@ class ibInterpolation
     labelField& isBoundaryCell_;
 
     // interpolation info lists
-    List<interpolationInfo> intInfoListBoundary_;
-    List<interpolationInfo> intInfoListSurface_;
+    List<List<interpolationInfo>> intInfoListBoundary_;
+    List<List<interpolationInfo>> intInfoListSurface_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
