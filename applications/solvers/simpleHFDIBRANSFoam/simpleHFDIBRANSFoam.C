@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
     HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
+    surface.correctBoundaryConditions(); // HERE NEW
 
     Ui *= 0.0;
     Ui.correctBoundaryConditions();

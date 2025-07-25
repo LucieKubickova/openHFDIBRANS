@@ -340,7 +340,9 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS references
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    kSurface_.correctBoundaryConditions(); // HERE NEW
     HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
+    omegaGSurface_.correctBoundaryConditions(); // HERE NEW
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -365,6 +367,8 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIB: correct omega and G
     HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
+    omega_.correctBoundaryConditions(); // HERE NEW
+    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // Turbulence specific dissipation rate equation
     tmp<fvScalarMatrix> omegaEqn
@@ -394,6 +398,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
+    ki_.correctBoundaryConditions(); // HERE NEW
 
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
@@ -417,6 +422,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
         for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
             kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            kQ_.correctBoundaryConditions(); // HERE NEW
             solve(kEqn == kQ_);
 
             Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
@@ -443,6 +449,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     correctNut();
     HFDIBRANS.correctNut(k_, nu_);
+    this->nut_.correctBoundaryConditions(); // HERE NEW
 
     //~ // save
     //~ surfaceScalarField fluxK

@@ -64,18 +64,18 @@ class openHFDIBRANS
     dictionary HFDIBOuterSchemes_;
 
     // lists of cells relevant to imposed fields
-    DynamicList<Tuple2<label,label>> boundaryCells_;
-    List<Tuple2<scalar,scalar>> boundaryDists_;
-    DynamicList<label> surfaceCells_;
-    List<scalar> surfaceDists_;
-    DynamicList<label> internalCells_;
+    List<DynamicList<Tuple2<label,label>>> boundaryCells_;
+    List<List<Tuple2<scalar,scalar>>> boundaryDists_;
+    List<DynamicList<label>> surfaceCells_;
+    List<List<scalar>> surfaceDists_;
+    List<DynamicList<label>> internalCells_;
     labelField isBoundaryCell_;
 
     // interpolation class
-    ibInterpolation ibInterpolation_;
+    autoPtr<ibInterpolation> ibInterpolation_;
 
     // wall functions class
-    ibDirichletBCs ibDirichletBCs_;
+    autoPtr<ibDirichletBCs> ibDirichletBCs_;
 
     // options
     bool save_;

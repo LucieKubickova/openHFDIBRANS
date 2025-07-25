@@ -80,11 +80,11 @@ class ibInterpolation
     volScalarField yOrthoi_;
 
     // references to shared data
-    DynamicList<Tuple2<label,label>>& boundaryCells_;
-    List<Tuple2<scalar,scalar>>& boundaryDists_;
-    DynamicList<label>& surfaceCells_;
-    List<scalar>& surfaceDists_;
-    DynamicList<label>& internalCells_;
+    List<DynamicList<Tuple2<label,label>>>& boundaryCells_;
+    List<List<Tuple2<scalar,scalar>>>& boundaryDists_;
+    List<DynamicList<label>>& surfaceCells_;
+    List<List<scalar>>& surfaceDists_;
+    List<DynamicList<label>>& internalCells_;
     labelField& isBoundaryCell_;
 
     // interpolation info lists
@@ -107,11 +107,11 @@ class ibInterpolation
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists,
-        DynamicList<label>& surfaceCells,
-        List<scalar>& surfaceDists,
-        DynamicList<label>& internalCells,
+        List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+        List<List<Tuple2<scalar,scalar>>>& boundaryDists,
+        List<DynamicList<label>>& surfaceCells,
+        List<List<scalar>>& surfaceDists,
+        List<DynamicList<label>>& internalCells,
         labelField& isBoundaryCell
     );
 

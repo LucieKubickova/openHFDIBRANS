@@ -62,13 +62,13 @@ void ibInterpolation::unifunctionalInterp
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
     // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // interpolate
-        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
+        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].first(), intInfoListBoundary_[bCell], cellI);
     }
 }
 
@@ -94,13 +94,13 @@ void ibInterpolation::lambdaBasedInterp
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
     // interpolate and assign values to the imposed field
-    forAll(surfaceCells_, sCell)
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get cell label
-        label cellI = surfaceCells_[sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
 
         // interpolate
-        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[sCell], scales[sCell], surfaceDists_[sCell], intInfoListSurface_[sCell], cellI);
+        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[sCell], scales[sCell], surfaceDists_[Pstream::myProcNo()][sCell], intInfoListSurface_[sCell], cellI);
     }
 }
 
@@ -130,20 +130,20 @@ void ibInterpolation::switchedInterp
     autoPtr<ibScheme> higherFunc = chosenInterpFunc(higherType);
 
     // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // switch based on yPlus value
         if (yPlusi[cellI] > yPlusLam)
         {
-            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
+            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].first(), intInfoListBoundary_[bCell], cellI);
         }
 
         else
         {
-            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], cellI);
+            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].first(), intInfoListBoundary_[bCell], cellI);
         }
     }
 }
@@ -174,16 +174,16 @@ void ibInterpolation::outerInnerInterp
     autoPtr<ibScheme> innerFunc = chosenInterpFunc(innerType);
 
     // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get outer cell label
-        label outCellI = boundaryCells_[bCell].first();
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // switch based on yPlus value
         if (yPlusi[outCellI] > yPlusLam)
         {
             // get the inner cell label
-            label inCellI = boundaryCells_[bCell].second();
+            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
             // create new interpolation info to interpolate inside
             interpolationInfo intInfoToSend(intInfoListBoundary_[bCell]);
@@ -193,7 +193,7 @@ void ibInterpolation::outerInnerInterp
             intInfoToSend.intCells_[1] = intInfoListBoundary_[bCell].intCells_[0];
 
             // get the inner cell distance
-            scalar dsToSend = -1*boundaryDists_[bCell].second();
+            scalar dsToSend = -1*boundaryDists_[Pstream::myProcNo()][bCell].second();
 
             // NOTE: logarithm of negative number?
             phii[inCellI] = innerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);
@@ -202,7 +202,7 @@ void ibInterpolation::outerInnerInterp
 
         else
         {
-            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[bCell].first(), intInfoListBoundary_[bCell], outCellI);
+            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].first(), intInfoListBoundary_[bCell], outCellI);
         }
     }
 }
@@ -231,11 +231,11 @@ void ibInterpolation::innerInterp
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
     // interpolate and assign values to the imposed field
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the inner cell label
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // create new interpolation info to interpolate inside
         interpolationInfo intInfoToSend(intInfoListBoundary_[bCell]);
@@ -245,7 +245,7 @@ void ibInterpolation::innerInterp
         intInfoToSend.intCells_[1] = intInfoListBoundary_[bCell].intCells_[0];
 
         // get the inner cell distance
-        scalar dsToSend = -1*boundaryDists_[bCell].second();
+        scalar dsToSend = -1*boundaryDists_[Pstream::myProcNo()][bCell].second();
         
         // NOTE: logarithm of negative number?
         phii[inCellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);

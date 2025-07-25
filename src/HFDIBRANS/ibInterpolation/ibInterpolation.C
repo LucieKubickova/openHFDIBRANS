@@ -43,11 +43,11 @@ ibInterpolation::ibInterpolation
 (
     const fvMesh& mesh,
     const volScalarField& body,
-    DynamicList<Tuple2<label,label>>& boundaryCells,
-    List<Tuple2<scalar,scalar>>& boundaryDists,
-    DynamicList<label>& surfaceCells,
-    List<scalar>& surfaceDists,
-    DynamicList<label>& internalCells,
+    List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+    List<List<Tuple2<scalar,scalar>>>& boundaryDists,
+    List<DynamicList<label>>& surfaceCells,
+    List<List<scalar>>& surfaceDists,
+    List<DynamicList<label>>& internalCells,
     labelField& isBoundaryCell
 )
 :
@@ -152,17 +152,17 @@ void ibInterpolation::calculateInterpolationPoints
 )
 {
     // prepare boundary interpolation info list
-    intInfoListBoundary_.setSize(boundaryCells_.size());
+    intInfoListBoundary_.setSize(boundaryCells_[Pstream::myProcNo()].size());
 
     // loop over boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get origin cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar ds = boundaryDists_[bCell].second();
+        scalar ds = boundaryDists_[Pstream::myProcNo()][bCell].second();
         vector surfNormToSend = surfNorm_[cellI];
         surfPoint -= surfNormToSend*ds;
 
@@ -174,17 +174,17 @@ void ibInterpolation::calculateInterpolationPoints
     setInterpolationOrder(intInfoListBoundary_);
 
     // prepare surface interpolation info list
-    intInfoListSurface_.setSize(surfaceCells_.size());
+    intInfoListSurface_.setSize(surfaceCells_[Pstream::myProcNo()].size());
 
     // loop over surface cells
-    forAll(surfaceCells_, sCell)
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get origin cell label
-        label cellI = surfaceCells_[sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
 
         // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar ds = surfaceDists_[sCell];
+        scalar ds = surfaceDists_[Pstream::myProcNo()][sCell];
         vector surfNormToSend = surfNorm_[cellI];
         surfPoint -= surfNormToSend*ds;
 
@@ -659,15 +659,15 @@ void ibInterpolation::findBoundaryCells
                 toAppend.second() = toAppend.first();
             }
 
-            boundaryCells_.append(toAppend);
+            boundaryCells_[Pstream::myProcNo()].append(toAppend);
         }
     }
 
     // prepare label field
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // assign
         isBoundaryCell_[cellI] = bCell;
@@ -687,12 +687,12 @@ void ibInterpolation::findSurfaceCells
         {
             if (body_[cellI] <= (1 - thrSurf_))
             {
-                surfaceCells_.append(cellI);
+                surfaceCells_[Pstream::myProcNo()].append(cellI);
             }
 
             else
             {
-                internalCells_.append(cellI);
+                internalCells_[Pstream::myProcNo()].append(cellI);
             }
         }
     }
@@ -718,10 +718,10 @@ void ibInterpolation::setUpSurface
     }
 
     // find boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // set the surface value
         surface[cellI] = boundaryValue;
@@ -757,10 +757,10 @@ void ibInterpolation::updateSwitchSurface
 )
 {
     // update surface based on yPlus value
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // set the surface value
         if (yPlusi[cellI] <= yPlusLam)
@@ -797,11 +797,11 @@ void ibInterpolation::calculateBoundaryDist
 )
 {
     // loop over boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the outer and innter cell label
-        label outCellI = boundaryCells_[bCell].first();
-        label inCellI = boundaryCells_[bCell].second();
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // prepare
         Tuple2<scalar,scalar> toSave;
@@ -876,7 +876,7 @@ void ibInterpolation::calculateBoundaryDist
 
         toSave.first() = yOrtho;
         toSave.second() = sigma;
-        boundaryDists_[bCell] = toSave;
+        boundaryDists_[Pstream::myProcNo()][bCell] = toSave;
     }
 
     // average orthogonal distance over all boundary cells
@@ -886,18 +886,18 @@ void ibInterpolation::calculateBoundaryDist
         scalar yAve(0.0);
 
         // loop over boundary cells
-        forAll(boundaryCells_, bCell)
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            yAve += boundaryDists_[bCell].first();
+            yAve += boundaryDists_[Pstream::myProcNo()][bCell].first();
         }
 
         // calculate average
-        yAve /= boundaryDists_.size();
+        yAve /= boundaryDists_[Pstream::myProcNo()].size();
 
         // save to all boundary cells
-        forAll(boundaryCells_, bCell)
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            boundaryDists_[bCell].first() = yAve;
+            boundaryDists_[Pstream::myProcNo()][bCell].first() = yAve;
         }
     }
 
@@ -907,13 +907,13 @@ void ibInterpolation::calculateBoundaryDist
         for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
         {
             // save old values
-            List<Tuple2<scalar,scalar>> yOld = boundaryDists_;
+            List<Tuple2<scalar,scalar>> yOld = boundaryDists_[Pstream::myProcNo()];
 
             // loop over boundary cells
-            forAll(boundaryCells_, bCell)
+            forAll(boundaryCells_[Pstream::myProcNo()], bCell)
             {
                 // get the cell label
-                label cellI = boundaryCells_[bCell].first();
+                label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
                 // prepare
                 scalar yAve(0.0);
@@ -960,7 +960,7 @@ void ibInterpolation::calculateBoundaryDist
                         scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
 
                         // add to average y and scales sum
-                        yAve += dotNorm/delta*boundaryDists_[nCell].first();
+                        yAve += dotNorm/delta*boundaryDists_[Pstream::myProcNo()][nCell].first();
                         scalesSum += dotNorm/delta;
                         nAdded += 1;
                     }
@@ -970,14 +970,14 @@ void ibInterpolation::calculateBoundaryDist
                 scalar aveScale = scalesSum/nAdded;
 
                 // add current cell
-                yAve += aveCoeff_*aveScale*boundaryDists_[bCell].first();
+                yAve += aveCoeff_*aveScale*boundaryDists_[Pstream::myProcNo()][bCell].first();
                 scalesSum += aveCoeff_*aveScale;
 
                 // divide average y by scales sum
                 yAve /= scalesSum;
 
                 // assign
-                boundaryDists_[bCell].first() = yAve;
+                boundaryDists_[Pstream::myProcNo()][bCell].first() = yAve;
             }
         }
     }
@@ -992,10 +992,10 @@ void ibInterpolation::calculateSurfaceDist
     scalar sigma;
 
     // loop over surface cells
-    forAll(surfaceCells_, sCell)
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get cell label
-        label cellI = surfaceCells_[sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
 
         // get cell dimension
         scalar l;
@@ -1012,7 +1012,7 @@ void ibInterpolation::calculateSurfaceDist
         sigma = Foam::atanh(1-2*body_[cellI])*l/intSpan_;
 
         // assign
-        surfaceDists_[sCell] = sigma;
+        surfaceDists_[Pstream::myProcNo()][sCell] = sigma;
         yOrthoi_[cellI] = sigma;
     }
 }
@@ -1077,17 +1077,17 @@ void ibInterpolation::saveInterpolationInfo
     outFilePtr() << "cellI,inCellI,cellCenter,surfNorm,surfNormIn,bodyOut,bodyIn,yOrtho,sigma,order,intPoints,intCells" << endl;
 
     // loop over boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        outFilePtr() << boundaryCells_[bCell].first() << ","
-            << boundaryCells_[bCell].second() << ","
-            << mesh_.C()[boundaryCells_[bCell].first()] << ","
-            << surfNorm_[boundaryCells_[bCell].first()] << ","
-            << surfNorm_[boundaryCells_[bCell].second()] << ","
-            << body_[boundaryCells_[bCell].first()] << ","
-            << body_[boundaryCells_[bCell].second()] << ","
-            << boundaryDists_[bCell].first() << ","
-            << boundaryDists_[bCell].second() << ","
+        outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].first() << ","
+            << boundaryCells_[Pstream::myProcNo()][bCell].second() << ","
+            << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
+            << body_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            << body_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
+            << boundaryDists_[Pstream::myProcNo()][bCell].first() << ","
+            << boundaryDists_[Pstream::myProcNo()][bCell].second() << ","
             << intInfoListBoundary_[bCell].order_ << ","
             << intInfoListBoundary_[bCell].intPoints_ << ","
             << intInfoListBoundary_[bCell].intCells_ << endl;
@@ -1099,13 +1099,13 @@ void ibInterpolation::saveInterpolationInfo
     outFilePtr() << "cellI,cellCenter,surfNorm,body,sigma,order,intPoints,intCells" << endl;
 
     // loop over surface cells
-    forAll(surfaceCells_, sCell)
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
-        outFilePtr () << surfaceCells_[sCell] << ","
-            << mesh_.C()[surfaceCells_[sCell]] << ","
-            << surfNorm_[surfaceCells_[sCell]] << ","
-            << body_[surfaceCells_[sCell]] << ","
-            << surfaceDists_[sCell] << ","
+        outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell] << ","
+            << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            << body_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            << surfaceDists_[Pstream::myProcNo()][sCell] << ","
             << intInfoListSurface_[sCell].order_ << ","
             << intInfoListSurface_[sCell].intPoints_ << ","
             << intInfoListSurface_[sCell].intCells_ << endl;
@@ -1117,13 +1117,13 @@ void ibInterpolation::saveBoundaryCells
 (
 )
 {
-    List<label> saveOutCells(boundaryCells_.size());
-    List<label> saveInCells(boundaryCells_.size());
+    List<label> saveOutCells(boundaryCells_[Pstream::myProcNo()].size());
+    List<label> saveInCells(boundaryCells_[Pstream::myProcNo()].size());
 
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        saveOutCells[bCell] = boundaryCells_[bCell].first();
-        saveInCells[bCell] = boundaryCells_[bCell].second();
+        saveOutCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        saveInCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].second();
     }
 
     saveCellSet(saveOutCells, "outerBoundaryCells");
@@ -1135,11 +1135,11 @@ void ibInterpolation::saveSurfaceCells
 (
 )
 {
-    List<label> saveCells(surfaceCells_.size());
+    List<label> saveCells(surfaceCells_[Pstream::myProcNo()].size());
 
-    forAll(surfaceCells_, sCell)
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
-        saveCells[sCell] = surfaceCells_[sCell];
+        saveCells[sCell] = surfaceCells_[Pstream::myProcNo()][sCell];
     }
 
     saveCellSet(saveCells, "surfaceCells");
@@ -1183,10 +1183,10 @@ void ibInterpolation::cutFInBoundaryCells
 )
 {
     // loop over boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell label
-        label cellI = boundaryCells_[bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // cut f
         f[cellI] = (f[cellI] & surfNorm_[cellI])*surfNorm_[cellI];
@@ -1200,12 +1200,12 @@ void ibInterpolation::cutUInBoundaryCells
 )
 {
     // loop over boundary cells
-    forAll(boundaryCells_, bCell)
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell labels
-        label cellI = boundaryCells_[bCell].first();
-        //~ label outCellI = boundaryCells_[bCell].first();
-        //~ label inCellI = boundaryCells_[bCell].second();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        //~ label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        //~ label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // compute scalar product
         scalar prodUNorm = U[cellI] & surfNorm_[cellI];
@@ -1237,10 +1237,10 @@ void ibInterpolation::cutPhiInBoundaryCells
         
         // check if it is a boundary cell
         bool isBoundary = false;
-        forAll(boundaryCells_, bCell)
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get the cell label
-            label cellB = boundaryCells_[bCell].second();
+            label cellB = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
             if (cellI == cellB)
             {

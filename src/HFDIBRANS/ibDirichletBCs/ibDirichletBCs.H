@@ -87,12 +87,12 @@ class ibDirichletBCs
     scalar thrSurf_;
 
     // fields
-    List<scalar> nutAtIB_;
-    List<scalar> uTauAtIB_;
+    List<List<scalar>> nutAtIB_;
+    List<List<scalar>> uTauAtIB_;
 
     // references to shared data
-    DynamicList<Tuple2<label,label>>& boundaryCells_;
-    List<Tuple2<scalar,scalar>>& boundaryDists_;
+    List<DynamicList<Tuple2<label,label>>>& boundaryCells_;
+    List<List<Tuple2<scalar,scalar>>>& boundaryDists_;
     labelField& isBoundaryCell_;
 
     // dictionaries
@@ -152,8 +152,8 @@ class ibDirichletBCs
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists,
+        List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+        List<List<Tuple2<scalar,scalar>>>& boundaryDists,
         labelField& isBoundaryCell
     );
 
