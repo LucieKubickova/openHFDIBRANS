@@ -844,6 +844,7 @@ void ibInterpolation::calculateBoundaryDist
             sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda < 0.5
             surfPoint = mesh_.C()[inCellI];
             surfPoint += surfNorm_[inCellI]*sigma;
+            yOrtho = sigma; // standard approach
             yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
             if (approxCutCellYOrtho_)
             {
