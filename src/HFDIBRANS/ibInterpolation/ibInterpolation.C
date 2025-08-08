@@ -118,6 +118,7 @@ fvSchemes_
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
     totalYOrthoAve_ = HFDIBDEMDict_.lookupOrDefault<bool>("totalYOrthoAverage", false);
+    approxCutCellYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("approxCutCellYOrtho", true); // EXPERIMENTAL
     intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
@@ -826,8 +827,11 @@ void ibInterpolation::calculateBoundaryDist
                 l = Foam::pow(mesh_.V()[outCellI], 0.333);
             }
             sigma = Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y > 1 for lambda < 0.5
-            //~ yOrtho = sigma; // standard approach
-            yOrtho = 0.5*(sigma + l*0.5);
+            yOrtho = sigma; // standard approach
+            if (approxCutCellYOrtho_)
+            {
+                yOrtho = 0.5*(yOrtho + l*0.5);
+            }
         }
 
         // if inner cell is intersected
@@ -844,9 +848,12 @@ void ibInterpolation::calculateBoundaryDist
             sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda < 0.5
             surfPoint = mesh_.C()[inCellI];
             surfPoint += surfNorm_[inCellI]*sigma;
-            //~ yOrtho = sigma; // standard approach
-            yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint);
-            yOrtho = 0.5*(yOrtho + l*0.5);
+            yOrtho = sigma; // standard approach
+            yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+            if (approxCutCellYOrtho_)
+            {
+                yOrtho = 0.5*(yOrtho + l*0.5);
+            }
         }
 
         // not intersected outer cells

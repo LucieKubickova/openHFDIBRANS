@@ -45,6 +45,9 @@
 
 **scaleCoeff** - *optional* > For scaleDisG. Value of the scaling coefficient. Default 1.0
 
+**approxCutCellYOrtho** - *optional* > If to adjust yOrtho to mimic cut cell. Default true
+> Possible values: {*true*, *false*}
+
 # Documentation for HFDIBSchemes subdict in fvSchemes
 **outerSchemes** - *required* > Interpolation schemes for reconstruction of the surface value at the immerse boundary. Separate entry for each field consisting of two tokens
 > **U** - *required* > Scheme for velocity
