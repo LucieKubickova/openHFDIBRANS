@@ -20,24 +20,24 @@
 **boundarySearch** - *optional* > Boundary cells found as face or vertex neighbors. Default face
 > Possible values: {*face*, *vertex*}
 
-**saveIntInfo** - *optional* > If info about interpolation should be outputted. Default false
+**saveIntInfo** - *optional* > If to output info about interpolation. Default false
 > Possible values: {*true*, *false*}
 
-**excludeWalls** - *optional* > If cells adjacent to walls should be excluded from boundary cells. Default false
+**excludeWalls** - *optional* > If to exclude cells adjacent to walls from boundary cells. Default false
 > Possible values: {*true*, *false*}
 
-**readSurfaceNormal** - *optional* > If read surface normal field from file. Default false
+**readSurfaceNormal** - *optional* > If to read surface normal field from file. Default false
 > Possible values: {*true*, *false*}
 
-**averageYOrtho** - *optional* > If to average orthogonal distance over face neighbor. Default false
+**averageYOrtho** - *optional* > If to average orthogonal distance over face neighbors. Default false
 > Possible values: {*true*, *false*}
 
 **nAveragingYOrtho** - *optional* > For averageYOrtho. The number of averaging cycles. Default 1.0
 
-**averageVolue** - *optional* > If to user average volume in reconstruction of distance from lambda field. Default false
+**averageVolue** - *optional* > If to use average volume in reconstruction of distance from lambda field. Default false
 > Possible values: {*true*, *false*}
 
-**copyDisToInner** - *optional* > If copy distance to boundary to inner cells. Default false
+**copyDisToInner** - *optional* > If to copy distance to boundary to inner cells. Default false
 > Possible values: {*true*, *false*}
 
 **scaleDisG** - *optional* > If to scale value of omega/epsilon and G in boundary cells. Default false
@@ -54,11 +54,11 @@
 >> Possible first tokens: {*unifunctional*, *lambdaBased*, *switched*, *outerInner*, *inner*}
 >> Possible second tokens: {*constant*, *linear*, *quadratic*, *logarithmic*, *fixedGradient*, *zeroGradient*}. Two for *switched* and *outerInner*
 
-> **k** - *required if present* > Scheme for turbulence kinetic energy
+> **k** - *required if present* > Schemes for turbulence kinetic energy
 >> Possible first tokens: {*unifunctional*, *switched*, *outerInner*, *inner*}
 >> Possible second tokens: {*constant*, *linear*, *quadratic*, *logarithmic*, *fixedGradient*, *zeroGradient*}. Two for *switched* and *outerInner*
 
-> **T** - *required if present* > Scheme for scalar T
+> **T** - *required if present* > Schemes for scalar T
 >> Possible first tokens: {*unifunctional*}
 >> Possible second tokens: {*constant*, *linear*, *quadratic*, *logarithmic*, *fixedGradient*, *zeroGradient*}
 
@@ -82,7 +82,7 @@
 > **cutVelocity** - *optional* > If to cut velocity when it goes in oposity direction to surface normal. Used for testing. Default false
 >> Possible values: {*true*, *false*}
 
-> **cutPhi** - *optional* > If to cut turn off fluxes inside immersed boundary. Used for testing. Default false
+> **cutPhi** - *optional* > If to cut fluxes inside immersed boundary. Used for testing. Default false
 >> Possible values: {*true*, *false*}
 
 > **enforceVelocity** - *optional* > If to enforce velocity values in boundary cell directly. Used for testing. Default false
