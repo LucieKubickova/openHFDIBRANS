@@ -113,7 +113,7 @@ fvSchemes_
     intInfoListSurface_.setSize(Pstream::nProcs());
 
 	// read HFDIBDEM dictionary
-    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "vertex");
+    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
@@ -1163,6 +1163,7 @@ void ibInterpolation::saveCellSet
     word fileName
 )
 {
+    // prepare cell set
     cellSet setToSave
     (
         IOobject
@@ -1175,7 +1176,17 @@ void ibInterpolation::saveCellSet
         )
     );
 
-    word outDir = "./constant/polyMesh/sets";
+    // get name of output folder
+    word outDir;
+    if (Pstream::nProcs() == 1)
+    {
+        outDir = "./constant/polyMesh/sets";
+    }
+    else
+    {
+        outDir = "./processor" + Foam::name(Pstream::myProcNo()) + "/constant/polyMesh/sets";
+    }
+
     if (!isDir(outDir))
     {
         mkDir(outDir);
