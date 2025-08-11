@@ -109,7 +109,7 @@ fvSchemes_
 )
 {
 	// read HFDIBDEM dictionary
-    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "vertex");
+    boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
