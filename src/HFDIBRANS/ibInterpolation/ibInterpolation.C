@@ -163,16 +163,29 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get origin cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // find surf point
-        point surfPoint = mesh_.C()[cellI];
-        scalar ds = boundaryDists_[Pstream::myProcNo()][bCell].second();
-        vector surfNormToSend = surfNorm_[cellI];
+        point surfPoint;
+        scalar ds;
+
+        // separate for different kinds of boundary cells
+        if (body_[outCellI] < thrSurf_)
+        {
+            surfPoint = mesh_.C()[inCellI];
+            ds = -1*boundaryDists_[Pstream::myProcNo()][bCell].second();
+        }
+        else
+        {
+            surfPoint = mesh_.C()[outCellI];
+            ds = boundaryDists_[Pstream::myProcNo()][bCell].second();
+        }
+        vector surfNormToSend = surfNorm_[outCellI];
         surfPoint -= surfNormToSend*ds;
 
         // get interpolation point
-        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListBoundary_[Pstream::myProcNo()][bCell]);
+        getInterpolationPoint(outCellI, surfPoint, surfNormToSend, intInfoListBoundary_[Pstream::myProcNo()][bCell]);
     }
 
     // set interpolation order
