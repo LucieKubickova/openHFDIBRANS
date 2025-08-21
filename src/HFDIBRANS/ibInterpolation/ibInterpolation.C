@@ -124,6 +124,8 @@ fvSchemes_
     aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
     nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
     averageV_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageVolume", false);
+    readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
+    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // EXPERIMENTAL
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -835,6 +837,10 @@ void ibInterpolation::calculateBoundaryDist
             {
                 l = Foam::pow(VAve_, 0.333);
             }
+            else if (readL_)
+            {
+                l = valueL_;
+            }
             else
             {
                 l = Foam::pow(mesh_.V()[outCellI], 0.333);
@@ -853,6 +859,10 @@ void ibInterpolation::calculateBoundaryDist
             if (averageV_)
             {
                 l = Foam::pow(VAve_, 0.333);
+            }
+            else if (readL_)
+            {
+                l = valueL_;
             }
             else
             {

@@ -76,6 +76,8 @@ class ibInterpolation
     scalar aveCoeff_;
     label nAveYOrtho_;
     bool averageV_;
+    bool readL_;
+    scalar valueL_;
 
     // saves
     volScalarField yOrthoi_;
