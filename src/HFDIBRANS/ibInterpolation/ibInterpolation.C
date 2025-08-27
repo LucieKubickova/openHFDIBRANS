@@ -793,6 +793,38 @@ void ibInterpolation::setLambdaBasedSurface
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::setOnlyInnerSurface
+(
+    volScalarField& surface,
+    scalar boundaryValue
+)
+{
+    // reset field
+    surface *= 0.0;
+
+    // find in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            surface[cellI] = 1.0;
+        }
+    }
+
+    // find boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
+
+        // set the surface value
+        surface[outCellI] = 0.0;
+        surface[inCellI] = boundaryValue;
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibInterpolation::updateSwitchSurface
 (
     volScalarField& surface,

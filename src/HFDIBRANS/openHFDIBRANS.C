@@ -542,6 +542,7 @@ void openHFDIBRANS::correctOmegaG
 
             // assign
             omega[inCellI] = omega[outCellI];
+            G[inCellI] = G[outCellI];
         }
     }
 }
@@ -645,6 +646,7 @@ void openHFDIBRANS::correctEpsilonG
 
             // assign
             epsilon[inCellI] = epsilon[outCellI];
+            G[inCellI] = G[outCellI];
         }
     }
 }
@@ -665,6 +667,11 @@ void openHFDIBRANS::createBaseSurface
     else if (surfType == "lambdaBased")
     {
         ibInterpolation_->setLambdaBasedSurface(surface, boundaryVal);
+    }
+
+    else if (surfType == "onlyInnerValue")
+    {
+        ibInterpolation_->setOnlyInnerSurface(surface, boundaryVal);
     }
 
     else
