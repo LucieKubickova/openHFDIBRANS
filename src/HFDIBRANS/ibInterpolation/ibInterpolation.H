@@ -45,6 +45,8 @@ Contributors
 #include "fixedGradientScheme.H"
 #include "zeroGradientScheme.H"
 
+#include "Tuple3.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -72,7 +74,6 @@ class ibInterpolation
     bool readSurfNorm_;
     bool aveYOrtho_;
     bool totalYOrthoAve_;
-    bool approxCutCellYOrtho_;
     scalar aveCoeff_;
     label nAveYOrtho_;
     bool averageV_;
@@ -80,11 +81,13 @@ class ibInterpolation
     scalar valueL_;
 
     // saves
+    volScalarField sigmai_;
     volScalarField yOrthoi_;
+    volScalarField yEffi_;
 
     // references to shared data
     List<DynamicList<Tuple2<label,label>>>& boundaryCells_;
-    List<List<Tuple2<scalar,scalar>>>& boundaryDists_;
+    List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists_;
     List<DynamicList<label>>& surfaceCells_;
     List<List<scalar>>& surfaceDists_;
     List<DynamicList<label>>& internalCells_;
@@ -111,7 +114,7 @@ class ibInterpolation
         const fvMesh& mesh,
         const volScalarField& body,
         List<DynamicList<Tuple2<label,label>>>& boundaryCells,
-        List<List<Tuple2<scalar,scalar>>>& boundaryDists,
+        List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
         List<DynamicList<label>>& surfaceCells,
         List<List<scalar>>& surfaceDists,
         List<DynamicList<label>>& internalCells,

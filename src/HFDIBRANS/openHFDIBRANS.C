@@ -76,8 +76,6 @@ fvSchemes_
     internalCells_.setSize(Pstream::nProcs());
 
     // initialize classes
-    //~ ibInterpolation_(mesh, body, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_),
-    //~ ibDirichletBCs_(mesh, body, boundaryCells_, boundaryDists_, isBoundaryCell_)
     ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_));
     ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, boundaryDists_, isBoundaryCell_));
 
@@ -86,6 +84,7 @@ fvSchemes_
     cpDisToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyDisToInner", false);
     scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
     scaleCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeff", 1.0);
+    useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", false);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
     // read fvSchemes
@@ -173,10 +172,18 @@ void openHFDIBRANS::computeUi
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to surface
-            scalar ds = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // calculate the local log scale
-            logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_->getE();
+            logScales[bCell] = yPlusi[cellI]/yOrtho*ibDirichletBCs_->getE();
         }
     }
 
@@ -245,10 +252,18 @@ void openHFDIBRANS::computeKi
         label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // get distance to surface
-        scalar ds = boundaryDists_[Pstream::myProcNo()][bCell].first();
+        scalar yOrtho;
+        if (useYEff_)
+        {
+            yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+        }
+        else
+        {
+            yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+        }
 
         // calculate the local log scale
-        logScales[bCell] = yPlusi[cellI]/ds;
+        logScales[bCell] = yPlusi[cellI]/yOrtho;
     }
 
     // read interpolation schemes from fvSchemes
@@ -341,10 +356,18 @@ void openHFDIBRANS::computeTi
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to surface
-            scalar ds = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // calculate the local log scale
-            logScales[bCell] = yPlusi[cellI]/ds*ibDirichletBCs_->getE();
+            logScales[bCell] = yPlusi[cellI]/yOrtho*ibDirichletBCs_->getE();
         }
     }
 
@@ -361,6 +384,21 @@ void openHFDIBRANS::computeTi
     else if (interpType == "lambdaBased")
     {
         ibInterpolation_->lambdaBasedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+    }
+
+    else if (interpType == "switched")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
+    }
+
+    else if (interpType == "outerInner")
+    {
+        ibInterpolation_->outerInnerInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
+    }
+
+    else if (interpType == "inner")
+    {
+        ibInterpolation_->innerInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
     }
 
     else
@@ -418,7 +456,15 @@ void openHFDIBRANS::correctOmegaG
             //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get cell scales
-            //~ scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            //~ scalar yOrtho;
+            //~ if (useYEff_)
+            //~ {
+                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            //~ }
+            //~ else
+            //~ {
+                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            //~ }
             //~ scalar V = mesh_.V()[cellI];
             //~ scalar l = Foam::pow(V, 0.333);
 
@@ -530,7 +576,15 @@ void openHFDIBRANS::correctEpsilonG
             //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get cell scales
-            //~ scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            //~ scalar yOrtho;
+            //~ if (useYEff_)
+            //~ {
+                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            //~ }
+            //~ else
+            //~ {
+                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            //~ }
             //~ scalar V = mesh_.V()[cellI];
             //~ scalar l = Foam::pow(V, 0.333);
 
@@ -644,7 +698,14 @@ void openHFDIBRANS::correctY
         label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // assign distance to boundary
-        y[cellI] = boundaryDists_[Pstream::myProcNo()][bCell].first();
+        if (useYEff_)
+        {
+            y[cellI] = boundaryDists_[Pstream::myProcNo()][bCell].third();
+        }
+        else
+        {
+            y[cellI] = boundaryDists_[Pstream::myProcNo()][bCell].second();
+        }
     }
 }
 

@@ -65,7 +65,7 @@ class openHFDIBRANS
 
     // lists of cells relevant to imposed fields
     List<DynamicList<Tuple2<label,label>>> boundaryCells_;
-    List<List<Tuple2<scalar,scalar>>> boundaryDists_;
+    List<List<Tuple3<scalar,scalar,scalar>>> boundaryDists_;
     List<DynamicList<label>> surfaceCells_;
     List<List<scalar>> surfaceDists_;
     List<DynamicList<label>> internalCells_;
@@ -82,6 +82,7 @@ class openHFDIBRANS
     bool cpDisToInner_;
     bool scaleDisG_;
     scalar scaleCoeff_;
+    bool useYEff_;
 
     // save
     word outDir_;

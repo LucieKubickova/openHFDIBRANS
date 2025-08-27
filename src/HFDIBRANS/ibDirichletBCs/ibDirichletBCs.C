@@ -44,7 +44,7 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     const volScalarField& body,
     List<DynamicList<Tuple2<label,label>>>& boundaryCells,
-    List<List<Tuple2<scalar,scalar>>>& boundaryDists,
+    List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
     labelField& isBoundaryCell
 )
 :
@@ -103,6 +103,9 @@ beta1_(0.075)
     
     // read HFDIBDEMDict
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+    useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
+
+    // read simulation type
     if (simulationType_ != "laminar")
     {
         HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
@@ -329,7 +332,15 @@ void ibDirichletBCs::correctNutAtIB
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to the surface
-            scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -365,7 +376,15 @@ void ibDirichletBCs::kAtIB
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to the surface
-            scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -414,7 +433,15 @@ void ibDirichletBCs::kAtIB
             //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             //~ // get distance to the surface
-            //~ scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            //~ scalar yOrtho;
+            //~ if (useYEff_)
+            //~ {
+            //~     yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            //~ }
+            //~ else
+            //~ {
+            //~     yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            //~ }
 
             //~ // get coordinates and volume
             //~ scalar x = mesh_.C()[cellI].x();
@@ -483,7 +510,15 @@ void ibDirichletBCs::omegaGAtIB
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to the surface
-            scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // compute magnitude of snGrad of U at the surface
             vector snGradU = (zeroU - U[cellI])/yOrtho;
@@ -576,7 +611,15 @@ void ibDirichletBCs::epsilonGAtIB
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
             // get distance to the surface
-            scalar yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].first();
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            }
+            else
+            {
+                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            }
 
             // compute magnitude of snGrad of U at the surface
             vector snGradU = (zeroU - U[cellI])/yOrtho;
