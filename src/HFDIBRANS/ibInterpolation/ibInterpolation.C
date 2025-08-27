@@ -933,7 +933,14 @@ void ibInterpolation::calculateBoundaryDist
         boundaryDists_[Pstream::myProcNo()][bCell] = toSave;
 
         // save to fields
-        sigmai_[outCellI] = sigma;
+        if (body_[outCellI] >= thrSurf_)
+        {
+            sigmai_[outCellI] = sigma;
+        }
+        else
+        {
+            sigmai_[inCellI] = sigma;
+        }
         yOrthoi_[outCellI] = yOrtho;
         yEffi_[outCellI] = yEff;
     }
