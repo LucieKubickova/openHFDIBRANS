@@ -68,7 +68,17 @@ void ibInterpolation::unifunctionalInterp
         label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
 
         // interpolate
-        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].second(), intInfoListBoundary_[Pstream::myProcNo()][bCell], cellI);
+        phii[cellI] = interpFunc->interpolate
+        (
+            phi,
+            *interpPhi,
+            body_,
+            dirichletVals[bCell],
+            scales[bCell],
+            boundaryDists_[Pstream::myProcNo()][bCell].second(),
+            lineIntInfoBoundary_->getIntPoints()[bCell],
+            cellI
+        );
     }
 }
 
@@ -100,7 +110,17 @@ void ibInterpolation::lambdaBasedInterp
         label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
 
         // interpolate
-        phii[cellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[sCell], scales[sCell], surfaceDists_[Pstream::myProcNo()][sCell], intInfoListSurface_[Pstream::myProcNo()][sCell], cellI);
+        phii[cellI] = interpFunc->interpolate
+        (
+            phi,
+            *interpPhi,
+            body_,
+            dirichletVals[sCell],
+            scales[sCell],
+            surfaceDists_[Pstream::myProcNo()][sCell],
+            lineIntInfoSurface_->getIntPoints()[sCell],
+            cellI
+        );
     }
 }
 
@@ -138,12 +158,32 @@ void ibInterpolation::switchedInterp
         // switch based on yPlus value
         if (yPlusi[cellI] > yPlusLam)
         {
-            phii[cellI] = higherFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].second(), intInfoListBoundary_[Pstream::myProcNo()][bCell], cellI);
+            phii[cellI] = higherFunc->interpolate
+            (
+                    phi,
+                    *interpPhi,
+                    body_,
+                    dirichletVals[bCell],
+                    scales[bCell],
+                    boundaryDists_[Pstream::myProcNo()][bCell].second(),
+                    lineIntInfoBoundary_->getIntPoints()[bCell],
+                    cellI
+            );
         }
 
         else
         {
-            phii[cellI] = lowerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].second(), intInfoListBoundary_[Pstream::myProcNo()][bCell], cellI);
+            phii[cellI] = lowerFunc->interpolate
+            (
+                phi,
+                *interpPhi,
+                body_,
+                dirichletVals[bCell],
+                scales[bCell],
+                boundaryDists_[Pstream::myProcNo()][bCell].second(),
+                lineIntInfoBoundary_->getIntPoints()[bCell],
+                cellI
+            );
         }
     }
 }
@@ -186,23 +226,43 @@ void ibInterpolation::outerInnerInterp
             label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
             // create new interpolation info to interpolate inside
-            interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
-            intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
-            intInfoToSend.intPoints_[2] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_[1];
-            intInfoToSend.intCells_[0] = outCellI;
-            intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
+            //~ interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
+            //~ intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
+            //~ intInfoToSend.intPoints_[2] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_[1];
+            //~ intInfoToSend.intCells_[0] = outCellI;
+            //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
 
             // get the inner cell distance
             scalar dsToSend = boundaryDists_[Pstream::myProcNo()][bCell].first();
 
             // NOTE: logarithm of negative number?
-            phii[inCellI] = innerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);
+            phii[inCellI] = innerFunc->interpolate
+            (
+                phi,
+                *interpPhi,
+                body_,
+                dirichletVals[bCell],
+                scales[bCell],
+                dsToSend,
+                lineIntInfoBoundary_->getIntPoints()[bCell], // NOTE: wrong interpolation info passed
+                outCellI
+            );
             // NOTE: constant won't work
         }
 
         else
         {
-            phii[outCellI] = outerFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], boundaryDists_[Pstream::myProcNo()][bCell].second(), intInfoListBoundary_[Pstream::myProcNo()][bCell], outCellI);
+            phii[outCellI] = outerFunc->interpolate
+            (
+                phi,
+                *interpPhi,
+                body_,
+                dirichletVals[bCell],
+                scales[bCell],
+                boundaryDists_[Pstream::myProcNo()][bCell].second(),
+                lineIntInfoBoundary_->getIntPoints()[bCell],
+                outCellI
+            );
         }
     }
 }
@@ -238,17 +298,27 @@ void ibInterpolation::innerInterp
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // create new interpolation info to interpolate inside
-        interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
-        intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
-        intInfoToSend.intPoints_[2] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_[1];
-        intInfoToSend.intCells_[0] = outCellI;
-        intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
+        //~ interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
+        //~ intInfoToSend.intPoints_[1] = mesh_.C()[outCellI];
+        //~ intInfoToSend.intPoints_[2] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_[1];
+        //~ intInfoToSend.intCells_[0] = outCellI;
+        //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
 
         // get the inner cell distance
         scalar dsToSend = boundaryDists_[Pstream::myProcNo()][bCell].first();
         
         // NOTE: logarithm of negative number?
-        phii[inCellI] = interpFunc->interpolate(phi, *interpPhi, body_, dirichletVals[bCell], scales[bCell], dsToSend, intInfoToSend, outCellI);
+        phii[inCellI] = interpFunc->interpolate
+        (
+            phi,
+            *interpPhi,
+            body_,
+            dirichletVals[bCell],
+            scales[bCell],
+            dsToSend,
+            lineIntInfoBoundary_->getIntPoints()[bCell], // NOTE: wrong interpolation info passed
+            outCellI
+        );
     }
 }
 

@@ -69,7 +69,8 @@ Contributors
 #include "addToRunTimeSelectionTable.H"
 #include "PstreamReduceOps.H"
 #include "addToRunTimeSelectionTable.H"
-#include "interpolationInfo.H"
+
+#include "intPoint.H"
 
 using namespace Foam;
 
@@ -94,7 +95,7 @@ class ibScheme
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     ) = 0;
 
@@ -106,7 +107,7 @@ class ibScheme
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     ) = 0;
 
@@ -118,9 +119,15 @@ class ibScheme
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     ) = 0;
+
+    // get interpolation order
+    label getIntOrder
+    (
+        List<intPoint>& intPoints
+    );
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

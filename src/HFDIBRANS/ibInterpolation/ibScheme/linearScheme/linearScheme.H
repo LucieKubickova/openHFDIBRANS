@@ -64,7 +64,7 @@ class linearScheme
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
@@ -79,7 +79,7 @@ class linearScheme
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
@@ -94,7 +94,7 @@ class linearScheme
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
@@ -105,7 +105,17 @@ class linearScheme
 
     // -- templated interpolate funtion
     template <typename Type, typename volTypeField>
-    Type interpolateT(volTypeField& phi, interpolation<Type>& interpPhi, const volScalarField& body, Type& dirichletVal, scalar& scale, scalar& ds, interpolationInfo& intInfo, label& cellI);
+    Type interpolateT
+    (
+        volTypeField& phi,
+        interpolation<Type>& interpPhi,
+        const volScalarField& body,
+        Type& dirichletVal,
+        scalar& scale,
+        scalar& ds,
+        List<intPoint>& intInfo,
+        label& cellI
+    );
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

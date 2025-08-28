@@ -46,24 +46,26 @@ Type fixedGradientScheme::interpolateT
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    interpolationInfo& intInfo,
+    List<intPoint>& intInfo,
     label& cellI
 )
 {
-    // check whether there are enough interpolation points
-    //~ if (intInfo.order_ == 0)
-    //~ {
-        //~ return dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
-        //~ return linear<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
-    //~ }
+    // get interpolation order
+    label order = getIntOrder(intInfo);
 
-    if (intInfo.order_ == 1)
+    // check whether there are enough interpolation points
+    if (order == 0)
+    {
+        return dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
+    }
+
+    if (order == 1)
     {
         // value in the interpolation point
-        Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]);
+        Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
 
         // distance between interpolation points
-        scalar deltaR = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
+        scalar deltaR = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
 
         // value at the delta = 0
         Type phiS = phiP1 - dirichletVal*deltaR;
@@ -73,12 +75,12 @@ Type fixedGradientScheme::interpolateT
     }
 
     // values in the interpolation points
-    Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]);
-    Type phiP2 = interpPhi.interpolate(intInfo.intPoints_[2], intInfo.intCells_[1]);
+    Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+    Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
 
     // distance between interpolation points
-    scalar deltaR2 = mag(intInfo.intPoints_[2] - intInfo.intPoints_[1]);
-    scalar deltaR1 = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
+    scalar deltaR2 = mag(intInfo[2].iPoint_ - intInfo[1].iPoint_);
+    scalar deltaR1 = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
 
     // second polynomial coefficient
     Type quadCoeff = phiP1 - phiP2 + dirichletVal*(deltaR2);

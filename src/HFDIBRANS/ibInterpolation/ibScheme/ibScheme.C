@@ -52,4 +52,25 @@ ibScheme::~ibScheme
 {
 }
 
+//---------------------------------------------------------------------------//
+label ibScheme::getIntOrder
+(
+    List<intPoint>& intPoints
+)
+{
+    // prepare label to return
+    label intOrderToRtn(0);
+
+    // loop over interpolation points
+    forAll(intPoints, ip)
+    {
+        if(intPoints[ip].iProc_ != -1)
+        {
+            ++intOrderToRtn;
+        }
+    }
+
+    return intOrderToRtn;
+}
+
 // ************************************************************************* //

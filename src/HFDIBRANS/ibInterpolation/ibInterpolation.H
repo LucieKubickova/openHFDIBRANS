@@ -45,6 +45,7 @@ Contributors
 #include "fixedGradientScheme.H"
 #include "zeroGradientScheme.H"
 
+#include "lineIntInfo.H"
 #include "Tuple3.H"
 
 #define ORDER 2
@@ -86,7 +87,7 @@ class ibInterpolation
     volScalarField yEffi_;
 
     // references to shared data
-    List<DynamicList<Tuple2<label,label>>>& boundaryCells_;
+    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells_;
     List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists_;
     List<DynamicList<label>>& surfaceCells_;
     List<List<scalar>>& surfaceDists_;
@@ -94,8 +95,10 @@ class ibInterpolation
     labelField& isBoundaryCell_;
 
     // interpolation info lists
-    List<List<interpolationInfo>> intInfoListBoundary_;
-    List<List<interpolationInfo>> intInfoListSurface_;
+    //~ List<List<interpolationInfo>> intInfoListBoundary_;
+    //~ List<List<interpolationInfo>> intInfoListSurface_;
+    autoPtr<lineIntInfo> lineIntInfoBoundary_;
+    autoPtr<lineIntInfo> lineIntInfoSurface_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -113,7 +116,7 @@ class ibInterpolation
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+        List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
         List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
         List<DynamicList<label>>& surfaceCells,
         List<List<scalar>>& surfaceDists,
@@ -165,8 +168,8 @@ class ibInterpolation
     
     // calculate interpolation points
     void calculateInterpolationPoints();
-    void getInterpolationPoint(label cellI, point surfPoint, vector surfNormToSend, interpolationInfo& intInfo);
-    void setInterpolationOrder(List<interpolationInfo>& intInfoList);
+    //~ void getInterpolationPoint(label cellI, point surfPoint, vector surfNormToSend, interpolationInfo& intInfo);
+    //~ void setInterpolationOrder(List<interpolationInfo>& intInfoList);
 
     // surface normals
     void calculateSurfNorm();

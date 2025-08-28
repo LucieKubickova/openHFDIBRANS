@@ -93,12 +93,6 @@ fvSchemes_
     // identify boundary cells
     ibInterpolation_->findBoundaryCells();
     ibInterpolation_->findSurfaceCells();
-    if (save_)
-    {
-        // save boundary cells as cell sets
-        ibInterpolation_->saveBoundaryCells();
-        ibInterpolation_->saveSurfaceCells();
-    }
 
     // set size to lists
     ibDirichletBCs_->setSizeToLists();
@@ -115,6 +109,10 @@ fvSchemes_
     // save data
     if (save_)
     {
+        // save boundary cells as cell sets
+        ibInterpolation_->saveBoundaryCells();
+        ibInterpolation_->saveSurfaceCells();
+
         // create output directory to save data for python
         word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
         if (!isDir(outDir))

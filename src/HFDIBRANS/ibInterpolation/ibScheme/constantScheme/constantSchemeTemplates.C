@@ -46,7 +46,7 @@ Type constantScheme::interpolateT
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    interpolationInfo& intInfo,
+    List<intPoint>& intInfo,
     label& cellI
 )
 {

@@ -43,7 +43,7 @@ ibDirichletBCs::ibDirichletBCs
 (
     const fvMesh& mesh,
     const volScalarField& body,
-    List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
     List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
     labelField& isBoundaryCell
 )
@@ -206,11 +206,13 @@ void ibDirichletBCs::updateUTauAtIB
         uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
 
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label freeCellI = boundaryCells_[Pstream::myProcNo()][bCell].third();
 
-        // NOTE: not averaging
-        uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[cellI]);
+        // compute uTau based on values from the free stream
+        uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[freeCellI]);
 
+        // averaging backup
         //~ // initialize
         //~ scalar totA(0.0);
 

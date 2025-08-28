@@ -43,7 +43,7 @@ ibInterpolation::ibInterpolation
 (
     const fvMesh& mesh,
     const volScalarField& body,
-    List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
     List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
     List<DynamicList<label>>& surfaceCells,
     List<List<scalar>>& surfaceDists,
@@ -135,8 +135,8 @@ fvSchemes_
 )
 {
     // initiate lists
-    intInfoListBoundary_.setSize(Pstream::nProcs());
-    intInfoListSurface_.setSize(Pstream::nProcs());
+    //~ intInfoListBoundary_.setSize(Pstream::nProcs());
+    //~ intInfoListSurface_.setSize(Pstream::nProcs());
 
 	// read HFDIBDEM dictionary
     boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
@@ -183,10 +183,12 @@ void ibInterpolation::calculateInterpolationPoints
 (
 )
 {
-    // prepare boundary interpolation info list
-    intInfoListBoundary_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    // prepare lists
+    List<label> bCells(boundaryCells_[Pstream::myProcNo()].size());
+    List<point> bPoints(boundaryCells_[Pstream::myProcNo()].size());
+    List<vector> bNormals(boundaryCells_[Pstream::myProcNo()].size());
 
-    // loop over boundary cells
+    // prepare data
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get origin cell label
@@ -194,33 +196,49 @@ void ibInterpolation::calculateInterpolationPoints
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
 
         // find surf point
+        label surfCell;
         point surfPoint;
         scalar sigma;
 
         // separate for different kinds of boundary cells
         if (body_[outCellI] < thrSurf_)
         {
-            surfPoint = mesh_.C()[inCellI];
+            surfCell = inCellI;
         }
         else
         {
-            surfPoint = mesh_.C()[outCellI];
+            surfCell = outCellI;
         }
+        surfPoint = mesh_.C()[surfCell];
         sigma = boundaryDists_[Pstream::myProcNo()][bCell].first();
-        vector surfNormToSend = surfNorm_[outCellI];
+        vector surfNormToSend = surfNorm_[surfCell];
         surfPoint += surfNormToSend*sigma;
 
-        // get interpolation point
-        getInterpolationPoint(outCellI, surfPoint, surfNormToSend, intInfoListBoundary_[Pstream::myProcNo()][bCell]);
+        // assign
+        bCells[bCell] = outCellI;
+        bPoints[bCell] = surfPoint;
+        bNormals[bCell] = surfNormToSend;
     }
 
-    // set interpolation order
-    setInterpolationOrder(intInfoListBoundary_[Pstream::myProcNo()]);
+    // initialize interpolation class
+    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, bCells, bPoints, bNormals));
 
-    // prepare surface interpolation info list
-    intInfoListSurface_[Pstream::myProcNo()].setSize(surfaceCells_[Pstream::myProcNo()].size());
+    // find interpolation points
+    lineIntInfoBoundary_->setIntpInfo();
 
-    // loop over surface cells
+    // assign back to known structures
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
+        boundaryCells_[Pstream::myProcNo()][bCell].third() = intPoints[1].iCell_;
+    }
+
+    // prepare lists for surface cells
+    List<label> sCells(surfaceCells_[Pstream::myProcNo()].size());
+    List<point> sPoints(surfaceCells_[Pstream::myProcNo()].size());
+    List<vector> sNormals(surfaceCells_[Pstream::myProcNo()].size());
+
+    // prepare data
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get origin cell label
@@ -230,140 +248,25 @@ void ibInterpolation::calculateInterpolationPoints
         point surfPoint = mesh_.C()[cellI];
         scalar sigma = surfaceDists_[Pstream::myProcNo()][sCell];
         vector surfNormToSend = surfNorm_[cellI];
-        surfPoint -= surfNormToSend*sigma;
+        surfPoint += surfNormToSend*sigma;
 
-        // get interpolation point
-        getInterpolationPoint(cellI, surfPoint, surfNormToSend, intInfoListSurface_[Pstream::myProcNo()][sCell]);
+        // assign
+        sCells[sCell] = cellI;
+        sPoints[sCell] = surfPoint;
+        sNormals[sCell] = surfNormToSend;
     }
 
-    // set interpolation order
-    setInterpolationOrder(intInfoListSurface_[Pstream::myProcNo()]);
-}
+    // initialize interpolation class
+    lineIntInfoSurface_.set(new lineIntInfo(mesh_, sCells, sPoints, sNormals));
 
-//---------------------------------------------------------------------------//
-void ibInterpolation::getInterpolationPoint
-(
-    label cellI,
-    point surfPoint,
-    vector surfNormToSend,
-    interpolationInfo& intInfo
-)
-{
-   // create vector for points and cells and add to main vectors
-   DynamicList<point> intPoints;
-   DynamicList<label> intCells;
-
-   // prepare reference distance
-   scalar intDist;
-   if (averageV_)
-   {
-       intDist = Foam::pow(VAve_,0.333);
-   }
-   else
-   {
-       intDist = Foam::pow(mesh_.V()[cellI],0.333);
-   }
-   intDist *= 0.5;
-
-   // add to list
-   intPoints.append(surfPoint);
-   if (mag(surfNormToSend) > SMALL)
-   {
-       Tuple2<label,label> helpTup(cellI, -1);
-       Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
-
-       // add other interpolation points
-       for (int order=0;order<ORDER;order++)
-       {
-           startCell = findCellCustom(startCell.first(),startCell.second().first(),startCell.second().second(),surfNormToSend,intDist);
-           surfPoint = startCell.first();
-           cellI = startCell.second().first();
-
-           if (startCell.second().second() == -1)
-           {
-               if (startCell.second().first() != -1)
-               {
-                   if (body_[cellI] >= 0.5)
-                   {
-                       order--;
-                       continue;
-                   }
-               }
-
-               intPoints.append(surfPoint);
-               intCells.append(cellI);
-           }
-
-           else
-           {
-               intPoints.append(surfPoint);
-               intCells.append(-1);
-           }
-       }
-   }
-
-   else
-   {
-       for (int order=0;order<ORDER;order++)
-       {
-           intPoints.append(surfPoint);
-           intCells.append(-1);
-       }
-   }
-   
-   // assign to global variables
-   intInfo.intPoints_ = intPoints;
-   intInfo.intCells_ = intCells;
-}
-    
-//---------------------------------------------------------------------------//
-void ibInterpolation::setInterpolationOrder
-(
-    List<interpolationInfo>& intInfoList
-)
-{
-    // decide which order should be used
-    for (label infoI = 0; infoI < intInfoList.size(); infoI++)
-    {
-        List<bool> allowedOrder;
-        allowedOrder.setSize(ORDER);
-
-        for (int intPoint=0;intPoint<ORDER;intPoint++)
-        {
-            if (intInfoList[infoI].intCells_[intPoint] == -1)
-            {
-                allowedOrder[intPoint] = false;
-            }
-
-            else
-            {
-                allowedOrder[intPoint] = true;
-            }
-        }
-
-        intInfoList[infoI].order_ = 2;
-        if ( allowedOrder[1] == false)
-        {
-            intInfoList[infoI].order_ = 1;
-        }
-
-        // check if first order is possible
-        if ( allowedOrder[0] == false)
-        {
-            intInfoList[infoI].order_ = 0;
-        }
-
-        if (intInfoList[infoI].order_ == 2)
-        {
-            if (intInfoList[infoI].intCells_[0] == intInfoList[infoI].intCells_[1])
-                intInfoList[infoI].order_ = 1;
-        }
-    }
+    // find interpolation points
+    lineIntInfoSurface_->setIntpInfo();
 }
 
 //---------------------------------------------------------------------------//
 // Custom function to find cell containing point
 // Note: this is much cheaper than standard OF functions
+// Note (LK): want to remove this
 Tuple2<vector,Tuple2<label,label>> ibInterpolation::findCellCustom
 (
     vector& prevPoint,
@@ -575,7 +478,7 @@ void ibInterpolation::findBoundaryCells
     }
 
     // preparation
-    Tuple2<label,label> toAppend;
+    Tuple3<label,label,label> toAppend;
     isBoundaryCell_ = -1;
 
     // loop over cells
@@ -703,6 +606,8 @@ void ibInterpolation::findBoundaryCells
                 toAppend.second() = toAppend.first();
             }
 
+            // assign dummy as third (first free stream cell)
+            toAppend.third() = -1;
             boundaryCells_[Pstream::myProcNo()].append(toAppend);
         }
     }
@@ -1171,44 +1076,47 @@ void ibInterpolation::saveInterpolationInfo
     autoPtr<OFstream> outFilePtr;
     word fileName = name + "_boundary.dat";
     outFilePtr.reset(new OFstream(outDir/fileName));
-    outFilePtr() << "cellI,inCellI,outCellCenter,inCellCenter,surfNorm,surfNormIn,bodyOut,bodyIn,sigma,yOrtho,yEff,order,intPoints,intCells" << endl;
+    outFilePtr() << "cellI,inCellI,freeCellI,outCellCenter,inCellCenter,freeCellCenter,surfNorm,surfNormIn,bodyOut,bodyIn,sigma,yOrtho,yEff,order,intPoints,intCells" << endl;
 
+    // Note (LK): this needs fixing 
     // loop over boundary cells
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    {
-        outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].first() << ","
-            << boundaryCells_[Pstream::myProcNo()][bCell].second() << ","
-            << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
-            << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
-            << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
-            << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
-            << body_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
-            << body_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
-            << boundaryDists_[Pstream::myProcNo()][bCell].first() << ","
-            << boundaryDists_[Pstream::myProcNo()][bCell].second() << ","
-            << boundaryDists_[Pstream::myProcNo()][bCell].third() << ","
-            << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
-            << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
-            << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
-    }
+    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    //~ {
+        //~ outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].first() << ","
+            //~ << boundaryCells_[Pstream::myProcNo()][bCell].second() << ","
+            //~ << boundaryCells_[Pstream::myProcNo()][bCell].third() << ","
+            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
+            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].third()] << ","
+            //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
+            //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].first()] << ","
+            //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].second()] << ","
+            //~ << boundaryDists_[Pstream::myProcNo()][bCell].first() << ","
+            //~ << boundaryDists_[Pstream::myProcNo()][bCell].second() << ","
+            //~ << boundaryDists_[Pstream::myProcNo()][bCell].third() << ","
+            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
+            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
+            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
+    //~ }
 
     // prepare file
     fileName = name + "_surface.dat";
     outFilePtr.reset(new OFstream(outDir/fileName));
     outFilePtr() << "cellI,cellCenter,surfNorm,body,sigma,order,intPoints,intCells" << endl;
 
-    // loop over surface cells
-    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
-    {
-        outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell] << ","
-            << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            << body_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            << surfaceDists_[Pstream::myProcNo()][sCell] << ","
-            << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
-            << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
-            << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
-    }
+    //~ // loop over surface cells
+    //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    //~ {
+        //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell] << ","
+            //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
+            //~ << surfaceDists_[Pstream::myProcNo()][sCell] << ","
+            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
+            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
+            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
+    //~ }
 }
 
 //---------------------------------------------------------------------------//
@@ -1218,15 +1126,18 @@ void ibInterpolation::saveBoundaryCells
 {
     List<label> saveOutCells(boundaryCells_[Pstream::myProcNo()].size());
     List<label> saveInCells(boundaryCells_[Pstream::myProcNo()].size());
+    List<label> saveFreeCells(boundaryCells_[Pstream::myProcNo()].size());
 
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         saveOutCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].first();
         saveInCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].second();
+        saveFreeCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].third();
     }
 
     saveCellSet(saveOutCells, "outerBoundaryCells");
     saveCellSet(saveInCells, "innerBoundaryCells");
+    saveCellSet(saveFreeCells, "freeBoundaryCells");
 }
 
 //---------------------------------------------------------------------------//

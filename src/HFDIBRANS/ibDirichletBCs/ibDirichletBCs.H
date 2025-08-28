@@ -94,7 +94,7 @@ class ibDirichletBCs
     List<List<scalar>> uTauAtIB_;
 
     // references to shared data
-    List<DynamicList<Tuple2<label,label>>>& boundaryCells_;
+    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells_;
     List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists_;
     labelField& isBoundaryCell_;
 
@@ -155,7 +155,7 @@ class ibDirichletBCs
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        List<DynamicList<Tuple2<label,label>>>& boundaryCells,
+        List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
         List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
         labelField& isBoundaryCell
     );
