@@ -45,7 +45,7 @@
 
 **scaleCoeff** - *optional* > For scaleDisG. Value of the scaling coefficient. Default 1.0
 
-**approxCutCellYOrtho** - *optional* > If to adjust yOrtho to mimic cut cell. Default true
+**useEffectiveDistance** - *optional* > If to yEff instead of yOrtho for yPlus calculation. Default true
 > Possible values: {*true*, *false*}
 
 # Documentation for HFDIBSchemes subdict in fvSchemes
