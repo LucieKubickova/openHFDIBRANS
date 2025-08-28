@@ -134,10 +134,6 @@ fvSchemes_
     )
 )
 {
-    // initiate lists
-    //~ intInfoListBoundary_.setSize(Pstream::nProcs());
-    //~ intInfoListSurface_.setSize(Pstream::nProcs());
-
 	// read HFDIBDEM dictionary
     boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
