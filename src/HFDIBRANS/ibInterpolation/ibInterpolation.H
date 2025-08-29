@@ -46,7 +46,7 @@ Contributors
 #include "zeroGradientScheme.H"
 
 #include "lineIntInfo.H"
-#include "Tuple3.H"
+#include "boundaryCell.H"
 
 #define ORDER 2
 
@@ -87,16 +87,13 @@ class ibInterpolation
     volScalarField yEffi_;
 
     // references to shared data
-    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells_;
-    List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists_;
+    List<DynamicList<boundaryCell>>& boundaryCells_;
     List<DynamicList<label>>& surfaceCells_;
     List<List<scalar>>& surfaceDists_;
     List<DynamicList<label>>& internalCells_;
     labelField& isBoundaryCell_;
 
     // interpolation info lists
-    //~ List<List<interpolationInfo>> intInfoListBoundary_;
-    //~ List<List<interpolationInfo>> intInfoListSurface_;
     autoPtr<lineIntInfo> lineIntInfoBoundary_;
     autoPtr<lineIntInfo> lineIntInfoSurface_;
 
@@ -116,8 +113,7 @@ class ibInterpolation
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
-        List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
+        List<DynamicList<boundaryCell>>& boundaryCells,
         List<DynamicList<label>>& surfaceCells,
         List<List<scalar>>& surfaceDists,
         List<DynamicList<label>>& internalCells,

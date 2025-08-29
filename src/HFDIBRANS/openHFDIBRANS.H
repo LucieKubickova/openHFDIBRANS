@@ -64,8 +64,7 @@ class openHFDIBRANS
     dictionary HFDIBOuterSchemes_;
 
     // lists of cells relevant to imposed fields
-    List<DynamicList<Tuple3<label,label,label>>> boundaryCells_;
-    List<List<Tuple3<scalar,scalar,scalar>>> boundaryDists_;
+    List<DynamicList<boundaryCell>> boundaryCells_;
     List<DynamicList<label>> surfaceCells_;
     List<List<scalar>> surfaceDists_;
     List<DynamicList<label>> internalCells_;

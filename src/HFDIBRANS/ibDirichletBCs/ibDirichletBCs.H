@@ -70,7 +70,7 @@ Contributors
 #include "PstreamReduceOps.H"
 #include "nearWallDist.H"
 
-#include "Tuple3.H"
+#include "boundaryCell.H"
 
 using namespace Foam;
 
@@ -94,8 +94,7 @@ class ibDirichletBCs
     List<List<scalar>> uTauAtIB_;
 
     // references to shared data
-    List<DynamicList<Tuple3<label,label,label>>>& boundaryCells_;
-    List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists_;
+    List<DynamicList<boundaryCell>>& boundaryCells_;
     labelField& isBoundaryCell_;
 
     // dictionaries
@@ -155,8 +154,7 @@ class ibDirichletBCs
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        List<DynamicList<Tuple3<label,label,label>>>& boundaryCells,
-        List<List<Tuple3<scalar,scalar,scalar>>>& boundaryDists,
+        List<DynamicList<boundaryCell>>& boundaryCells,
         labelField& isBoundaryCell
     );
 

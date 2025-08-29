@@ -70,14 +70,13 @@ fvSchemes_
 {
     // initiate lists
     boundaryCells_.setSize(Pstream::nProcs());
-    boundaryDists_.setSize(Pstream::nProcs());
     surfaceCells_.setSize(Pstream::nProcs());
     surfaceDists_.setSize(Pstream::nProcs());
     internalCells_.setSize(Pstream::nProcs());
 
     // initialize classes
-    ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, boundaryDists_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_));
-    ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, boundaryDists_, isBoundaryCell_));
+    ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_));
+    ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, isBoundaryCell_));
 
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
@@ -98,7 +97,6 @@ fvSchemes_
     ibDirichletBCs_->setSizeToLists();
 
     // compute distance to the immersed boundary
-    boundaryDists_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
     ibInterpolation_->calculateBoundaryDist();
     surfaceDists_[Pstream::myProcNo()].setSize(surfaceCells_[Pstream::myProcNo()].size());
     ibInterpolation_->calculateSurfaceDist();
@@ -167,17 +165,17 @@ void openHFDIBRANS::computeUi
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell label
-            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
             // get distance to surface
             scalar yOrtho;
             if (useYEff_)
             {
-                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
             }
             else
             {
-                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
             }
 
             // calculate the local log scale
@@ -247,17 +245,17 @@ void openHFDIBRANS::computeKi
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
         // get distance to surface
         scalar yOrtho;
         if (useYEff_)
         {
-            yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
         }
         else
         {
-            yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
         }
 
         // calculate the local log scale
@@ -351,17 +349,17 @@ void openHFDIBRANS::computeTi
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell label
-            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
             // get distance to surface
             scalar yOrtho;
             if (useYEff_)
             {
-                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
             }
             else
             {
-                yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
             }
 
             // calculate the local log scale
@@ -451,17 +449,17 @@ void openHFDIBRANS::correctOmegaG
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell label
-            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
             // get cell scales
             //~ scalar yOrtho;
             //~ if (useYEff_)
             //~ {
-                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+                //~ yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
             //~ }
             //~ else
             //~ {
-                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+                //~ yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
             //~ }
             //~ scalar V = mesh_.V()[cellI];
             //~ scalar l = Foam::pow(V, 0.333);
@@ -497,7 +495,7 @@ void openHFDIBRANS::correctOmegaG
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
         // assign
         omega[cellI] = omegaIB[bCell];
@@ -535,8 +533,8 @@ void openHFDIBRANS::correctOmegaG
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell labels
-            label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
-            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
+            label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
             // assign
             omega[inCellI] = omega[outCellI];
@@ -572,17 +570,17 @@ void openHFDIBRANS::correctEpsilonG
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell label
-            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
             // get cell scales
             //~ scalar yOrtho;
             //~ if (useYEff_)
             //~ {
-                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].third();
+                //~ yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
             //~ }
             //~ else
             //~ {
-                //~ yOrtho = boundaryDists_[Pstream::myProcNo()][bCell].second();
+                //~ yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
             //~ }
             //~ scalar V = mesh_.V()[cellI];
             //~ scalar l = Foam::pow(V, 0.333);
@@ -610,7 +608,7 @@ void openHFDIBRANS::correctEpsilonG
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
         // assign
         epsilon[cellI] = epsilonIB[bCell];
@@ -639,8 +637,8 @@ void openHFDIBRANS::correctEpsilonG
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get cell labels
-            label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
-            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].second();
+            label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
             // assign
             epsilon[inCellI] = epsilon[outCellI];
@@ -700,16 +698,16 @@ void openHFDIBRANS::correctY
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].first();
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
         // assign distance to boundary
         if (useYEff_)
         {
-            y[cellI] = boundaryDists_[Pstream::myProcNo()][bCell].third();
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
         }
         else
         {
-            y[cellI] = boundaryDists_[Pstream::myProcNo()][bCell].second();
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
         }
     }
 }
@@ -761,7 +759,7 @@ void openHFDIBRANS::enforceUiInBody
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
             // get the cell label
-            label cellB = boundaryCells_[Pstream::myProcNo()][bCell].second();
+            label cellB = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
             // check
             if (cellB == cellI)
