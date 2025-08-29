@@ -107,7 +107,7 @@ void ibInterpolation::lambdaBasedInterp
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get cell label
-        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
 
         // interpolate
         phii[cellI] = interpFunc->interpolate
@@ -117,7 +117,7 @@ void ibInterpolation::lambdaBasedInterp
             body_,
             dirichletVals[sCell],
             scales[sCell],
-            surfaceDists_[Pstream::myProcNo()][sCell],
+            surfaceCells_[Pstream::myProcNo()][sCell].sigma_,
             lineIntInfoSurface_->getIntPoints()[sCell],
             cellI
         );

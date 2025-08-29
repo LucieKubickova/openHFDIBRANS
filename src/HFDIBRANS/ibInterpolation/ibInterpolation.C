@@ -44,8 +44,7 @@ ibInterpolation::ibInterpolation
     const fvMesh& mesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
-    List<DynamicList<label>>& surfaceCells,
-    List<List<scalar>>& surfaceDists,
+    List<DynamicList<surfaceCell>>& surfaceCells,
     List<DynamicList<label>>& internalCells,
     labelField& isBoundaryCell
 )
@@ -106,7 +105,6 @@ yEffi_
 ),
 boundaryCells_(boundaryCells),
 surfaceCells_(surfaceCells),
-surfaceDists_(surfaceDists),
 internalCells_(internalCells),
 isBoundaryCell_(isBoundaryCell),
 HFDIBDEMDict_
@@ -236,11 +234,11 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get origin cell label
-        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
 
         // find surf point
         point surfPoint = mesh_.C()[cellI];
-        scalar sigma = surfaceDists_[Pstream::myProcNo()][sCell];
+        scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
         vector surfNormToSend = surfNorm_[cellI];
         surfPoint += surfNormToSend*sigma;
 
@@ -694,12 +692,15 @@ void ibInterpolation::findSurfaceCells
     // loop over all cells
     forAll(body_, cellI)
     {
+        surfaceCell sCellToAdd;
+
         // check lambda
         if (body_[cellI] >= thrSurf_)
         {
             if (body_[cellI] <= (1-thrSurf_))
             {
-                surfaceCells_[Pstream::myProcNo()].append(cellI);
+                sCellToAdd.sCell_ = cellI;
+                surfaceCells_[Pstream::myProcNo()].append(sCellToAdd);
             }
 
             else
@@ -1056,7 +1057,7 @@ void ibInterpolation::calculateSurfaceDist
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
         // get cell label
-        label cellI = surfaceCells_[Pstream::myProcNo()][sCell];
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
 
         // get cell dimension
         scalar l;
@@ -1073,7 +1074,7 @@ void ibInterpolation::calculateSurfaceDist
         sigma = -1*Foam::atanh(1-2*body_[cellI])*l/intSpan_;
 
         // assign
-        surfaceDists_[Pstream::myProcNo()][sCell] = sigma;
+        surfaceCells_[Pstream::myProcNo()][sCell].sigma_ = sigma;
     }
 }
 
@@ -1166,11 +1167,11 @@ void ibInterpolation::saveInterpolationInfo
     //~ // loop over surface cells
     //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     //~ {
-        //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell] << ","
-            //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell]] << ","
-            //~ << surfaceDists_[Pstream::myProcNo()][sCell] << ","
+        //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell].sCell_ << ","
+            //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+            //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+            //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+            //~ << surfaceCells_[Pstream::myProcNo()][sCell].sigma_ << ","
             //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
             //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
             //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
@@ -1207,7 +1208,7 @@ void ibInterpolation::saveSurfaceCells
 
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
-        saveCells[sCell] = surfaceCells_[Pstream::myProcNo()][sCell];
+        saveCells[sCell] = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
     }
 
     saveCellSet(saveCells, "surfaceCells");

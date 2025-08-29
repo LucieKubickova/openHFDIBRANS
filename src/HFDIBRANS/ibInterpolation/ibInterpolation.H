@@ -47,6 +47,7 @@ Contributors
 
 #include "lineIntInfo.H"
 #include "boundaryCell.H"
+#include "surfaceCell.H"
 
 #define ORDER 2
 
@@ -88,8 +89,7 @@ class ibInterpolation
 
     // references to shared data
     List<DynamicList<boundaryCell>>& boundaryCells_;
-    List<DynamicList<label>>& surfaceCells_;
-    List<List<scalar>>& surfaceDists_;
+    List<DynamicList<surfaceCell>>& surfaceCells_;
     List<DynamicList<label>>& internalCells_;
     labelField& isBoundaryCell_;
 
@@ -114,8 +114,7 @@ class ibInterpolation
         const fvMesh& mesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
-        List<DynamicList<label>>& surfaceCells,
-        List<List<scalar>>& surfaceDists,
+        List<DynamicList<surfaceCell>>& surfaceCells,
         List<DynamicList<label>>& internalCells,
         labelField& isBoundaryCell
     );

@@ -65,8 +65,7 @@ class openHFDIBRANS
 
     // lists of cells relevant to imposed fields
     List<DynamicList<boundaryCell>> boundaryCells_;
-    List<DynamicList<label>> surfaceCells_;
-    List<List<scalar>> surfaceDists_;
+    List<DynamicList<surfaceCell>> surfaceCells_;
     List<DynamicList<label>> internalCells_;
     labelField isBoundaryCell_;
 

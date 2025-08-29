@@ -71,11 +71,10 @@ fvSchemes_
     // initiate lists
     boundaryCells_.setSize(Pstream::nProcs());
     surfaceCells_.setSize(Pstream::nProcs());
-    surfaceDists_.setSize(Pstream::nProcs());
     internalCells_.setSize(Pstream::nProcs());
 
     // initialize classes
-    ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, surfaceCells_, surfaceDists_, internalCells_, isBoundaryCell_));
+    ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
     ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, isBoundaryCell_));
 
     // read HFDIBDEM dictionary
@@ -98,7 +97,6 @@ fvSchemes_
 
     // compute distance to the immersed boundary
     ibInterpolation_->calculateBoundaryDist();
-    surfaceDists_[Pstream::myProcNo()].setSize(surfaceCells_[Pstream::myProcNo()].size());
     ibInterpolation_->calculateSurfaceDist();
 
     // calculate interpolation points
