@@ -256,205 +256,6 @@ void ibInterpolation::calculateInterpolationPoints
 }
 
 //---------------------------------------------------------------------------//
-// Custom function to find cell containing point
-// Note: this is much cheaper than standard OF functions
-// Note (LK): want to remove this
-Tuple2<vector,Tuple2<label,label>> ibInterpolation::findCellCustom
-(
-    vector& prevPoint,
-    label& startCell,
-    label& startProc,
-    vector& gradToBody,
-    scalar& intDist
-)
-{
-    if (startProc != -1)
-    {
-
-        Tuple2<label,label> helpTup(startCell,startProc);
-        Tuple2<vector,Tuple2<label,label>> tupleToReturn(prevPoint + intDist*gradToBody,helpTup);
-        return tupleToReturn;
-    }
-
-    else if (startCell == -1)
-    {
-        Tuple2<label,label> helpTup(-1,-1);
-        Tuple2<vector,Tuple2<label,label>> tupleToReturn(prevPoint + intDist*gradToBody,helpTup);
-        return tupleToReturn;
-    }
-
-    labelList cellFaces(mesh_.cells()[startCell]);
-    label bestFace(0);
-
-    scalar dotProd(-GREAT);
-    forAll (cellFaces,faceI)
-    {
-        vector vecI(mesh_.Cf()[cellFaces[faceI]] - mesh_.C()[startCell]);
-        vecI /= mag(vecI);
-        scalar auxDotProd(vecI & gradToBody);
-        if (auxDotProd > dotProd)
-        {
-            dotProd = auxDotProd;
-            bestFace = cellFaces[faceI];
-        }
-    }
-
-    labelList cellPoints(mesh_.faces()[bestFace]);
-    DynamicList<Tuple2<vector,Tuple2<label,label>>> pointsToCheck;
-
-    forAll (cellPoints, pointI)
-    {
-        labelList pointFaces(mesh_.pointFaces()[cellPoints[pointI]]);
-
-        forAll (pointFaces, faceI)
-        {
-            if (mesh_.isInternalFace(pointFaces[faceI]))
-            {
-                label owner(mesh_.owner()[pointFaces[faceI]]);
-                label neighbour(mesh_.neighbour()[pointFaces[faceI]]);
-
-                if (owner != startCell)
-                {
-                    bool add(true);
-
-                    forAll (pointsToCheck, i)
-                    {
-                        if (pointsToCheck[i].second().first() == owner)
-                        {
-                            add = false;
-                            break;
-                        }
-                    }
-
-                    if (add)
-                    {
-                        Tuple2<label,label> helpTup(owner,-1);
-                        Tuple2<vector,Tuple2<label,label>> tupleToAdd(mesh_.C()[owner],helpTup);
-                        pointsToCheck.append(tupleToAdd);
-                    }
-                }
-
-                if (neighbour != startCell)
-                {
-                    bool add(true);
-                    forAll (pointsToCheck, i)
-                    {
-                        if (pointsToCheck[i].second().first() == neighbour)
-                        {
-                            add = false;
-                            break;
-                        }
-                    }
-
-                    if (add)
-                    {
-                        Tuple2<label,label> helpTup(neighbour,-1);
-                        Tuple2<vector,Tuple2<label,label>> tupleToAdd(mesh_.C()[neighbour],helpTup);
-                        pointsToCheck.append(tupleToAdd);
-                    }
-                }
-            }
-
-            else
-            {
-                label owner(mesh_.faceOwner()[pointFaces[faceI]]);
-                vector distToFace(mesh_.Cf()[pointFaces[faceI]] - mesh_.C()[owner]);
-                vector sfUnit(mesh_.Sf()[pointFaces[faceI]]/mag(mesh_.Sf()[pointFaces[faceI]]));
-                vector pointToAppend(mesh_.C()[owner] + mag(distToFace)*sfUnit);
-
-                bool add(true);
-                forAll (pointsToCheck, i)
-                {
-                    if (pointsToCheck[i].first() == pointToAppend)
-                    {
-                        add = false;
-                        break;
-                    }
-                }
-
-                if (add)
-                {
-                    Tuple2<label,label> helpTup(-1,-1);
-                    Tuple2<vector,Tuple2<label,label>> tupleToAdd(pointToAppend,helpTup);
-                    pointsToCheck.append(tupleToAdd);
-                }
-            }
-        }
-    }
-
-    dotProd = -GREAT;
-    Tuple2<label,label> helpTup(-1,-1);
-    Tuple2<vector,Tuple2<label,label>> tupleToReturn(vector::zero,helpTup);
-
-    forAll (pointsToCheck,pointI)
-    {
-        vector vecI(pointsToCheck[pointI].first() - mesh_.C()[startCell]);
-        vecI /= (mag(vecI)+SMALL);
-        scalar auxDotProd(vecI & gradToBody);
-
-        if (auxDotProd > dotProd)
-        {
-            dotProd = auxDotProd;
-            tupleToReturn   = pointsToCheck[pointI];
-        }
-    }
-
-    if (tupleToReturn.second().first() != -1 and tupleToReturn.second().second() == -1)
-    {
-        // create interpolation point 
-        intDist = mag(prevPoint - tupleToReturn.first());
-        point iP = prevPoint + intDist*gradToBody;
-        tupleToReturn.first() = iP;
-
-        label cellI = tupleToReturn.second().first();
-
-        // create list of all cells to check
-        List<label> cellIs(1 + mesh_.cellCells()[cellI].size());
-
-        cellIs[0] = cellI;
-        forAll(mesh_.cellCells()[cellI], nI)
-        {
-            cellIs[nI+1] = mesh_.cellCells()[cellI][nI];
-        }
-
-        // check whether the point is in the already found cell or its neighbours
-        forAll(cellIs, cI)
-        {
-            cellI = cellIs[cI];
-
-            bool isInside(true);
-
-            forAll(mesh_.cells()[cellI], fI)
-            {
-                label faceI = mesh_.cells()[cellI][fI];
-                label owner = mesh_.faceOwner()[faceI];
-
-                vector outNorm = mesh_.Sf()[faceI];
-
-                if (owner != cellI)
-                {
-                    outNorm *= -1;
-                }
-
-                scalar auxDot = (iP - mesh_.Cf()[faceI]) & outNorm;
-
-                if (auxDot > 0)
-                {
-                    isInside = false;
-                }
-            }
-
-            if (isInside)
-            {
-                tupleToReturn.second().first() = cellI;
-                break;
-            }
-        }
-    }
-    return tupleToReturn;
-}
-
-//---------------------------------------------------------------------------//
 void ibInterpolation::findBoundaryCells
 (
 )
@@ -478,6 +279,7 @@ void ibInterpolation::findBoundaryCells
     {
         bool toInclude(false);
         label vertex(-1);
+        label iProc(Pstream::myProcNo());
 
         if (body_[cellI] < 0.5 && body_[cellI] >= thrSurf_)
         {
@@ -530,59 +332,64 @@ void ibInterpolation::findBoundaryCells
 
                 else // Note (LK): parallel version of boundary search face
                 {
-                    FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
-                    //~ forAll(mesh_.cells()[cellI], fI)
-                    //~ {
-                        //~ // get labels
-                        //~ label faceI = mesh_.cells()[cellI][fI];
-                        //~ label nI(-1);
+                    forAll(mesh_.cells()[cellI], fI)
+                    {
+                        // get labels
+                        label faceI = mesh_.cells()[cellI][fI];
+                        label nI(-1);
 
-                        //~ // check for non-internal cells
-                        //~ if (!mesh_.isInternalFace(faceI))
-                        //~ {
-                            //~ // get the patch the face belongs to
-                            //~ label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
-                            //~ const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
+                        // check for non-internal cells
+                        if (!mesh_.isInternalFace(faceI))
+                        {
+                            // get the patch the face belongs to
+                            label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
+                            const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
 
-                            //~ // check if it is a processor boundary
-                            //~ if (cPatch.type() == "processor")
-                            //~ {
-                                //~ // get the processor patch
-                                //~ const processorPolyPatch& procPatch
-                                    //~ = refCast<const processorPolyPatch>(cPatch);
+                            // check if it is a processor boundary
+                            if (cPatch.type() == "processor")
+                            {
+                                // get the processor patch
+                                const processorPolyPatch& procPatch
+                                    = refCast<const processorPolyPatch>(cPatch);
 
-                                //~ // get the neighboring processor id
-                                //~ label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                                    //~ ? procPatch.neighbProcNo() : procPatch.myProcNo();
+                                // get the neighboring processor id
+                                label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                                    ? procPatch.neighbProcNo() : procPatch.myProcNo();
 
-                                //~ // save labels
-                                //~ nI = cPatch.whichFace(faceInDir);
+                                // access neighbor processor patch
+                                const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
 
-                                //~ // check lambda
-                                //~ //~ retP.iProc_ = sProc; // Note (LK): save the processor label too
+                                // get local face value
+                                label localI = cPatch.whichFace(faceI);
 
-                                //~ //~ return retP;
-                            //~ }
-                            //~ else
-                            //~ {
-                                //~ //~ retP.iProc_ = -1; // Note (LK): save the processor label too
-                                //~ //~ return retP;
-                            //~ }
-                        //~ }
+                                // acces neighbor value
+                                if (bodyN[localI] >= 0.5)
+                                {
+                                    toInclude = true;
+                                    vertex = localI;
+                                    iProc = sProc;
+                                    break;
+                                }
+                            }
+                        }
 
-                        //~ // get the neighbor cell label
-                        //~ label owner(mesh_.owner()[faceI]);
-                        //~ label neighbor(mesh_.neighbour()[faceI]);
-                        //~ nI = (cellI == owner) ? neighbor : owner;
+                        else
+                        {
+                            // get the neighbor cell label
+                            label owner(mesh_.owner()[faceI]);
+                            label neighbor(mesh_.neighbour()[faceI]);
+                            nI = (cellI == owner) ? neighbor : owner;
 
-                        //~ // check lambda field
-                        //~ if (body_[nI] >= 0.5)
-                        //~ {
-                            //~ toInclude = true;
-                            //~ vertex = nI;
-                            //~ break;
-                        //~ }
-                    //~ }
+                            // check lambda field
+                            if (body_[nI] >= 0.5)
+                            {
+                                toInclude = true;
+                                vertex = nI;
+                                iProc = Pstream::myProcNo();
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -634,37 +441,117 @@ void ibInterpolation::findBoundaryCells
         {
             if (vertex == -1)
             {
-                Tuple2<label,label> helpTup(cellI,-1);
-                Tuple2<vector,Tuple2<label,label>> startCell(mesh_.C()[cellI],helpTup);
-
-                scalar intDist;
-                if (averageV_)
+                if (boundarySearch_ == "vertex")
                 {
-                    intDist = Foam::pow(VAve_,0.333);
+                    //~ if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
+                    //~ {
+                        //~ forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+                        //~ {
+                            //~ label pointI = mesh_.cellPoints()[cellI][pID];
+
+                            //~ forAll(mesh_.pointCells()[pointI], cI)
+                            //~ {
+                                //~ if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                                //~ {
+                                    //~ vertex = mesh_.pointCells()[pointI][cI];
+                                    //~ break;
+                                //~ }
+                            //~ }
+                        //~ }
+                    //~ }
+
+                    //~ else
+                    //~ {
+                        // Note (LK): should be fixed later
+                        FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
+                    //~ }
                 }
-                else
+
+                else if (boundarySearch_ == "face") // Note (LK): copy of code from above, gonna be a function
                 {
-                    intDist = Foam::pow(mesh_.V()[cellI],0.333);
+                    if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
+                    {
+                        forAll(mesh_.cellCells()[cellI], nID) // face neighbours
+                        {
+                            if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
+                            {
+                                vertex = mesh_.cellCells()[cellI][nID];
+                                break;
+                            }
+                        }
+                    }
+
+                    else // Note (LK): parallel version of boundary search face
+                    {
+                        forAll(mesh_.cells()[cellI], fI)
+                        {
+                            // get labels
+                            label faceI = mesh_.cells()[cellI][fI];
+                            label nI(-1);
+
+                            // check for non-internal cells
+                            if (!mesh_.isInternalFace(faceI))
+                            {
+                                // get the patch the face belongs to
+                                label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
+                                const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
+
+                                // check if it is a processor boundary
+                                if (cPatch.type() == "processor")
+                                {
+                                    // get the processor patch
+                                    const processorPolyPatch& procPatch
+                                        = refCast<const processorPolyPatch>(cPatch);
+
+                                    // get the neighboring processor id
+                                    label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                                        ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                                    // access neighbor processor patch
+                                    const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+
+                                    // get local face value
+                                    label localI = cPatch.whichFace(faceI);
+
+                                    // acces neighbor value
+                                    if (bodyN[localI] >= 0.5)
+                                    {
+                                        vertex = localI;
+                                        iProc = sProc;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            else
+                            {
+                                // get the neighbor cell label
+                                label owner(mesh_.owner()[faceI]);
+                                label neighbor(mesh_.neighbour()[faceI]);
+                                nI = (cellI == owner) ? neighbor : owner;
+
+                                // check lambda field
+                                if (body_[nI] >= 0.5)
+                                {
+                                    vertex = nI;
+                                    iProc = Pstream::myProcNo();
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
-                intDist *= 0.5;
-
-                vector surfNormToSend(-surfNorm_[cellI]);
-                startCell = findCellCustom(startCell.first(),startCell.second().first(),startCell.second().second(),surfNormToSend,intDist);
-
-                bCellToAdd.bCell_ = cellI;
-                bCellToAdd.iCell_ = startCell.second().first();
             }
 
-            else
-            {
-                bCellToAdd.bCell_ = cellI;
-                bCellToAdd.iCell_ = vertex;
-            }
+            bCellToAdd.bCell_ = cellI;
+            bCellToAdd.iCell_ = vertex;
+            bCellToAdd.iProc_ = iProc;
 
             // fix non-existent inner cells
             if (bCellToAdd.iCell_ == -1)
             {
                 bCellToAdd.iCell_ = bCellToAdd.bCell_;
+                bCellToAdd.iProc_ = Pstream::myProcNo();
             }
 
             // assign dummy as third (first free stream cell)

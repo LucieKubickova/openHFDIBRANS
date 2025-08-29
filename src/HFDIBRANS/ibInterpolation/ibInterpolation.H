@@ -163,14 +163,9 @@ class ibInterpolation
     
     // calculate interpolation points
     void calculateInterpolationPoints();
-    //~ void getInterpolationPoint(label cellI, point surfPoint, vector surfNormToSend, interpolationInfo& intInfo);
-    //~ void setInterpolationOrder(List<interpolationInfo>& intInfoList);
 
     // surface normals
     void calculateSurfNorm();
-
-    // find cell
-    Tuple2<vector,Tuple2<label,label>> findCellCustom(vector& prevPoint, label& startCell, label& startProc, vector& gradToBody, scalar& intDist);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);
