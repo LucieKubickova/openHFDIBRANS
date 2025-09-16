@@ -83,6 +83,7 @@ class ibInterpolation
     scalar valueL_;
 
     // saves
+    volScalarField iProci_;
     volScalarField sigmai_;
     volScalarField yOrthoi_;
     volScalarField yEffi_;
@@ -149,6 +150,9 @@ class ibInterpolation
     // identification
     void findBoundaryCells();
     void findSurfaceCells();
+
+    // auxiliar functions
+    bool isWallCell(label cellI);
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);

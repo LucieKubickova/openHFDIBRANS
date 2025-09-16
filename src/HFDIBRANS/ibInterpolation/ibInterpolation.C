@@ -64,6 +64,19 @@ surfNorm_
     mesh_,
     dimensionedVector("zero", dimless/dimLength, vector::zero)
 ),
+iProci_
+(
+    IOobject
+    (
+        "iProci",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, -1.0)
+),
 sigmai_
 (
     IOobject
@@ -175,6 +188,31 @@ void ibInterpolation::calculateInterpolationPoints
 (
 )
 {
+    // prepare cell centers for acces to neighbors across processor boundary
+    // Note (LK): may be redundant
+    volVectorField cellCenters
+    (
+        IOobject
+        (
+            "cellCenters",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        //~ mesh_.C()
+        dimensionedVector("zero", dimLength, vector::zero)
+    );
+
+    forAll(mesh_.C(), cellI)
+    {
+        vector center = mesh_.C()[cellI];
+        cellCenters[cellI] = center;
+    }
+
+    cellCenters.correctBoundaryConditions();
+
     // prepare lists
     List<label> bCells(boundaryCells_[Pstream::myProcNo()].size());
     List<point> bPoints(boundaryCells_[Pstream::myProcNo()].size());
@@ -186,25 +224,62 @@ void ibInterpolation::calculateInterpolationPoints
         // get origin cell label
         label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+        label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
         // find surf point
         label surfCell;
         point surfPoint;
+        vector surfNormToSend;
         scalar sigma;
 
         // separate for different kinds of boundary cells
         if (body_[outCellI] < thrSurf_)
         {
-            surfCell = inCellI;
+            if (Pstream::myProcNo() != iProc)
+            {
+                forAll(mesh_.boundaryMesh(), patchI)
+                {
+                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    {
+                        const processorPolyPatch& procPatch
+                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+
+                        // get the neighboring processor id
+                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                        if (sProc == iProc)
+                        {
+                            // access neighbor processor patch
+                            const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
+                            const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
+                            const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+
+                            // calc data
+                            surfPoint = cellCenterN[inCellI];
+                            sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
+                            surfNormToSend = surfNormN[inCellI];
+                            surfPoint += surfNormN[inCellI]*sigma;
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                surfPoint = mesh_.C()[inCellI];;
+                sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
+                surfNormToSend = surfNorm_[inCellI];
+                surfPoint += surfNormToSend*sigma;
+            }
         }
         else
         {
-            surfCell = outCellI;
+            surfPoint = mesh_.C()[outCellI];
+            sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
+            surfNormToSend = surfNorm_[outCellI];
+            surfPoint += surfNormToSend*sigma;
         }
-        surfPoint = mesh_.C()[surfCell];
-        sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
-        vector surfNormToSend = surfNorm_[surfCell];
-        surfPoint += surfNormToSend*sigma;
 
         // assign
         bCells[bCell] = outCellI;
@@ -222,7 +297,8 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
-        boundaryCells_[Pstream::myProcNo()][bCell].fCell_ = intPoints[1].iCell_;
+        boundaryCells_[Pstream::myProcNo()][bCell].fCell_ = intPoints[1].iCell_; // Note (LK): fix this, not sure if it is faceI or really cellI
+        boundaryCells_[Pstream::myProcNo()][bCell].fProc_ = intPoints[1].iProc_;
     }
 
     // prepare lists for surface cells
@@ -260,16 +336,6 @@ void ibInterpolation::findBoundaryCells
 (
 )
 {
-    // get wall patches
-    DynamicList<label> wPatchIs;
-    forAll(mesh_.boundary(), pI)
-    {
-        if (mesh_.boundary()[pI].type() == "wall")
-        {
-            wPatchIs.append(pI);
-        }
-    }
-
     // preparation
     boundaryCell bCellToAdd;
     isBoundaryCell_ = -1;
@@ -277,9 +343,12 @@ void ibInterpolation::findBoundaryCells
     // loop over cells
     forAll(mesh_.cellCells(), cellI)
     {
+        
         bool toInclude(false);
         label vertex(-1);
         label iProc(Pstream::myProcNo());
+
+        iProci_[cellI] = iProc; // Note (LK): save for testing
 
         if (body_[cellI] < 0.5 && body_[cellI] >= thrSurf_)
         {
@@ -366,6 +435,7 @@ void ibInterpolation::findBoundaryCells
                                 if (bodyN[localI] >= 0.5)
                                 {
                                     toInclude = true;
+                                    //~ vertex = faceI;
                                     vertex = localI;
                                     iProc = sProc;
                                     break;
@@ -402,38 +472,7 @@ void ibInterpolation::findBoundaryCells
         // check whether the cell is adjecent to a regular wall
         if (toInclude and excludeWalls_)
         {
-            forAll(mesh_.cells()[cellI], f)
-            {
-                // get face label
-                label faceI = mesh_.cells()[cellI][f];
-
-                if (faceI >= mesh_.owner().size())
-                {
-                    bool wallFace(false);
-
-                    // loop over patches of type wall
-                    forAll(wPatchIs, pI)
-                    {
-                        // get patch label
-                        label patchI = wPatchIs[pI];
-
-                        // get start and end face index
-                        label startI = mesh_.boundary()[patchI].start();
-                        label endI = startI + mesh_.boundary()[patchI].Cf().size();
-
-                        if (faceI >= startI and faceI < endI)
-                        {
-                            wallFace = true;
-                        }
-                    }
-
-                    // exclude wall faces
-                    if (wallFace)
-                    {
-                        toInclude = false;
-                    }
-                }
-            }
+            toInclude = !(isWallCell(cellI));
         }
 
         // add the cell
@@ -471,6 +510,7 @@ void ibInterpolation::findBoundaryCells
                 {
                     if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
                     {
+                        // Note (LK): this is wrong pics the first neighbor, not the one in surf normal direction
                         forAll(mesh_.cellCells()[cellI], nID) // face neighbours
                         {
                             if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
@@ -596,6 +636,61 @@ void ibInterpolation::findSurfaceCells
             }
         }
     }
+}
+
+//---------------------------------------------------------------------------//
+bool ibInterpolation::isWallCell
+(
+    label cellI
+)
+{
+    bool isWallCell(true);
+
+    // get wall patches
+    DynamicList<label> wPatchIs;
+    forAll(mesh_.boundary(), pI)
+    {
+        if (mesh_.boundary()[pI].type() == "wall")
+        {
+            wPatchIs.append(pI);
+        }
+    }
+
+    // loop over cell faces
+    forAll(mesh_.cells()[cellI], f)
+    {
+        // get face label
+        label faceI = mesh_.cells()[cellI][f];
+    
+        if (faceI >= mesh_.owner().size())
+        {
+            bool wallFace(false);
+    
+            // loop over patches of type wall
+            forAll(wPatchIs, pI)
+            {
+                // get patch label
+                label patchI = wPatchIs[pI];
+    
+                // get start and end face index
+                label startI = mesh_.boundary()[patchI].start();
+                label endI = startI + mesh_.boundary()[patchI].Cf().size();
+    
+                if (faceI >= startI and faceI < endI)
+                {
+                    wallFace = true;
+                }
+            }
+    
+            // exclude wall faces
+            if (wallFace)
+            {
+                isWallCell = false;
+            }
+        }
+    }
+
+    return isWallCell;
 }
 
 //---------------------------------------------------------------------------//
@@ -728,19 +823,45 @@ void ibInterpolation::calculateBoundaryDist
 (
 )
 {
+    // prepare cell centers for acces to neighbors across processor boundary
+    // Note (LK): may be redundant
+    volVectorField cellCenters
+    (
+        IOobject
+        (
+            "cellCenters",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        //~ mesh_.C()
+        dimensionedVector("zero", dimLength, vector::zero)
+    );
+
+    forAll(mesh_.C(), cellI)
+    {
+        vector center = mesh_.C()[cellI];
+        cellCenters[cellI] = center;
+    }
+
+    cellCenters.correctBoundaryConditions();
+
     // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the outer and innter cell label
         label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+        label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
         // prepare
-        scalar sigma;
-        scalar yOrtho;
-        scalar yEff;
+        scalar sigma(0.0);
+        scalar yOrtho(0.0);
+        scalar yEff(0.0);
         point surfPoint;
-        scalar l;
+        scalar l(0.0);
 
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
@@ -757,6 +878,7 @@ void ibInterpolation::calculateBoundaryDist
             {
                 l = Foam::pow(mesh_.V()[outCellI], 0.333);
             }
+
             sigma = -1*Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y < 1 for lambda < 0.5
             yOrtho = -1*sigma; // standard approach
             yEff = 0.5*(yOrtho + l*0.5);
@@ -777,16 +899,53 @@ void ibInterpolation::calculateBoundaryDist
             {
                 l = Foam::pow(mesh_.V()[inCellI], 0.333);
             }
-            sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
-            surfPoint = mesh_.C()[inCellI];
-            surfPoint += surfNorm_[inCellI]*sigma;
-            yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+
+            if (Pstream::myProcNo() != iProc)
+            {
+                forAll(mesh_.boundaryMesh(), patchI)
+                {
+                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    {
+                        const processorPolyPatch& procPatch
+                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+
+                        // get the neighboring processor id
+                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                        if (sProc == iProc)
+                        {
+                            // access neighbor processor patch
+                            const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
+                            const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
+                            const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+
+                            // calc data
+                            surfPoint = cellCenterN[inCellI];
+                            sigma = -1*Foam::atanh(1-2*bodyN[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
+                            surfPoint += surfNormN[inCellI]*sigma;
+                            yOrtho = surfNormN[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+                        }
+                    }
+                }
+            }
+
+            else
+            {
+                surfPoint = mesh_.C()[inCellI];
+                sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
+                surfPoint += surfNorm_[inCellI]*sigma;
+                yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+            }
+
+            // effective distance
             yEff = 0.5*(yOrtho + l*0.5);
         }
 
         // not intersected outer cells
         else
         {
+            // Note (LK): this needs to be fixed in parallel
             // find the shared vertices
             DynamicList<label> sharedVers;
             forAll(mesh_.cellPoints()[inCellI], iI)
@@ -831,105 +990,105 @@ void ibInterpolation::calculateBoundaryDist
         yEffi_[outCellI] = yEff;
     }
 
-    // average orthogonal distance over all boundary cells
-    if (totalYOrthoAve_)
-    {
-        // preparation
-        scalar yAve(0.0);
+    //~ // average orthogonal distance over all boundary cells
+    //~ if (totalYOrthoAve_)
+    //~ {
+        //~ // preparation
+        //~ scalar yAve(0.0);
 
-        // loop over boundary cells
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            yAve += boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-        }
+        //~ // loop over boundary cells
+        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        //~ {
+            //~ yAve += boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        //~ }
 
-        // calculate average
-        yAve /= boundaryCells_[Pstream::myProcNo()].size();
+        //~ // calculate average
+        //~ yAve /= boundaryCells_[Pstream::myProcNo()].size();
 
-        // save to all boundary cells
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
-        }
-    }
+        //~ // save to all boundary cells
+        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        //~ {
+            //~ boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
+        //~ }
+    //~ }
 
-    // average orthogonal distance over neighbors
-    else if (aveYOrtho_)
-    {
-        for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
-        {
-            // loop over boundary cells
-            forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-            {
-                // get the cell label
-                label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+    //~ // average orthogonal distance over neighbors
+    //~ else if (aveYOrtho_)
+    //~ {
+        //~ for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
+        //~ {
+            //~ // loop over boundary cells
+            //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+            //~ {
+                //~ // get the cell label
+                //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
-                // prepare
-                scalar yAve(0.0);
-                scalar scalesSum(0.0);
-                label nAdded(0);
+                //~ // prepare
+                //~ scalar yAve(0.0);
+                //~ scalar scalesSum(0.0);
+                //~ label nAdded(0);
 
-                // loop over vertices
-                forAll(mesh_.cellPoints()[cellI], pID)
-                {
-                    // get the point label
-                    label pointI = mesh_.cellPoints()[cellI][pID];
+                //~ // loop over vertices
+                //~ forAll(mesh_.cellPoints()[cellI], pID)
+                //~ {
+                    //~ // get the point label
+                    //~ label pointI = mesh_.cellPoints()[cellI][pID];
 
-                    // loop over vertex neighbors
-                    forAll(mesh_.pointCells()[pointI], cI)
-                    {
-                        // get the neighbor cell label
-                        label cellN = mesh_.pointCells()[pointI][cI];
+                    //~ // loop over vertex neighbors
+                    //~ forAll(mesh_.pointCells()[pointI], cI)
+                    //~ {
+                        //~ // get the neighbor cell label
+                        //~ label cellN = mesh_.pointCells()[pointI][cI];
                         
-                        // skip current cell
-                        if (cellI == cellN)
-                        {
-                            continue;
-                        }
+                        //~ // skip current cell
+                        //~ if (cellI == cellN)
+                        //~ {
+                            //~ continue;
+                        //~ }
 
-                        // skip non boundary cells
-                        if (isBoundaryCell_[cellN] == -1)
-                        {
-                            continue;
-                        }
+                        //~ // skip non boundary cells
+                        //~ if (isBoundaryCell_[cellN] == -1)
+                        //~ {
+                            //~ continue;
+                        //~ }
 
-                        // get local boundary cell label
-                        label nCell = isBoundaryCell_[cellN];
+                        //~ // get local boundary cell label
+                        //~ label nCell = isBoundaryCell_[cellN];
 
-                        // calculate dot product of surf normals
-                        scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
+                        //~ // calculate dot product of surf normals
+                        //~ scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
 
-                        // skip if dotNorm negative
-                        if (dotNorm < 0.0)
-                        {
-                            continue;
-                        }
+                        //~ // skip if dotNorm negative
+                        //~ if (dotNorm < 0.0)
+                        //~ {
+                            //~ continue;
+                        //~ }
 
-                        // calculate distance of cell centers
-                        scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
+                        //~ // calculate distance of cell centers
+                        //~ scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
 
-                        // add to average y and scales sum
-                        yAve += dotNorm/delta*boundaryCells_[Pstream::myProcNo()][nCell].yOrtho_;
-                        scalesSum += dotNorm/delta;
-                        nAdded += 1;
-                    }
-                }
+                        //~ // add to average y and scales sum
+                        //~ yAve += dotNorm/delta*boundaryCells_[Pstream::myProcNo()][nCell].yOrtho_;
+                        //~ scalesSum += dotNorm/delta;
+                        //~ nAdded += 1;
+                    //~ }
+                //~ }
 
-                // compute average scale
-                scalar aveScale = scalesSum/nAdded;
+                //~ // compute average scale
+                //~ scalar aveScale = scalesSum/nAdded;
 
-                // add current cell
-                yAve += aveCoeff_*aveScale*boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-                scalesSum += aveCoeff_*aveScale;
+                //~ // add current cell
+                //~ yAve += aveCoeff_*aveScale*boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+                //~ scalesSum += aveCoeff_*aveScale;
 
-                // divide average y by scales sum
-                yAve /= scalesSum;
+                //~ // divide average y by scales sum
+                //~ yAve /= scalesSum;
 
-                // assign
-                boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
-            }
-        }
-    }
+                //~ // assign
+                //~ boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
+            //~ }
+        //~ }
+    //~ }
 }
 
 //---------------------------------------------------------------------------//
@@ -1070,16 +1229,115 @@ void ibInterpolation::saveBoundaryCells
 (
 )
 {
-    List<label> saveOutCells(boundaryCells_[Pstream::myProcNo()].size());
-    List<label> saveInCells(boundaryCells_[Pstream::myProcNo()].size());
-    List<label> saveFreeCells(boundaryCells_[Pstream::myProcNo()].size());
+    DynamicList<label> saveOutCells;
+    DynamicList<label> saveInCells;
+    DynamicList<label> saveFreeCells;
+
+    List<DynamicList<label>> iCellsToSync(Pstream::nProcs());
+    List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
 
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        saveOutCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-        saveInCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
-        saveFreeCells[bCell] = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
+        saveOutCells.append(boundaryCells_[Pstream::myProcNo()][bCell].bCell_);
+
+        // check inner cells
+        label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
+        if (Pstream::myProcNo() != iProc)
+        {
+            iCellsToSync[iProc].append(boundaryCells_[Pstream::myProcNo()][bCell].iCell_);
+        }
+
+        else
+        {
+            saveInCells.append(boundaryCells_[Pstream::myProcNo()][bCell].iCell_);
+        }
+
+        // check free stream cells
+        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
+        if (Pstream::myProcNo() != fProc)
+        {
+            fCellsToSync[fProc].append(boundaryCells_[Pstream::myProcNo()][bCell].fCell_);
+        }
+
+        else
+        {
+            saveFreeCells.append(boundaryCells_[Pstream::myProcNo()][bCell].fCell_);
+        }
     }
+
+    // sync with other processors
+    PstreamBuffers pBufsICells(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendICells(proci, pBufsICells);
+            UOPstream sendFCells(proci, pBufsFCells);
+            sendICells << iCellsToSync[proci];
+            sendFCells << fCellsToSync[proci];
+        }
+    }
+
+    pBufsICells.finishedSends();
+    pBufsFCells.finishedSends();
+
+    // recieve inner cells
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvIFaces(proci, pBufsICells);
+            DynamicList<label> recIFaces (recvIFaces);
+
+            // find cells for inner faces
+            forAll(recIFaces, rFace)
+            {
+                // get the cell label
+                label faceI = recIFaces[rFace]; // local face labels
+                
+                // find the respective cell 
+                forAll(mesh_.boundaryMesh(), patchI)
+                {
+                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    {
+                        const processorPolyPatch& procPatch
+                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+
+                        // get the neighboring processor id
+                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                        if (sProc == proci)
+                        {
+                            // get the cell label
+                            label rCellI = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                            saveInCells.append(rCellI);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // recieve free cells
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvFCells(proci, pBufsFCells);
+            DynamicList<label> recFCells (recvFCells);
+
+            // add all free cells
+            forAll(recFCells, rCell)
+            {
+                saveFreeCells.append(recFCells[rCell]);
+            }
+        }
+    }
+
+    pBufsICells.clear();
+    pBufsFCells.clear();
 
     saveCellSet(saveOutCells, "outerBoundaryCells");
     saveCellSet(saveInCells, "innerBoundaryCells");

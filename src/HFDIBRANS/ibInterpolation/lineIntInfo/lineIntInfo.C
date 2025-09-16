@@ -90,7 +90,6 @@ void lineIntInfo::setIntpInfo
             intPoints[sCell][i+1] = findIntPoint(cIntPoint, cPoint);
             correctIntPoint(ibPoints_[sCell], intPoints[sCell][i+1]);
             cIntPoint = intPoints[sCell][i+1];
-
             if(cIntPoint.iProc_ != Pstream::myProcNo())
             {
                 break;
@@ -179,6 +178,7 @@ intPoint lineIntInfo::findIntPoint
         fromP.iProc_
     );
 
+
     if(fromP.iProc_ == Pstream::myProcNo())
     {
         label faceInDir = -1;
@@ -194,7 +194,6 @@ intPoint lineIntInfo::findIntPoint
                 {
                     const processorPolyPatch& procPatch
                         = refCast<const processorPolyPatch>(cPatch);
-
                     label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
                         ? procPatch.neighbProcNo() : procPatch.myProcNo();
 
@@ -283,6 +282,7 @@ void lineIntInfo::syncIntPoints()
     List<DynamicLabelList> faceLabelToSync(Pstream::nProcs());
     List<DynamicLabelList> orderToSync(Pstream::nProcs());
     List<DynamicLabelList> labelToSync(Pstream::nProcs());
+    List<DynamicVectorList> normalToSync(Pstream::nProcs());
 
     forAll(ibPoints_, pI)
     {
@@ -298,6 +298,7 @@ void lineIntInfo::syncIntPoints()
                 faceLabelToSync[cIntPoint.iProc_].append(cIntPoint.iCell_);
                 orderToSync[cIntPoint.iProc_].append(ipI);
                 labelToSync[cIntPoint.iProc_].append(pI);
+                normalToSync[cIntPoint.iProc_].append(ibNormals_[pI]);
             }
         }
     }
@@ -307,6 +308,7 @@ void lineIntInfo::syncIntPoints()
     PstreamBuffers pBufsFaceL(Pstream::commsTypes::nonBlocking);
     PstreamBuffers pBufsOrder(Pstream::commsTypes::nonBlocking);
     PstreamBuffers pBufsLabel(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsNormal(Pstream::commsTypes::nonBlocking);
 
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
@@ -317,12 +319,14 @@ void lineIntInfo::syncIntPoints()
             UOPstream sendFaceL(proci, pBufsFaceL);
             UOPstream sendOrder(proci, pBufsOrder);
             UOPstream sendLabel(proci, pBufsLabel);
+            UOPstream sendNormal(proci, pBufsNormal);
 
             sendIbP << ibPointsToSync[proci];
             sendIntP << intPointToSync[proci];
             sendFaceL << faceLabelToSync[proci];
             sendOrder << orderToSync[proci];
             sendLabel << labelToSync[proci];
+            sendNormal << normalToSync[proci];
         }
     }
 
@@ -331,12 +335,14 @@ void lineIntInfo::syncIntPoints()
     pBufsFaceL.finishedSends();
     pBufsOrder.finishedSends();
     pBufsLabel.finishedSends();
+    pBufsNormal.finishedSends();
 
     List<DynamicPointList> ibPointsRecv(Pstream::nProcs());
     List<DynamicPointList> intPointRecv(Pstream::nProcs());
     List<DynamicLabelList> faceLabelRecv(Pstream::nProcs());
     List<DynamicLabelList> orderRecv(Pstream::nProcs());
     List<DynamicLabelList> labelRecv(Pstream::nProcs());
+    List<DynamicVectorList> normalRecv(Pstream::nProcs());
 
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
@@ -347,18 +353,21 @@ void lineIntInfo::syncIntPoints()
             UIPstream recvFaceL(proci, pBufsFaceL);
             UIPstream recvOrder(proci, pBufsOrder);
             UIPstream recvLabel(proci, pBufsLabel);
+            UIPstream recvNormal(proci, pBufsNormal);
 
             DynamicPointList recIbP (recvIbP);
             DynamicPointList recIntP (recvIntP);
             DynamicLabelList recFaceL (recvFaceL);
             DynamicLabelList recOrder (recvOrder);
             DynamicLabelList recLabel (recvLabel);
+            DynamicVectorList recNormal (recvNormal);
 
             ibPointsRecv[proci] = recIbP;
             intPointRecv[proci] = recIntP;
             faceLabelRecv[proci] = recFaceL;
             orderRecv[proci] = recOrder;
             labelRecv[proci] = recLabel;
+            normalRecv[proci] = recNormal;
         }
     }
 
@@ -367,6 +376,7 @@ void lineIntInfo::syncIntPoints()
     pBufsFaceL.clear();
     pBufsOrder.clear();
     pBufsLabel.clear();
+    pBufsNormal.clear();
 
     List<DynamicLabelList> cellLabelRecv(Pstream::nProcs());
 
@@ -406,14 +416,21 @@ void lineIntInfo::syncIntPoints()
             (
                 cPoint,
                 cellLabelRecv[proci][ibpI],
-                proci
+                Pstream::myProcNo() // Note (LK): I dunno why this was proci (the processor I recieved this from)
             );
 
-            intPoint foundP =
-                findIntPoint(cIntPoint, intPointRecv[proci][ibpI]);
+            scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333)*0.5;
+            cPoint = cIntPoint.iPoint_;
+            do {
+                cPoint += normalRecv[proci][ibpI]*intDist;
+            } while(pointInCell(cPoint, cIntPoint.iCell_));
 
-            scalar intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333);
+            intPoint foundP =
+                findIntPoint(cIntPoint, cPoint);
+
+            intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333)*0.5;
             vector dir = foundP.iPoint_ - ibPointsRecv[proci][ibpI];
+
             dir /= mag(dir);
 
             correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
