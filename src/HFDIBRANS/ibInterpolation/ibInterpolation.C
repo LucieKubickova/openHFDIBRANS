@@ -344,247 +344,139 @@ void ibInterpolation::findBoundaryCells
     forAll(mesh_.cellCells(), cellI)
     {
         
-        bool toInclude(false);
-        label vertex(-1);
+        bool isBoundary(false);
+        label iCell(-1);
         label iProc(Pstream::myProcNo());
 
         iProci_[cellI] = iProc; // Note (LK): save for testing
 
         if (body_[cellI] < 0.5 && body_[cellI] >= thrSurf_)
         {
-            toInclude = true;
+            findNeighborInBody(cellI, iCell, iProc, isBoundary);
+            isBoundary = true; // Note (LK): should be always true
         }
 
         else if (body_[cellI] < thrSurf_)
         {
-            if (boundarySearch_ == "vertex")
-            {
-                if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
-                {
-                    forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
-                    {
-                        label pointI = mesh_.cellPoints()[cellI][pID];
-
-                        forAll(mesh_.pointCells()[pointI], cI)
-                        {
-                            if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
-                            {
-                                toInclude = true;
-                                vertex = mesh_.pointCells()[pointI][cI];
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                else
-                {
-                    // Note (LK): should be fixed later
-                    FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
-                }
-            }
-
-            else if (boundarySearch_ == "face")
-            {
-                if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
-                {
-                    forAll(mesh_.cellCells()[cellI], nID) // face neighbours
-                    {
-                        if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
-                        {
-                            toInclude = true;
-                            vertex = mesh_.cellCells()[cellI][nID];
-                            break;
-                        }
-                    }
-                }
-
-                else // Note (LK): parallel version of boundary search face
-                {
-                    forAll(mesh_.cells()[cellI], fI)
-                    {
-                        // get labels
-                        label faceI = mesh_.cells()[cellI][fI];
-                        label nI(-1);
-
-                        // check for non-internal cells
-                        if (!mesh_.isInternalFace(faceI))
-                        {
-                            // get the patch the face belongs to
-                            label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
-                            const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
-
-                            // check if it is a processor boundary
-                            if (cPatch.type() == "processor")
-                            {
-                                // get the processor patch
-                                const processorPolyPatch& procPatch
-                                    = refCast<const processorPolyPatch>(cPatch);
-
-                                // get the neighboring processor id
-                                label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                                    ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-                                // access neighbor processor patch
-                                const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
-
-                                // get local face value
-                                label localI = cPatch.whichFace(faceI);
-
-                                // acces neighbor value
-                                if (bodyN[localI] >= 0.5)
-                                {
-                                    toInclude = true;
-                                    //~ vertex = faceI;
-                                    vertex = localI;
-                                    iProc = sProc;
-                                    break;
-                                }
-                            }
-                        }
-
-                        else
-                        {
-                            // get the neighbor cell label
-                            label owner(mesh_.owner()[faceI]);
-                            label neighbor(mesh_.neighbour()[faceI]);
-                            nI = (cellI == owner) ? neighbor : owner;
-
-                            // check lambda field
-                            if (body_[nI] >= 0.5)
-                            {
-                                toInclude = true;
-                                vertex = nI;
-                                iProc = Pstream::myProcNo();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            else
-            {
-                FatalError << "Boundary cell search " << boundarySearch_ << " not implemented" << exit(FatalError);
-            }
+            findNeighborInBody(cellI, iCell, iProc, isBoundary);
         }
 
         // check whether the cell is adjecent to a regular wall
-        if (toInclude and excludeWalls_)
+        if (isBoundary and excludeWalls_)
         {
-            toInclude = !(isWallCell(cellI));
+            isBoundary = !(isWallCell(cellI));
         }
 
         // add the cell
-        if (toInclude)
+        if (isBoundary)
         {
-            if (vertex == -1)
-            {
-                if (boundarySearch_ == "vertex")
-                {
+            //~ if (iCell == -1)
+            //~ {
+                //~ if (boundarySearch_ == "vertex")
+                //~ {
+                    //~ //~ if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
+                    //~ //~ {
+                        //~ //~ forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+                        //~ //~ {
+                            //~ //~ label pointI = mesh_.cellPoints()[cellI][pID];
+
+                            //~ //~ forAll(mesh_.pointCells()[pointI], cI)
+                            //~ //~ {
+                                //~ //~ if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                                //~ //~ {
+                                    //~ //~ iCell = mesh_.pointCells()[pointI][cI];
+                                    //~ //~ break;
+                                //~ //~ }
+                            //~ //~ }
+                        //~ //~ }
+                    //~ //~ }
+
+                    //~ //~ else
+                    //~ //~ {
+                        //~ // Note (LK): should be fixed later
+                        //~ FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
+                    //~ //~ }
+                //~ }
+
+                //~ else if (boundarySearch_ == "face") // Note (LK): copy of code from above, gonna be a function
+                //~ {
                     //~ if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
                     //~ {
-                        //~ forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+                        //~ // Note (LK): this is wrong pics the first neighbor, not the one in surf normal direction
+                        //~ forAll(mesh_.cellCells()[cellI], nID) // face neighbours
                         //~ {
-                            //~ label pointI = mesh_.cellPoints()[cellI][pID];
-
-                            //~ forAll(mesh_.pointCells()[pointI], cI)
+                            //~ if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
                             //~ {
-                                //~ if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                                //~ iCell = mesh_.cellCells()[cellI][nID];
+                                //~ break;
+                            //~ }
+                        //~ }
+                    //~ }
+
+                    //~ else // Note (LK): parallel version of boundary search face
+                    //~ {
+                        //~ forAll(mesh_.cells()[cellI], fI)
+                        //~ {
+                            //~ // get labels
+                            //~ label faceI = mesh_.cells()[cellI][fI];
+                            //~ label nI(-1);
+
+                            //~ // check for non-internal cells
+                            //~ if (!mesh_.isInternalFace(faceI))
+                            //~ {
+                                //~ // get the patch the face belongs to
+                                //~ label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
+                                //~ const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
+
+                                //~ // check if it is a processor boundary
+                                //~ if (cPatch.type() == "processor")
                                 //~ {
-                                    //~ vertex = mesh_.pointCells()[pointI][cI];
+                                    //~ // get the processor patch
+                                    //~ const processorPolyPatch& procPatch
+                                        //~ = refCast<const processorPolyPatch>(cPatch);
+
+                                    //~ // get the neighboring processor id
+                                    //~ label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                                        //~ ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                                    //~ // access neighbor processor patch
+                                    //~ const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+
+                                    //~ // get local face value
+                                    //~ label localI = cPatch.whichFace(faceI);
+
+                                    //~ // acces neighbor value
+                                    //~ if (bodyN[localI] >= 0.5)
+                                    //~ {
+                                        //~ iCell = localI;
+                                        //~ iProc = sProc;
+                                        //~ break;
+                                    //~ }
+                                //~ }
+                            //~ }
+
+                            //~ else
+                            //~ {
+                                //~ // get the neighbor cell label
+                                //~ label owner(mesh_.owner()[faceI]);
+                                //~ label neighbor(mesh_.neighbour()[faceI]);
+                                //~ nI = (cellI == owner) ? neighbor : owner;
+
+                                //~ // check lambda field
+                                //~ if (body_[nI] >= 0.5)
+                                //~ {
+                                    //~ iCell = nI;
+                                    //~ iProc = Pstream::myProcNo();
                                     //~ break;
                                 //~ }
                             //~ }
                         //~ }
                     //~ }
-
-                    //~ else
-                    //~ {
-                        // Note (LK): should be fixed later
-                        FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
-                    //~ }
-                }
-
-                else if (boundarySearch_ == "face") // Note (LK): copy of code from above, gonna be a function
-                {
-                    if (Pstream::nProcs() == 1) // Note (LK): working single core version, gonna be removed
-                    {
-                        // Note (LK): this is wrong pics the first neighbor, not the one in surf normal direction
-                        forAll(mesh_.cellCells()[cellI], nID) // face neighbours
-                        {
-                            if (body_[mesh_.cellCells()[cellI][nID]] >= 0.5)
-                            {
-                                vertex = mesh_.cellCells()[cellI][nID];
-                                break;
-                            }
-                        }
-                    }
-
-                    else // Note (LK): parallel version of boundary search face
-                    {
-                        forAll(mesh_.cells()[cellI], fI)
-                        {
-                            // get labels
-                            label faceI = mesh_.cells()[cellI][fI];
-                            label nI(-1);
-
-                            // check for non-internal cells
-                            if (!mesh_.isInternalFace(faceI))
-                            {
-                                // get the patch the face belongs to
-                                label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
-                                const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
-
-                                // check if it is a processor boundary
-                                if (cPatch.type() == "processor")
-                                {
-                                    // get the processor patch
-                                    const processorPolyPatch& procPatch
-                                        = refCast<const processorPolyPatch>(cPatch);
-
-                                    // get the neighboring processor id
-                                    label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                                        ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-                                    // access neighbor processor patch
-                                    const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
-
-                                    // get local face value
-                                    label localI = cPatch.whichFace(faceI);
-
-                                    // acces neighbor value
-                                    if (bodyN[localI] >= 0.5)
-                                    {
-                                        vertex = localI;
-                                        iProc = sProc;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            else
-                            {
-                                // get the neighbor cell label
-                                label owner(mesh_.owner()[faceI]);
-                                label neighbor(mesh_.neighbour()[faceI]);
-                                nI = (cellI == owner) ? neighbor : owner;
-
-                                // check lambda field
-                                if (body_[nI] >= 0.5)
-                                {
-                                    vertex = nI;
-                                    iProc = Pstream::myProcNo();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                //~ }
+            //~ }
 
             bCellToAdd.bCell_ = cellI;
-            bCellToAdd.iCell_ = vertex;
+            bCellToAdd.iCell_ = iCell;
             bCellToAdd.iProc_ = iProc;
 
             // fix non-existent inner cells
@@ -639,9 +531,141 @@ void ibInterpolation::findSurfaceCells
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::findNeighborInBody
+(
+    label& cellI,
+    label& iCell,
+    label& iProc,
+    bool& isBoundary
+)
+{
+    if (boundarySearch_ == "vertex")
+    {
+        if (Pstream::nProcs() == 1) // Note (LK): not really working single core version, gonna be removed
+        {
+            forAll(mesh_.cellPoints()[cellI], pID) // vertex neighbours
+            {
+                label pointI = mesh_.cellPoints()[cellI][pID];
+    
+                forAll(mesh_.pointCells()[pointI], cI)
+                {
+                    if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                    {
+                        isBoundary = true;
+                        iCell = mesh_.pointCells()[pointI][cI];
+                        break;
+                    }
+                }
+            }
+        }
+    
+        else
+        {
+            // Note (LK): should be fixed later
+            FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
+        }
+    }
+    
+    else if (boundarySearch_ == "face")
+    {
+        // get labels
+        label faceI = getFaceInDir(cellI, -1*surfNorm_[cellI]);
+        label nI(-1);
+    
+        // check for non-internal cells
+        if (!mesh_.isInternalFace(faceI))
+        {
+            // get the patch the face belongs to
+            label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
+            const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
+    
+            // check if it is a processor boundary
+            if (cPatch.type() == "processor")
+            {
+                // get the processor patch
+                const processorPolyPatch& procPatch
+                    = refCast<const processorPolyPatch>(cPatch);
+    
+                // get the neighboring processor id
+                label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                    ? procPatch.neighbProcNo() : procPatch.myProcNo();
+    
+                // access neighbor processor patch
+                const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+    
+                // get local face value
+                label localI = cPatch.whichFace(faceI);
+    
+                // acces neighbor value
+                if (bodyN[localI] >= 0.5)
+                {
+                    isBoundary = true;
+                    //~ iCell = faceI;
+                    iCell = localI;
+                    iProc = sProc;
+                }
+            }
+        }
+    
+        else
+        {
+            // get the neighbor cell label
+            label owner(mesh_.owner()[faceI]);
+            label neighbor(mesh_.neighbour()[faceI]);
+            nI = (cellI == owner) ? neighbor : owner;
+    
+            // check lambda field
+            if (body_[nI] >= 0.5)
+            {
+                isBoundary = true;
+                iCell = nI;
+                iProc = Pstream::myProcNo();
+            }
+        }
+    }
+    
+    else
+    {
+        FatalError << "Boundary cell search " << boundarySearch_ << " not implemented" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
+label ibInterpolation::getFaceInDir
+(
+    label cellI,
+    vector dir
+)
+{
+    // prepare data
+    label faceToReturn = -1;
+    const labelList& cellFaces(mesh_.cells()[cellI]);
+
+    // auxiliar scalar
+    scalar dotProd(-GREAT);
+
+    // loop over cell faces
+    forAll (cellFaces, faceI)
+    {
+        label fI = cellFaces[faceI];
+        vector outNorm = (mesh_.faceOwner()[fI] == cellI)
+            ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
+
+        scalar auxDotProd(outNorm & dir);
+        if (auxDotProd > dotProd)
+        {
+            dotProd = auxDotProd;
+            faceToReturn = fI;
+        }
+    }
+
+    return faceToReturn;
+}
+
+//---------------------------------------------------------------------------//
 bool ibInterpolation::isWallCell
 (
-    label cellI
+    label& cellI
 )
 {
     bool isWallCell(true);
@@ -990,105 +1014,114 @@ void ibInterpolation::calculateBoundaryDist
         yEffi_[outCellI] = yEff;
     }
 
-    //~ // average orthogonal distance over all boundary cells
-    //~ if (totalYOrthoAve_)
-    //~ {
-        //~ // preparation
-        //~ scalar yAve(0.0);
+    // post processing (now only possible averaging)
+    postProcessYOrtho();
+}
 
-        //~ // loop over boundary cells
-        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        //~ {
-            //~ yAve += boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-        //~ }
+//---------------------------------------------------------------------------//
+void ibInterpolation::postProcessYOrtho
+(
+)
+{
+    // average orthogonal distance over all boundary cells
+    if (totalYOrthoAve_)
+    {
+        // preparation
+        scalar yAve(0.0);
 
-        //~ // calculate average
-        //~ yAve /= boundaryCells_[Pstream::myProcNo()].size();
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            yAve += boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        }
 
-        //~ // save to all boundary cells
-        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        //~ {
-            //~ boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
-        //~ }
-    //~ }
+        // calculate average
+        yAve /= boundaryCells_[Pstream::myProcNo()].size();
 
-    //~ // average orthogonal distance over neighbors
-    //~ else if (aveYOrtho_)
-    //~ {
-        //~ for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
-        //~ {
-            //~ // loop over boundary cells
-            //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-            //~ {
-                //~ // get the cell label
-                //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        // save to all boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
+        }
+    }
 
-                //~ // prepare
-                //~ scalar yAve(0.0);
-                //~ scalar scalesSum(0.0);
-                //~ label nAdded(0);
+    // average orthogonal distance over neighbors
+    else if (aveYOrtho_)
+    {
+        for (label nCorr = 0; nCorr < nAveYOrtho_; nCorr++)
+        {
+            // loop over boundary cells
+            forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+            {
+                // get the cell label
+                label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
-                //~ // loop over vertices
-                //~ forAll(mesh_.cellPoints()[cellI], pID)
-                //~ {
-                    //~ // get the point label
-                    //~ label pointI = mesh_.cellPoints()[cellI][pID];
+                // prepare
+                scalar yAve(0.0);
+                scalar scalesSum(0.0);
+                label nAdded(0);
 
-                    //~ // loop over vertex neighbors
-                    //~ forAll(mesh_.pointCells()[pointI], cI)
-                    //~ {
-                        //~ // get the neighbor cell label
-                        //~ label cellN = mesh_.pointCells()[pointI][cI];
+                // loop over vertices
+                forAll(mesh_.cellPoints()[cellI], pID)
+                {
+                    // get the point label
+                    label pointI = mesh_.cellPoints()[cellI][pID];
+
+                    // loop over vertex neighbors
+                    forAll(mesh_.pointCells()[pointI], cI)
+                    {
+                        // get the neighbor cell label
+                        label cellN = mesh_.pointCells()[pointI][cI];
                         
-                        //~ // skip current cell
-                        //~ if (cellI == cellN)
-                        //~ {
-                            //~ continue;
-                        //~ }
+                        // skip current cell
+                        if (cellI == cellN)
+                        {
+                            continue;
+                        }
 
-                        //~ // skip non boundary cells
-                        //~ if (isBoundaryCell_[cellN] == -1)
-                        //~ {
-                            //~ continue;
-                        //~ }
+                        // skip non boundary cells
+                        if (isBoundaryCell_[cellN] == -1)
+                        {
+                            continue;
+                        }
 
-                        //~ // get local boundary cell label
-                        //~ label nCell = isBoundaryCell_[cellN];
+                        // get local boundary cell label
+                        label nCell = isBoundaryCell_[cellN];
 
-                        //~ // calculate dot product of surf normals
-                        //~ scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
+                        // calculate dot product of surf normals
+                        scalar dotNorm = surfNorm_[cellI] & surfNorm_[cellN];
 
-                        //~ // skip if dotNorm negative
-                        //~ if (dotNorm < 0.0)
-                        //~ {
-                            //~ continue;
-                        //~ }
+                        // skip if dotNorm negative
+                        if (dotNorm < 0.0)
+                        {
+                            continue;
+                        }
 
-                        //~ // calculate distance of cell centers
-                        //~ scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
+                        // calculate distance of cell centers
+                        scalar delta = mag(mesh_.C()[cellI] - mesh_.C()[cellN]);
 
-                        //~ // add to average y and scales sum
-                        //~ yAve += dotNorm/delta*boundaryCells_[Pstream::myProcNo()][nCell].yOrtho_;
-                        //~ scalesSum += dotNorm/delta;
-                        //~ nAdded += 1;
-                    //~ }
-                //~ }
+                        // add to average y and scales sum
+                        yAve += dotNorm/delta*boundaryCells_[Pstream::myProcNo()][nCell].yOrtho_;
+                        scalesSum += dotNorm/delta;
+                        nAdded += 1;
+                    }
+                }
 
-                //~ // compute average scale
-                //~ scalar aveScale = scalesSum/nAdded;
+                // compute average scale
+                scalar aveScale = scalesSum/nAdded;
 
-                //~ // add current cell
-                //~ yAve += aveCoeff_*aveScale*boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-                //~ scalesSum += aveCoeff_*aveScale;
+                // add current cell
+                yAve += aveCoeff_*aveScale*boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+                scalesSum += aveCoeff_*aveScale;
 
-                //~ // divide average y by scales sum
-                //~ yAve /= scalesSum;
+                // divide average y by scales sum
+                yAve /= scalesSum;
 
-                //~ // assign
-                //~ boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
-            //~ }
-        //~ }
-    //~ }
+                // assign
+                boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yAve;
+            }
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//

@@ -152,7 +152,9 @@ class ibInterpolation
     void findSurfaceCells();
 
     // auxiliar functions
-    bool isWallCell(label cellI);
+    void findNeighborInBody(label& cellI, label& iCell, label& iProc, bool& isBoundary);
+    bool isWallCell(label& cellI);
+    label getFaceInDir(label cellI, vector dir); // Note (LK): copy of a function from lineIntInfo
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
@@ -164,6 +166,9 @@ class ibInterpolation
     // surface distance calculation
     void calculateBoundaryDist();
     void calculateSurfaceDist();
+
+    // post processing of distance
+    void postProcessYOrtho();
     
     // calculate interpolation points
     void calculateInterpolationPoints();
