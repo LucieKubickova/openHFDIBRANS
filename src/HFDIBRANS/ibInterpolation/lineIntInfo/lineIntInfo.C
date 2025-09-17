@@ -90,6 +90,7 @@ void lineIntInfo::setIntpInfo
             intPoints[sCell][i+1] = findIntPoint(cIntPoint, cPoint);
             correctIntPoint(ibPoints_[sCell], intPoints[sCell][i+1]);
             cIntPoint = intPoints[sCell][i+1];
+
             if(cIntPoint.iProc_ != Pstream::myProcNo())
             {
                 break;
@@ -177,7 +178,6 @@ intPoint lineIntInfo::findIntPoint
         fromP.iCell_,
         fromP.iProc_
     );
-
 
     if(fromP.iProc_ == Pstream::myProcNo())
     {
@@ -416,21 +416,14 @@ void lineIntInfo::syncIntPoints()
             (
                 cPoint,
                 cellLabelRecv[proci][ibpI],
-                Pstream::myProcNo() // Note (LK): I dunno why this was proci (the processor I recieved this from)
+                Pstream::myProcNo() // Note (LK): changed this to be the intPoints proci, not the sCell proci, needs check elsewhere
             );
 
-            scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333)*0.5;
-            cPoint = cIntPoint.iPoint_;
-            do {
-                cPoint += normalRecv[proci][ibpI]*intDist;
-            } while(pointInCell(cPoint, cIntPoint.iCell_));
-
             intPoint foundP =
-                findIntPoint(cIntPoint, cPoint);
+                findIntPoint(cIntPoint, intPointRecv[proci][ibpI]);
 
-            intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333)*0.5;
+            scalar intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333);
             vector dir = foundP.iPoint_ - ibPointsRecv[proci][ibpI];
-
             dir /= mag(dir);
 
             correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
@@ -443,7 +436,7 @@ void lineIntInfo::syncIntPoints()
 
             cIntPoint = foundP;
 
-            for(label i = orderRecv[proci][ibpI] + 1; i < ORDER; ++i)
+            for(label i = orderRecv[proci][ibpI]; i < ORDER; ++i) // Note (LK): had to change this, since I have the surface point as intPoint[0]
             {
                 cPoint = cIntPoint.iPoint_;
                 do {
@@ -454,7 +447,7 @@ void lineIntInfo::syncIntPoints()
                 correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
                 cIntPoint = foundP;
 
-                if(cIntPoint.iProc_ != proci)
+                if(cIntPoint.iProc_ != Pstream::myProcNo()) // Note (LK): changed this to be the intPoints proci, not the sCell proci, needs check elsewhere
                 {
                     break;
                 }
@@ -462,7 +455,7 @@ void lineIntInfo::syncIntPoints()
                 intPointToRetr[proci].append(foundP.iPoint_);
                 intCellToRetr[proci].append(foundP.iCell_);
                 intProcToRetr[proci].append(foundP.iProc_);
-                orderToRetr[proci].append(i);
+                orderToRetr[proci].append(i+1);
                 labelToRetr[proci].append(labelRecv[proci][ibpI]);
             }
         }

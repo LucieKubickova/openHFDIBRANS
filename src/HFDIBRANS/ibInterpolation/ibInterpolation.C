@@ -890,113 +890,122 @@ void ibInterpolation::calculateBoundaryDist
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            if (averageV_)
-            {
-                l = Foam::pow(VAve_, 0.333);
-            }
-            else if (readL_)
-            {
-                l = valueL_;
-            }
-            else
-            {
-                l = Foam::pow(mesh_.V()[outCellI], 0.333);
-            }
-
+            l = getCellSize(outCellI);
             sigma = -1*Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y < 1 for lambda < 0.5
             yOrtho = -1*sigma; // standard approach
             yEff = 0.5*(yOrtho + l*0.5);
         }
 
         // if inner cell is intersected
-        else if (body_[inCellI] < 1.0)
+        else if (Pstream::myProcNo() == iProc)
         {
-            if (averageV_)
+            if (body_[inCellI] < 1.0)
             {
-                l = Foam::pow(VAve_, 0.333);
+                l = getCellSize(inCellI);
+                surfPoint = mesh_.C()[inCellI];
+                sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
+                surfPoint += surfNorm_[inCellI]*sigma;
+                yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+                yEff = 0.5*(yOrtho + l*0.5);
             }
-            else if (readL_)
-            {
-                l = valueL_;
-            }
+
+            // not intersected outer cells
             else
             {
-                l = Foam::pow(mesh_.V()[inCellI], 0.333);
-            }
-
-            if (Pstream::myProcNo() != iProc)
-            {
-                forAll(mesh_.boundaryMesh(), patchI)
+                // Note (LK): this needs to be fixed in parallel
+                // find the shared vertices
+                DynamicList<label> sharedVers;
+                forAll(mesh_.cellPoints()[inCellI], iI)
                 {
-                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    forAll(mesh_.cellPoints()[outCellI], oI)
                     {
-                        const processorPolyPatch& procPatch
-                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
-
-                        // get the neighboring processor id
-                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-                        if (sProc == iProc)
+                        if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
                         {
-                            // access neighbor processor patch
-                            const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
-                            const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
-                            const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+                            sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
+                        }
+                    }
+                }
 
+                // average vertices
+                vector center(vector::zero);
+                forAll(sharedVers, vI)
+                {
+                    center += mesh_.points()[sharedVers[vI]];
+                }
+                center /= sharedVers.size();
+
+                // compute ds as a distance from the cell center to the averaged vertex
+                sigma = mag(mesh_.C()[inCellI] - center);
+                yOrtho = mag(mesh_.C()[outCellI] - center);
+                yEff = yOrtho;
+            }
+        }
+
+        else // inner cell on a different processor
+        {
+            l = getCellSize(outCellI); // Note (LK): should be the size of the inner cell, needs fixing
+            forAll(mesh_.boundaryMesh(), patchI)
+            {
+                const polyPatch& cPatch = mesh_.boundaryMesh()[patchI];
+                if (cPatch.type() == "processor")
+                {
+                    const processorPolyPatch& procPatch
+                        = refCast<const processorPolyPatch>(cPatch);
+
+                    // get the neighboring processor id
+                    label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                        ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                    if (sProc == iProc)
+                    {
+                        // access neighbor processor patch
+                        const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
+                        const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
+                        const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+
+                        if (bodyN[inCellI] < 1.0)
+                        {
                             // calc data
                             surfPoint = cellCenterN[inCellI];
                             sigma = -1*Foam::atanh(1-2*bodyN[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
                             surfPoint += surfNormN[inCellI]*sigma;
                             yOrtho = surfNormN[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+
+                            // effective distance
+                            yEff = 0.5*(yOrtho + l*0.5);
                         }
+
+                        // not intersected outer cells
+                        else
+                        {
+                            if (boundarySearch_ == "face")
+                            {
+                                // get the processor face label
+                                label faceI = cPatch.start() + inCellI;
+
+                                // get the face center
+                                vector center = mesh_.Cf()[faceI];
+
+                                // compute ds as a distance from the cell center to the averaged vertex
+                                sigma = mag(cellCenterN[inCellI] - center);
+                                yOrtho = mag(mesh_.C()[outCellI] - center);
+                                yEff = yOrtho;
+                            }
+
+                            else
+                            {
+                                // Note (LK): should be fixed later
+                                FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
+                            }
+                        }
+
+                        break;
                     }
                 }
             }
-
-            else
-            {
-                surfPoint = mesh_.C()[inCellI];
-                sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 1 for lambda > 0.5
-                surfPoint += surfNorm_[inCellI]*sigma;
-                yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
-            }
-
-            // effective distance
-            yEff = 0.5*(yOrtho + l*0.5);
         }
 
-        // not intersected outer cells
-        else
-        {
-            // Note (LK): this needs to be fixed in parallel
-            // find the shared vertices
-            DynamicList<label> sharedVers;
-            forAll(mesh_.cellPoints()[inCellI], iI)
-            {
-                forAll(mesh_.cellPoints()[outCellI], oI)
-                {
-                    if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
-                    {
-                        sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
-                    }
-                }
-            }
-
-            // average vertices
-            vector center(vector::zero);
-            forAll(sharedVers, vI)
-            {
-                center += mesh_.points()[sharedVers[vI]];
-            }
-            center /= sharedVers.size();
-
-            // compute ds as a distance from the cell center to the averaged vertex
-            sigma = mag(mesh_.C()[inCellI] - center);
-            yOrtho = mag(mesh_.C()[outCellI] - center);
-            yEff = yOrtho;
-        }
-
+        // save data
         boundaryCells_[Pstream::myProcNo()][bCell].sigma_ = sigma;
         boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ = yOrtho;
         boundaryCells_[Pstream::myProcNo()][bCell].yEff_ = yEff;
@@ -1016,6 +1025,30 @@ void ibInterpolation::calculateBoundaryDist
 
     // post processing (now only possible averaging)
     postProcessYOrtho();
+}
+
+//---------------------------------------------------------------------------//
+scalar ibInterpolation::getCellSize
+(
+    label cellI
+)
+{
+    scalar cellSize(0.0);
+
+    if (averageV_)
+    {
+        cellSize = Foam::pow(VAve_, 0.333);
+    }
+    else if (readL_)
+    {
+        cellSize = valueL_;
+    }
+    else
+    {
+        cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
+    }
+
+    return cellSize;
 }
 
 //---------------------------------------------------------------------------//

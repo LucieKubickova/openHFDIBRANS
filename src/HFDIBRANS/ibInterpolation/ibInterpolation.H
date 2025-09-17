@@ -168,6 +168,7 @@ class ibInterpolation
     void calculateSurfaceDist();
 
     // post processing of distance
+    scalar getCellSize(label cellI);
     void postProcessYOrtho();
     
     // calculate interpolation points
