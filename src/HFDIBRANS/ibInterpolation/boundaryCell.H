@@ -48,6 +48,7 @@ namespace Foam
 
         // proc labels
         label iProc_ = -1; // proc of the inner cell
+        label iFace_ = -1; // label of the shared face at the proc-proc boundary
         label fProc_ = -1; // proc of the free stream cell
 
         // distances
@@ -61,6 +62,7 @@ namespace Foam
         iCell_(0),
         fCell_(0),
         iProc_(-1),
+        iFace_(-1),
         fProc_(-1),
         sigma_(0.0),
         yOrtho_(0.0),
@@ -74,6 +76,7 @@ namespace Foam
             label iCell,
             label fCell,
             label iProc,
+            label iFace,
             label fProc,
             scalar sigma,
             scalar yOrtho,
@@ -83,6 +86,7 @@ namespace Foam
         iCell_(iCell),
         fCell_(fCell),
         iProc_(iProc),
+        iFace_(iFace),
         fProc_(fProc),
         sigma_(sigma),
         yOrtho_(yOrtho),

@@ -287,12 +287,17 @@ void ibInterpolation::innerInterp
     // prepare chosen interpolation function
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
+    // prepare to sync
+    List<DynamicList<label>> labelsToSync(Pstream::nProcs());
+    List<DynamicList<Type>> phisToSync(Pstream::nProcs());
+
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the inner cell label
         label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+        label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
         // create new interpolation info to interpolate inside
         //~ interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
@@ -302,7 +307,7 @@ void ibInterpolation::innerInterp
         //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
         
         // NOTE: logarithm of negative number?
-        phii[inCellI] = interpFunc->interpolate
+        Type phiS = interpFunc->interpolate
         (
             phi,
             *interpPhi,
@@ -313,6 +318,18 @@ void ibInterpolation::innerInterp
             lineIntInfoBoundary_->getIntPoints()[bCell], // NOTE: wrong interpolation info passed
             outCellI
         );
+
+        if (Pstream::myProcNo() == iProc)
+        {
+            phii[inCellI] = phiS;
+        }
+        else
+        {
+            labelsToSync[iProc].append(inCellI);
+            phisToSync[iProc].append(phiS);
+        }
+
+        // Note (LK): needs to finish parallelization
     }
 }
 

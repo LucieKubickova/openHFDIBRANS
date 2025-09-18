@@ -152,7 +152,7 @@ class ibInterpolation
     void findSurfaceCells();
 
     // auxiliar functions
-    void findNeighborInBody(label& cellI, label& iCell, label& iProc, bool& isBoundary);
+    void findNeighborInBody(label& cellI, label& iCell, label& iFace, label& iProc, bool& isBoundary);
     bool isWallCell(label& cellI);
     label getFaceInDir(label cellI, vector dir); // Note (LK): copy of a function from lineIntInfo
 
