@@ -298,7 +298,7 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
-        boundaryCells_[Pstream::myProcNo()][bCell].fCell_ = intPoints[1].iCell_; // Note (LK): this is cellI, fix real iCell to be also cellI and not faceI 
+        boundaryCells_[Pstream::myProcNo()][bCell].fCell_ = intPoints[1].iCell_; 
         boundaryCells_[Pstream::myProcNo()][bCell].fProc_ = intPoints[1].iProc_;
     }
 
@@ -355,13 +355,13 @@ void ibInterpolation::findBoundaryCells
 
         if (body_[cellI] < 0.5 && body_[cellI] >= thrSurf_)
         {
-            findNeighborInBody(cellI, iCell, iFace, iProc, isBoundary);
+            findNeighborInBody(cellI, thrSurf_, iCell, iFace, iProc, isBoundary);
             isBoundary = true; // Note (LK): should be always true
         }
 
         else if (body_[cellI] < thrSurf_)
         {
-            findNeighborInBody(cellI, iCell, iFace, iProc, isBoundary);
+            findNeighborInBody(cellI, 0.5, iCell, iFace, iProc, isBoundary);
         }
 
         // check whether the cell is adjecent to a regular wall
@@ -472,18 +472,24 @@ void ibInterpolation::findBoundaryCells
 
     pBufsIFaces.clear();
 
-    // assign
+    // prepare counter
+    List<label> counter(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        counter[proci] = 0;
+    }
+
+    // complete boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
         label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
-        label auxI(0); // auxilliar iterator
         if (iProc != Pstream::myProcNo())
         {   
             // get the returned cell label
-            label rCell = iCellsCmpl[iProc][auxI];
-            ++auxI;
+            label rCell = iCellsCmpl[iProc][counter[iProc]];
+            ++counter[iProc];
 
             // save
             boundaryCells_[Pstream::myProcNo()][bCell].iCell_ = rCell;
@@ -532,6 +538,7 @@ void ibInterpolation::findSurfaceCells
 void ibInterpolation::findNeighborInBody
 (
     label& cellI,
+    scalar threshold,
     label& iCell,
     label& iFace,
     label& iProc,
@@ -549,7 +556,7 @@ void ibInterpolation::findNeighborInBody
     
                 forAll(mesh_.pointCells()[pointI], cI)
                 {
-                    if (body_[mesh_.pointCells()[pointI][cI]] >= 0.5)
+                    if (body_[mesh_.pointCells()[pointI][cI]] >= threshold)
                     {
                         isBoundary = true;
                         iCell = mesh_.pointCells()[pointI][cI];
@@ -597,7 +604,7 @@ void ibInterpolation::findNeighborInBody
                 label localI = cPatch.whichFace(faceI);
     
                 // acces neighbor value
-                if (bodyN[localI] >= 0.5)
+                if (bodyN[localI] >= threshold)
                 {
                     isBoundary = true;
                     iFace = localI;
@@ -614,7 +621,7 @@ void ibInterpolation::findNeighborInBody
             nI = (cellI == owner) ? neighbor : owner;
     
             // check lambda field
-            if (body_[nI] >= 0.5)
+            if (body_[nI] >= threshold)
             {
                 isBoundary = true;
                 iCell = nI;
@@ -1387,52 +1394,21 @@ void ibInterpolation::saveBoundaryCells
     pBufsICells.finishedSends();
     pBufsFCells.finishedSends();
 
-    // recieve inner cells
+    // recieve
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
         if (proci != Pstream::myProcNo())
         {
-            UIPstream recvIFaces(proci, pBufsICells);
-            DynamicList<label> recIFaces (recvIFaces);
-
-            // find cells for inner faces
-            forAll(recIFaces, rFace)
-            {
-                saveInCells.append(recIFaces[rFace]);
-                //~ // get the cell label
-                //~ label faceI = recIFaces[rFace]; // local face labels
-                
-                //~ // find the respective cell 
-                //~ forAll(mesh_.boundaryMesh(), patchI)
-                //~ {
-                    //~ if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
-                    //~ {
-                        //~ const processorPolyPatch& procPatch
-                            //~ = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
-
-                        //~ // get the neighboring processor id
-                        //~ label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                            //~ ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-                        //~ if (sProc == proci)
-                        //~ {
-                            //~ // get the cell label
-                            //~ label rCellI = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
-                            //~ saveInCells.append(rCellI);
-                        //~ }
-                    //~ }
-                //~ }
-            }
-        }
-    }
-
-    // recieve free cells
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
+            UIPstream recvICells(proci, pBufsICells);
             UIPstream recvFCells(proci, pBufsFCells);
+            DynamicList<label> recICells (recvICells);
             DynamicList<label> recFCells (recvFCells);
+
+            // add all inner cells 
+            forAll(recICells, rCell)
+            {
+                saveInCells.append(recICells[rCell]);
+            }
 
             // add all free cells
             forAll(recFCells, rCell)

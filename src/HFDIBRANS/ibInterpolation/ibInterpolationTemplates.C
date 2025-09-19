@@ -76,7 +76,7 @@ void ibInterpolation::unifunctionalInterp
             dirichletVals[bCell],
             scales[bCell],
             boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-            lineIntInfoBoundary_->getIntPoints()[bCell],
+            lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): check how the new interpolation info works
             cellI
         );
     }
@@ -213,6 +213,10 @@ void ibInterpolation::outerInnerInterp
     autoPtr<ibScheme> outerFunc = chosenInterpFunc(outerType);
     autoPtr<ibScheme> innerFunc = chosenInterpFunc(innerType);
 
+    // prepare sync
+    List<DynamicList<label>> labelsToSync(Pstream::nProcs());
+    List<DynamicList<Type>> phisToSync(Pstream::nProcs());
+
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
@@ -224,6 +228,7 @@ void ibInterpolation::outerInnerInterp
         {
             // get the inner cell label
             label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+            label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
             // create new interpolation info to interpolate inside
             //~ interpolationInfo intInfoToSend(intInfoListBoundary_[Pstream::myProcNo()][bCell]);
@@ -232,8 +237,9 @@ void ibInterpolation::outerInnerInterp
             //~ intInfoToSend.intCells_[0] = outCellI;
             //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
 
-            // NOTE: logarithm of negative number?
-            phii[inCellI] = innerFunc->interpolate
+            // Note (LK): logarithm of negative number?
+            // Note (LK): constant won't work
+            Type phiS = innerFunc->interpolate
             (
                 phi,
                 *interpPhi,
@@ -241,10 +247,20 @@ void ibInterpolation::outerInnerInterp
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
-                lineIntInfoBoundary_->getIntPoints()[bCell], // NOTE: wrong interpolation info passed
+                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed
                 outCellI
             );
-            // NOTE: constant won't work
+
+            if (Pstream::myProcNo() == iProc)
+            {
+                phii[inCellI] = phiS;
+            }
+            else
+            {
+                // save to sync
+                labelsToSync[iProc].append(inCellI);
+                phisToSync[iProc].append(phiS);
+            }
         }
 
         else
@@ -257,9 +273,49 @@ void ibInterpolation::outerInnerInterp
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-                lineIntInfoBoundary_->getIntPoints()[bCell],
+                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): check how the new interpolation info works
                 outCellI
             );
+        }
+    }
+
+    // sync with other processors
+    PstreamBuffers pBufsLabels(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsPhis(Pstream::commsTypes::nonBlocking);
+
+    // send
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendLabels(proci, pBufsLabels);
+            UOPstream sendPhis(proci, pBufsPhis);
+            sendLabels << labelsToSync[proci];
+            sendPhis << phisToSync[proci];
+        }
+    }
+    
+    pBufsLabels.finishedSends();
+    pBufsPhis.finishedSends();
+    
+    // recieve
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvLabels(proci, pBufsLabels);
+            UIPstream recvPhis(proci, pBufsPhis);
+            DynamicList<label> recLabels (recvLabels);
+            DynamicList<Type> recPhis (recvPhis);
+
+            forAll(recLabels, rCell)
+            {
+                // get the cell label
+                label cellI = recLabels[rCell];
+
+                // assign phi
+                phii[cellI] = recPhis[rCell];
+            }
         }
     }
 }
@@ -287,7 +343,7 @@ void ibInterpolation::innerInterp
     // prepare chosen interpolation function
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
-    // prepare to sync
+    // prepare sync
     List<DynamicList<label>> labelsToSync(Pstream::nProcs());
     List<DynamicList<Type>> phisToSync(Pstream::nProcs());
 
@@ -325,11 +381,50 @@ void ibInterpolation::innerInterp
         }
         else
         {
+            // save to sync
             labelsToSync[iProc].append(inCellI);
             phisToSync[iProc].append(phiS);
         }
+    }
 
-        // Note (LK): needs to finish parallelization
+    // sync with other processors
+    PstreamBuffers pBufsLabels(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsPhis(Pstream::commsTypes::nonBlocking);
+
+    // send
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendLabels(proci, pBufsLabels);
+            UOPstream sendPhis(proci, pBufsPhis);
+            sendLabels << labelsToSync[proci];
+            sendPhis << phisToSync[proci];
+        }
+    }
+    
+    pBufsLabels.finishedSends();
+    pBufsPhis.finishedSends();
+    
+    // recieve
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvLabels(proci, pBufsLabels);
+            UIPstream recvPhis(proci, pBufsPhis);
+            DynamicList<label> recLabels (recvLabels);
+            DynamicList<Type> recPhis (recvPhis);
+
+            forAll(recLabels, rCell)
+            {
+                // get the cell label
+                label cellI = recLabels[rCell];
+
+                // assign phi
+                phii[cellI] = recPhis[rCell];
+            }
+        }
     }
 }
 
