@@ -482,9 +482,7 @@ void ibInterpolation::findBoundaryCells
     // complete boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
         label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
-
         if (iProc != Pstream::myProcNo())
         {   
             // get the returned cell label

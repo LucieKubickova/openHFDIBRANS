@@ -223,6 +223,9 @@ class ibDirichletBCs
     {
         return E_;
     }
+
+    // post processing of uTau
+    void postProcessUTau();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

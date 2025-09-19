@@ -197,6 +197,9 @@ void ibDirichletBCs::updateUTauAtIB
     volScalarField& k
 )
 {
+    // prepare sync
+    List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
+
     // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
@@ -205,113 +208,103 @@ void ibDirichletBCs::updateUTauAtIB
 
         // get cell label
         //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-        label freeCellI = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
+        label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
+        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
 
         // compute uTau based on values from the free stream
-        uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[freeCellI]);
-
-        // averaging backup
-        //~ // initialize
-        //~ scalar totA(0.0);
-
-        //~ // loop over faces
-        //~ forAll(mesh_.cells()[cellI], fI)
-        //~ {
-            //~ // get face label
-            //~ label faceI = mesh_.cells()[cellI][fI];
-
-            //~ // skip boundary faces
-            //~ if (faceI >= mesh_.faceNeighbour().size())
-            //~ {
-                //~ continue;
-            //~ }
-
-            //~ // get cell labels
-            //~ label owner = mesh_.faceOwner()[faceI];
-            //~ label neighbor = mesh_.faceNeighbour()[faceI];
-
-            //~ // skip in-solid cells
-            //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
-            //~ {
-                //~ continue;
-            //~ }
-
-            //~ // get uTau values
-            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
-            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
-
-            //~ // calculate the average value
-            //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
-
-            //~ // add face area to total
-            //~ totA += mag(mesh_.Sf()[faceI]);
-        //~ }
-
-        // loop over boundary cells -- does not make a difference
-        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        //~ {
-            //~ // get the cell label
-            //~ label cellN = boundaryCells_[Pstream::myProcNo()][nCell].bCell_;
-
-            //~ // flag
-            //~ bool isNeigh = false;
-
-            //~ // loop over neighbor cells
-            //~ forAll(mesh_.cellCells()[cellN], cN)
-            //~ {
-                //~ if (cellI == mesh_.cellCells()[cellN][cN])
-                //~ {
-                    //~ isNeigh = true;
-                    //~ break;
-                //~ }
-            //~ }
-
-            //~ // for neighbors add to uTau
-            //~ if (isNeigh)
-            //~ {
-                //~ // find common face
-                //~ label faceI;
-                //~ forAll(mesh_.cells()[cellI], fI)
-                //~ {
-                    //~ // flag
-                    //~ bool found = false;
-
-                    //~ // get the face label
-                    //~ faceI = mesh_.cells()[cellI][fI];
-
-                    //~ forAll(mesh_.cells()[cellN], fN)
-                    //~ {
-                        //~ // get the face label
-                        //~ label faceN = mesh_.cells()[cellN][fN];
-
-                        //~ if (faceI == faceN)
-                        //~ {
-                            //~ found = true;
-                            //~ break;
-                        //~ }
-                    //~ }
-
-                    //~ if (found)
-                    //~ {
-                        //~ break;
-                    //~ }
-                //~ }
-
-                //~ // compute uTau for each cell
-                //~ scalar uTauO = Cmu25_*Foam::sqrt(k[cellI]);
-                //~ scalar uTauN = Cmu25_*Foam::sqrt(k[cellN]);
-
-                //~ // add to total uTau
-                //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[cellN]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[cellI]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[cellN]) + mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]));
-
-                //~ // add face area to total
-                //~ totA += mag(mesh_.Sf()[faceI]);
-            //~ }
-        //~ }
-
-        //~ // divide by total area
-        //~ uTauAtIB_[Pstream::myProcNo()][bCell] /= totA;
+        if (Pstream::myProcNo() == fProc)
+        {
+            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+        }
+        else
+        {
+            fCellsToSync[fProc].append(fCell);
+        }
     }
+
+    // sync with other processors
+    PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendFCells(proci, pBufsFCells);
+            sendFCells << fCellsToSync[proci];
+        }
+    }
+
+    pBufsFCells.finishedSends();
+
+    // recieve
+    List<DynamicList<scalar>> uTausToRetr(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvFCells(proci, pBufsFCells);
+            DynamicList<label> recFCells (recvFCells);
+
+            forAll(recFCells, rCell)
+            {
+                // get the cell label
+                label cellI = recFCells[rCell];
+
+                // compute utau
+                scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+                uTausToRetr[proci].append(uTau);
+            }
+        }
+    }
+
+    // return
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendUTaus(proci, pBufsFCells);
+            sendUTaus << uTausToRetr[proci];
+        }
+    }
+
+    pBufsFCells.finishedSends();
+
+    List<DynamicList<scalar>> uTausCmpl(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvUTaus(proci, pBufsFCells);
+            DynamicList<scalar> recUTaus (recvUTaus);
+            uTausCmpl[proci] = recUTaus;
+        }
+    }
+
+    pBufsFCells.clear();
+
+    // prepare counter
+    List<label> counter(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        counter[proci] = 0;
+    }
+
+    // complete uTau
+    forAll(uTauAtIB_[Pstream::myProcNo()], bCell)
+    {
+        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
+        if (fProc != Pstream::myProcNo())
+        {
+            // get the returned uTau
+            scalar uTau = uTausCmpl[fProc][counter[fProc]];
+            ++counter[fProc];
+
+            // save
+            uTauAtIB_[Pstream::myProcNo()][bCell] = uTau;
+        }
+    }
+
+    // post processing
+    postProcessUTau();
 }
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::correctNutAtIB
@@ -658,5 +651,113 @@ void ibDirichletBCs::epsilonGAtIB
     }
 }
 
+
+//---------------------------------------------------------------------------//
+// Note (LK): not parallelized, but not really used either
+void ibDirichletBCs::postProcessUTau
+(
+)
+{
+    //~ // initialize
+    //~ scalar totA(0.0);
+
+    //~ // loop over faces
+    //~ forAll(mesh_.cells()[cellI], fI)
+    //~ {
+        //~ // get face label
+        //~ label faceI = mesh_.cells()[cellI][fI];
+
+        //~ // skip boundary faces
+        //~ if (faceI >= mesh_.faceNeighbour().size())
+        //~ {
+            //~ continue;
+        //~ }
+
+        //~ // get cell labels
+        //~ label owner = mesh_.faceOwner()[faceI];
+        //~ label neighbor = mesh_.faceNeighbour()[faceI];
+
+        //~ // skip in-solid cells
+        //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
+        //~ {
+            //~ continue;
+        //~ }
+
+        //~ // get uTau values
+        //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
+        //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
+
+        //~ // calculate the average value
+        //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
+
+        //~ // add face area to total
+        //~ totA += mag(mesh_.Sf()[faceI]);
+    //~ }
+
+    //~ // loop over boundary cells -- does not make a difference
+    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    //~ {
+        //~ // get the cell label
+        //~ label cellN = boundaryCells_[Pstream::myProcNo()][nCell].bCell_;
+
+        //~ // flag
+        //~ bool isNeigh = false;
+
+        //~ // loop over neighbor cells
+        //~ forAll(mesh_.cellCells()[cellN], cN)
+        //~ {
+            //~ if (cellI == mesh_.cellCells()[cellN][cN])
+            //~ {
+                //~ isNeigh = true;
+                //~ break;
+            //~ }
+        //~ }
+
+        //~ // for neighbors add to uTau
+        //~ if (isNeigh)
+        //~ {
+            //~ // find common face
+            //~ label faceI;
+            //~ forAll(mesh_.cells()[cellI], fI)
+            //~ {
+                //~ // flag
+                //~ bool found = false;
+
+                //~ // get the face label
+                //~ faceI = mesh_.cells()[cellI][fI];
+
+                //~ forAll(mesh_.cells()[cellN], fN)
+                //~ {
+                    //~ // get the face label
+                    //~ label faceN = mesh_.cells()[cellN][fN];
+
+                    //~ if (faceI == faceN)
+                    //~ {
+                        //~ found = true;
+                        //~ break;
+                    //~ }
+                //~ }
+
+                //~ if (found)
+                //~ {
+                    //~ break;
+                //~ }
+            //~ }
+
+            //~ // compute uTau for each cell
+            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[cellI]);
+            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[cellN]);
+
+            //~ // add to total uTau
+            //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[cellN]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[cellI]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[cellN]) + mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]));
+
+            //~ // add face area to total
+            //~ totA += mag(mesh_.Sf()[faceI]);
+        //~ }
+    //~ }
+
+    //~ // divide by total area
+    //~ uTauAtIB_[Pstream::myProcNo()][bCell] /= totA;
+}
 
 // ************************************************************************* //
