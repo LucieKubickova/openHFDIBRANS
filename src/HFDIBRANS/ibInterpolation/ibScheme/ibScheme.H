@@ -90,8 +90,7 @@ class ibScheme
     virtual scalar interpolate
     (
         volScalarField& phi,
-        interpolation<scalar>& interpPhi,
-        const volScalarField& body,
+        List<scalar>& phiPs,
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
@@ -102,8 +101,7 @@ class ibScheme
     virtual vector interpolate
     (
         volVectorField& phi,
-        interpolation<vector>& interpPhi,
-        const volScalarField& body,
+        List<vector>& phiPs,
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
@@ -114,8 +112,7 @@ class ibScheme
     virtual tensor interpolate
     (
         volTensorField& phi,
-        interpolation<tensor>& interpPhi,
-        const volScalarField& body,
+        List<tensor>& phiPs,
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,

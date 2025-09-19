@@ -41,8 +41,7 @@ template <typename Type, typename volTypeField>
 Type zeroGradientScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
@@ -56,21 +55,24 @@ Type zeroGradientScheme::interpolateT
     // check whether there are enough interpolation points
     if (order == 0)
     {
-        return 0.0*dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
+        return 0.0*dirichletVal;
     }
 
     if (order == 1)
     {
         // value in the interpolation point
-        Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+        //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+        Type phiP1 = phiPs[1];
 
         // interpolated value
         return phiP1;
     }
 
     // values in the interpolation points
-    Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
-    Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
+    //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+    //~ Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
+    Type phiP1 = phiPs[1];
+    Type phiP2 = phiPs[2];
 
     // distance between interpolation points
     scalar deltaR2 = mag(intInfo[2].iPoint_ - intInfo[1].iPoint_);

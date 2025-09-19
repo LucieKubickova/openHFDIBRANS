@@ -61,6 +61,13 @@ void ibInterpolation::unifunctionalInterp
     // prepare chosen interpolation function
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
+    // read values in interpolation points 
+    List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
+    // get values in interpolation points
+    List<List<Type>> phiInIntPoints(intInfos.size());
+    interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
+
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
@@ -71,12 +78,11 @@ void ibInterpolation::unifunctionalInterp
         phii[cellI] = interpFunc->interpolate
         (
             phi,
-            *interpPhi,
-            body_,
+            phiInIntPoints[bCell],
             dirichletVals[bCell],
             scales[bCell],
             boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-            lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): check how the new interpolation info works
+            lineIntInfoBoundary_->getIntPoints()[bCell],
             cellI
         );
     }
@@ -103,6 +109,14 @@ void ibInterpolation::lambdaBasedInterp
     // prepare chosen interpolation function
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
+    // read values in interpolation points 
+    // Note (LK): surface int info not checked in parallel
+    List<List<intPoint>>& intInfos = lineIntInfoSurface_->getIntPoints();
+
+    // get values in interpolation points
+    List<List<Type>> phiInIntPoints(intInfos.size());
+    interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
+
     // interpolate and assign values to the imposed field
     forAll(surfaceCells_[Pstream::myProcNo()], sCell)
     {
@@ -113,8 +127,7 @@ void ibInterpolation::lambdaBasedInterp
         phii[cellI] = interpFunc->interpolate
         (
             phi,
-            *interpPhi,
-            body_,
+            phiInIntPoints[sCell],
             dirichletVals[sCell],
             scales[sCell],
             surfaceCells_[Pstream::myProcNo()][sCell].sigma_,
@@ -149,6 +162,13 @@ void ibInterpolation::switchedInterp
     autoPtr<ibScheme> lowerFunc = chosenInterpFunc(lowerType);
     autoPtr<ibScheme> higherFunc = chosenInterpFunc(higherType);
 
+    // read values in interpolation points 
+    List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
+    // get values in interpolation points
+    List<List<Type>> phiInIntPoints(intInfos.size());
+    interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
+
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
@@ -161,8 +181,7 @@ void ibInterpolation::switchedInterp
             phii[cellI] = higherFunc->interpolate
             (
                 phi,
-                *interpPhi,
-                body_,
+                phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
@@ -176,8 +195,7 @@ void ibInterpolation::switchedInterp
             phii[cellI] = lowerFunc->interpolate
             (
                 phi,
-                *interpPhi,
-                body_,
+                phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
@@ -217,6 +235,13 @@ void ibInterpolation::outerInnerInterp
     List<DynamicList<label>> labelsToSync(Pstream::nProcs());
     List<DynamicList<Type>> phisToSync(Pstream::nProcs());
 
+    // read values in interpolation points 
+    List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
+    // get values in interpolation points
+    List<List<Type>> phiInIntPoints(intInfos.size());
+    interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
+
     // interpolate and assign values to the imposed field
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
@@ -242,12 +267,11 @@ void ibInterpolation::outerInnerInterp
             Type phiS = innerFunc->interpolate
             (
                 phi,
-                *interpPhi,
-                body_,
+                phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
-                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed
+                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed, but not used now
                 outCellI
             );
 
@@ -268,12 +292,11 @@ void ibInterpolation::outerInnerInterp
             phii[outCellI] = outerFunc->interpolate
             (
                 phi,
-                *interpPhi,
-                body_,
+                phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): check how the new interpolation info works
+                lineIntInfoBoundary_->getIntPoints()[bCell],
                 outCellI
             );
         }
@@ -343,6 +366,13 @@ void ibInterpolation::innerInterp
     // prepare chosen interpolation function
     autoPtr<ibScheme> interpFunc = chosenInterpFunc(ibSchemeType);
 
+    // read values in interpolation points 
+    List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
+    // get values in interpolation points
+    List<List<Type>> phiInIntPoints(intInfos.size());
+    interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
+
     // prepare sync
     List<DynamicList<label>> labelsToSync(Pstream::nProcs());
     List<DynamicList<Type>> phisToSync(Pstream::nProcs());
@@ -366,12 +396,11 @@ void ibInterpolation::innerInterp
         Type phiS = interpFunc->interpolate
         (
             phi,
-            *interpPhi,
-            body_,
+            phiInIntPoints[bCell],
             dirichletVals[bCell],
             scales[bCell],
             boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
-            lineIntInfoBoundary_->getIntPoints()[bCell], // NOTE: wrong interpolation info passed
+            lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed, but not used now
             outCellI
         );
 
@@ -423,6 +452,145 @@ void ibInterpolation::innerInterp
 
                 // assign phi
                 phii[cellI] = recPhis[rCell];
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+template <typename Type, typename volTypeField>
+void ibInterpolation::interpolateToIntPoints
+(
+    volTypeField& phi,
+    interpolation<Type>& interpPhi,
+    List<List<intPoint>>& intInfos,
+    List<List<Type>>& phiInIntPoints
+)
+{
+    // prepare for sync
+    List<DynamicList<Tuple2<label,label>>> labelsToSave(Pstream::nProcs());
+    List<DynamicList<point>> iPointsToSync(Pstream::nProcs());
+    List<DynamicList<label>> iCellsToSync(Pstream::nProcs());
+
+    // loop over interpolation infos
+    forAll(intInfos, iInfo)
+    {
+        // set size
+        phiInIntPoints[iInfo].setSize(intInfos[iInfo].size());
+
+        // loop over intPoints
+        forAll(intInfos[iInfo], iPoint)
+        {
+            // Note (LK): think about the inclusion of surface point in interpolation points
+            if (iPoint == 0) // skip the first intPoint (surface point)
+            {
+                phiInIntPoints[iInfo][iPoint] *= 0.0;
+                continue;
+            }
+
+            // read data
+            intPoint cPoint = intInfos[iInfo][iPoint];
+            label iProc = cPoint.iProc_;
+
+            if (Pstream::myProcNo() == iProc)
+            {
+                // interpolate and save
+                Type phiP = interpPhi.interpolate(cPoint.iPoint_, cPoint.iCell_);
+                phiInIntPoints[iInfo][iPoint] = phiP;
+            }
+
+            else
+            {
+                // save where to save
+                Tuple2<label,label> labels;
+                labels.first() = iInfo;
+                labels.second() = iPoint;
+                labelsToSave[iProc].append(labels);
+
+                // save for sync
+                iPointsToSync[iProc].append(cPoint.iPoint_);
+                iCellsToSync[iProc].append(cPoint.iCell_);
+            }
+        }
+    }
+
+    // sync with other processors
+    PstreamBuffers pBufsIPoints(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsICells(Pstream::commsTypes::nonBlocking);
+
+    // send
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendIPoints(proci, pBufsIPoints);
+            UOPstream sendICells(proci, pBufsICells);
+            sendIPoints << iPointsToSync[proci];
+            sendICells << iCellsToSync[proci];
+        }
+    }
+
+    pBufsIPoints.finishedSends();
+    pBufsICells.finishedSends();
+
+    // recieve
+    List<DynamicList<Type>> phisToRetr(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvIPoints(proci, pBufsIPoints);
+            UIPstream recvICells(proci, pBufsICells);
+            DynamicList<point> recIPoints (recvIPoints);
+            DynamicList<label> recICells (recvICells);
+
+            forAll(recIPoints, iPoint)
+            {
+                Type phiP = interpPhi.interpolate(recIPoints[iPoint], recICells[iPoint]);
+                phisToRetr[proci].append(phiP);
+            }
+        }
+    }
+
+    // return
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if(proci != Pstream::myProcNo())
+        {
+            UOPstream sendPhis(proci, pBufsIPoints);
+            sendPhis << phisToRetr[proci];
+        }
+    }
+
+    pBufsIPoints.finishedSends();
+
+    List<DynamicList<Type>> phisCmpl(Pstream::nProcs());
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            UIPstream recvPhis(proci, pBufsIPoints);
+            DynamicList<Type> recPhis (recvPhis);
+            phisCmpl[proci] = recPhis;
+        }
+    }
+
+    pBufsIPoints.clear();
+
+    // save
+    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    {
+        if (proci != Pstream::myProcNo())
+        {
+            forAll(labelsToSave[proci], iLabel)
+            {
+                // get the labels
+                Tuple2<label,label> labels = labelsToSave[proci][iLabel];
+                label iInfo = labels.first();
+                label iPoint = labels.second();
+
+                // save phi
+                phiInIntPoints[iInfo][iPoint] = phisCmpl[proci][iLabel];
             }
         }
     }

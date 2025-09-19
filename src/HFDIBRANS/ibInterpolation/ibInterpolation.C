@@ -964,7 +964,6 @@ void ibInterpolation::calculateBoundaryDist
             // not intersected outer cells
             else
             {
-                // Note (LK): this needs to be fixed in parallel
                 // find the shared vertices
                 DynamicList<label> sharedVers;
                 forAll(mesh_.cellPoints()[inCellI], iI)

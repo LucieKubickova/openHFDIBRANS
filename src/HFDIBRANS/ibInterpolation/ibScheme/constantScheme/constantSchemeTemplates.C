@@ -41,8 +41,7 @@ template <typename Type, typename volTypeField>
 Type constantScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,

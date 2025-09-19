@@ -526,6 +526,7 @@ void openHFDIBRANS::correctOmegaG
     omega.correctBoundaryConditions();
 
     // correct the inner boundary cells
+    // Note (LK): needs fixing in parallel, but not used now
     if (cpDisToInner_)
     {
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -630,6 +631,7 @@ void openHFDIBRANS::correctEpsilonG
     }
 
     // correct the inner boudnary cells
+    // Note (LK): needs fixing in parallel, but not used now
     if (cpDisToInner_)
     {
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -753,6 +755,7 @@ void openHFDIBRANS::enforceUiInBody
         }
 
         // check if cellI is an inner boundary cell
+        // Note (LK): needs fixing in parallel, but not used now
         bool toCont = false;
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {

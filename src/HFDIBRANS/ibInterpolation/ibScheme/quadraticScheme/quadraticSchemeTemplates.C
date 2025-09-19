@@ -41,8 +41,7 @@ template <typename Type, typename volTypeField>
 Type quadraticScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
@@ -56,14 +55,16 @@ Type quadraticScheme::interpolateT
     // check whether there are enough interpolation points
     if (order == 0)
     {
-        return dirichletVal; // UGLYYYYYYYYYYYYYYYYYY
+        return dirichletVal; // Note (LK): should call the constant interpolation, just dunno how to do it effectively
+        //~ return constant<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
         //~ return linear<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
     }
 
     else if (order == 1)
     {
         // value in the interpolation point
-        Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_) - dirichletVal;
+        //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_) - dirichletVal;
+        Type phiP1 = phiPs[1] - dirichletVal;
 
         // distance between interpolation points
         scalar deltaR = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
@@ -73,12 +74,13 @@ Type quadraticScheme::interpolateT
 
         // interpolated value
         return linCoeff*ds + dirichletVal;
-        // UGLYYYYYYYYYYYYYYYYYYYY
     }
 
     // values in the interpolation points
-    Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_) - dirichletVal;
-    Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_) - dirichletVal;
+    //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_) - dirichletVal;
+    //~ Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_) - dirichletVal;
+    Type phiP1 = phiPs[1] - dirichletVal;
+    Type phiP2 = phiPs[2] - dirichletVal;
 
     // distance between interpolation points
     scalar deltaR2 = mag(intInfo[2].iPoint_ - intInfo[1].iPoint_);

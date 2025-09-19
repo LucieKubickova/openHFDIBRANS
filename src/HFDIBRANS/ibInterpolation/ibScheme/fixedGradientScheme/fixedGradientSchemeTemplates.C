@@ -41,8 +41,7 @@ template <typename Type, typename volTypeField>
 Type fixedGradientScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
@@ -56,13 +55,16 @@ Type fixedGradientScheme::interpolateT
     // check whether there are enough interpolation points
     if (order == 0)
     {
-        return dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
+        return dirichletVal; // Note (LK): should call the constant interpolation, just dunno how to do it effectively
+        //~ return constant<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
+        //~ return linear<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
     }
 
-    if (order == 1)
+    else if (order == 1)
     {
         // value in the interpolation point
-        Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+        //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+        Type phiP1 = phiPs[1];
 
         // distance between interpolation points
         scalar deltaR = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
@@ -75,8 +77,10 @@ Type fixedGradientScheme::interpolateT
     }
 
     // values in the interpolation points
-    Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
-    Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
+    //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+    //~ Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
+    Type phiP1 = phiPs[1];
+    Type phiP2 = phiPs[2];
 
     // distance between interpolation points
     scalar deltaR2 = mag(intInfo[2].iPoint_ - intInfo[1].iPoint_);

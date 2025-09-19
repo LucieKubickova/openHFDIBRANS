@@ -146,6 +146,10 @@ class ibInterpolation
     void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
     // TODO: blended interpolation
+
+    // interpolate to interpolation points
+    template <typename Type, typename volTypeField>
+    void interpolateToIntPoints(volTypeField& phi, interpolation<Type>& interpPhi, List<List<intPoint>>& intInfos, List<List<Type>>& phiInIntPoints);
     
     // identification
     void findBoundaryCells();
