@@ -66,9 +66,11 @@ void ibInterpolation::unifunctionalInterp
 
     // get values in interpolation points
     List<List<Type>> phiInIntPoints(intInfos.size());
+    Info << "interpolate to poitns" << endl;
     interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
 
     // interpolate and assign values to the imposed field
+    Info << "boundaryCells" << endl;
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
@@ -392,7 +394,7 @@ void ibInterpolation::innerInterp
         //~ intInfoToSend.intCells_[0] = outCellI;
         //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
         
-        // NOTE: logarithm of negative number?
+        // Note (LK): logarithm of negative number?
         Type phiS = interpFunc->interpolate
         (
             phi,

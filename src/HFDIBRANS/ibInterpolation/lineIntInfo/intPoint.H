@@ -41,23 +41,41 @@ namespace Foam
 {
     struct intPoint
     {
+        // interpolation point
         point iPoint_ = vector::zero;
-        label iCell_ = 0;
-        label iProc_ = -1;
-        vector iVel_ = vector::zero;
 
+        // cell label
+        label iCell_ = 0;
+
+        // current processor
+        label iProc_ = -1;
+
+        // processor of origin
+        label oProc_ = -1;
+
+        // Constructor
         intPoint():
         iPoint_(vector::zero),
         iCell_(0),
-        iProc_(-1)
+        iProc_(-1),
+        oProc_(-1)
         {};
 
-        intPoint(point iPoint, label iCell, label iProc):
+        // Copy constructor
+        intPoint
+        (
+            point iPoint,
+            label iCell,
+            label iProc,
+            label oProc
+        ):
         iPoint_(iPoint),
         iCell_(iCell),
-        iProc_(iProc)
+        iProc_(iProc),
+        oProc_(oProc)
         {};
 
+        // Destructor
         ~intPoint(){};
     };
 }

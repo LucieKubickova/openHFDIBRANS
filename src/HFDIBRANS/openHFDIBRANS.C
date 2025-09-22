@@ -131,7 +131,7 @@ void openHFDIBRANS::computeUi
 (
     volVectorField& U,
     volVectorField& Ui,
-    word surfType // NOTE: add UIn
+    word surfType // Note (LK): add UIn
 )
 {
     // reset imposed field
@@ -483,7 +483,7 @@ void openHFDIBRANS::correctOmegaG
             //~ {
                 //~ omegaIB[bCell] = omegaIB[bCell]/l*(2*yOrtho); // scalingRightInverse
                 //~ GIB[bCell] = GIB[bCell]/l*(2*yOrtho);
-                //~ //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho); // NOTE: Martins function
+                //~ //~ omegaIB[bCell] = omegaIB[bCell]/l*(yOrtho); // Note (LK): Martins function
                 //~ //~ GIB[bCell] = GIB[bCell]/l*(yOrtho);
             //~ }
         }

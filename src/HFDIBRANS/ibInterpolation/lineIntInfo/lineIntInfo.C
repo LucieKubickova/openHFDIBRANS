@@ -74,7 +74,8 @@ void lineIntInfo::setIntpInfo
         (
             ibPoints_[sCell],
             cellI,
-            Pstream::myProcNo()
+            Pstream::myProcNo(), // current processor
+            Pstream::myProcNo() // processor of origin (same for the first int point)
         );
         intPoints[sCell][0] = cIntPoint;
         point cPoint;
@@ -176,7 +177,8 @@ intPoint lineIntInfo::findIntPoint
     (
         endP,
         fromP.iCell_,
-        fromP.iProc_
+        fromP.iProc_,
+        fromP.oProc_
     );
 
     if(fromP.iProc_ == Pstream::myProcNo())
@@ -416,7 +418,8 @@ void lineIntInfo::syncIntPoints()
             (
                 cPoint,
                 cellLabelRecv[proci][ibpI],
-                Pstream::myProcNo() // Note (LK): changed this to be the intPoints proci, not the sCell proci, needs check elsewhere
+                Pstream::myProcNo(),
+                proci // Note (LK): should be the processor of origin, but not synced now
             );
 
             intPoint foundP =
@@ -436,6 +439,7 @@ void lineIntInfo::syncIntPoints()
 
             cIntPoint = foundP;
 
+            label outICell = foundP.iCell_;
             for(label i = orderRecv[proci][ibpI]; i < ORDER; ++i) // Note (LK): had to change this, since I have the surface point as intPoint[0]
             {
                 cPoint = cIntPoint.iPoint_;
@@ -529,7 +533,8 @@ void lineIntInfo::syncIntPoints()
             (
                 intPointCmpl[proci][iPointI],
                 intCellCmpl[proci][iPointI],
-                intProcCmpl[proci][iPointI]
+                intProcCmpl[proci][iPointI],
+                intProcCmpl[proci][iPointI] // Note (LK): should be the processor of origin, but not synced now
             );
 
             intPoints[labelCmpl[proci][iPointI]][orderCmpl[proci][iPointI]]

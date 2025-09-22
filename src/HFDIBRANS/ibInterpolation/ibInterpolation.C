@@ -383,6 +383,9 @@ void ibInterpolation::findBoundaryCells
         }
     }
 
+    // Note (LK): save for testing
+    iProci_.write();
+
     // sync with other processors
     List<DynamicList<label>> iFacesToSync(Pstream::nProcs());
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
