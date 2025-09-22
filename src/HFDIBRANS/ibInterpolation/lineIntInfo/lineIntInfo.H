@@ -126,6 +126,12 @@ class lineIntInfo
         label cToCheck
     );
 
+    void sendAndRecvIntPoints
+    (
+        List<DynamicList<intPoint>>& intPointsToSend,
+        List<DynamicList<intPoint>>& intPointsRecv
+    );
+
     void syncIntPoints();
 
     public:

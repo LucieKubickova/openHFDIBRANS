@@ -50,7 +50,6 @@ ibNormals_(ibNormals)
 {}
 lineIntInfo::~lineIntInfo()
 {}
-
 //---------------------------------------------------------------------------//
 void lineIntInfo::setIntpInfo
 (
@@ -62,7 +61,7 @@ void lineIntInfo::setIntpInfo
     // prepare interpolation points
     List<List<intPoint>>& intPoints = getIntPoints();
 
-    // save the first interpolation point 
+    // loop over wanted cells
     forAll (ibCells_, sCell)
     {
         // get surface cell label
@@ -79,85 +78,28 @@ void lineIntInfo::setIntpInfo
             Pstream::myProcNo() // processor of origin (same for the first int point)
         );
         intPoints[sCell][0] = cIntPoint;
-    }
+        point cPoint;
 
-    // go by orders
-    for(label i = 0; i < ORDER; ++i)
-    {
-        // points to send
-        List<DynamicList<intPoint>> intPointsToSend(Pstream::nProcs());
-
-        // loop over interpolation infos
-        forAll(intPoints, iInfo)
+        // find other int points
+        for(label i = 0; i < ORDER; ++i)
         {
-            // current interpolation point
-            intPoint cIntPoint = intPoints[iInfo][i];
+            cPoint = cIntPoint.iPoint_;
+            do {
+                cPoint += ibNormals_[sCell]*intDist;
+            } while(pointInCell(cPoint, cIntPoint.iCell_));
 
-            // find the next point
-            if (Pstream::myProcNo() == cIntPoint.iProc_)
+            intPoints[sCell][i+1] = findIntPoint(cIntPoint, cPoint);
+            correctIntPoint(ibPoints_[sCell], intPoints[sCell][i+1]);
+            cIntPoint = intPoints[sCell][i+1];
+
+            if(cIntPoint.iProc_ != Pstream::myProcNo())
             {
-                point cPoint = cIntPoint.iPoint_;
-                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333)*0.5;
-                do {
-                    cPoint += ibNormals_[iInfo]*intDist;
-                } while(pointInCell(cPoint, cIntPoint.iCell_));
-
-                intPoints[iInfo][i+1] = findIntPoint(cIntPoint, cPoint);
-                correctIntPoint(cIntPoint.iPoint_, intPoints[iInfo][i+1]);
-
-                // new point
-                cIntPoint = intPoints[iInfo][i+1];
-                if (Pstream::myProcNo() != cIntPoint.iProc_)
-                {
-                    intPointsToSend[cIntPoint.iProc_].append(cIntPoint);
-                }
+                break;
             }
         }
-
-        // sync with others
-        List<DynamicList<intPoint>> intPointsRecv(Pstream::nProcs());
-        sendAndRecvIntPoints(intPointsToSend, intPointsRecv);
     }
-
-    //~ // loop over wanted cells
-    //~ forAll (ibCells_, sCell)
-    //~ {
-        //~ // get surface cell label
-        //~ label cellI = ibCells_[sCell];
-        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333)*0.5;
-
-        //~ // save first interpolation point (surfPoint)
-        //~ intPoints[sCell].setSize(ORDER+1);
-        //~ intPoint cIntPoint
-        //~ (
-            //~ ibPoints_[sCell],
-            //~ cellI,
-            //~ Pstream::myProcNo(), // current processor
-            //~ Pstream::myProcNo() // processor of origin (same for the first int point)
-        //~ );
-        //~ intPoints[sCell][0] = cIntPoint;
-        //~ point cPoint;
-
-        //~ // find other int points
-        //~ for(label i = 0; i < ORDER; ++i)
-        //~ {
-            //~ cPoint = cIntPoint.iPoint_;
-            //~ do {
-                //~ cPoint += ibNormals_[sCell]*intDist;
-            //~ } while(pointInCell(cPoint, cIntPoint.iCell_));
-
-            //~ intPoints[sCell][i+1] = findIntPoint(cIntPoint, cPoint);
-            //~ correctIntPoint(ibPoints_[sCell], intPoints[sCell][i+1]);
-            //~ cIntPoint = intPoints[sCell][i+1];
-
-            //~ if(cIntPoint.iProc_ != Pstream::myProcNo())
-            //~ {
-                //~ break;
-            //~ }
-        //~ }
-    //~ }
+    syncIntPoints();
 }
-
 //---------------------------------------------------------------------------//
 void lineIntInfo::correctIntPoint
 (
@@ -205,7 +147,6 @@ void lineIntInfo::correctIntPoint
         }
     }
 }
-
 //---------------------------------------------------------------------------//
 vector lineIntInfo::getClosestPoint
 (
@@ -220,7 +161,6 @@ vector lineIntInfo::getClosestPoint
 
     return ibPoint + dir*(dirToC&dir);
 }
-
 //---------------------------------------------------------------------------//
 intPoint lineIntInfo::findIntPoint
 (
@@ -281,7 +221,6 @@ intPoint lineIntInfo::findIntPoint
 
     return retP;
 }
-
 //---------------------------------------------------------------------------//
 label lineIntInfo::getFaceInDir
 (
@@ -314,7 +253,6 @@ label lineIntInfo::getFaceInDir
 
     return faceToReturn;
 }
-
 //---------------------------------------------------------------------------//
 bool lineIntInfo::pointInCell
 (
@@ -336,39 +274,6 @@ bool lineIntInfo::pointInCell
     }
     return true;
 }
-
-//---------------------------------------------------------------------------//
-void lineIntInfo::sendAndRecvIntPoints
-(
-    List<DynamicList<intPoint>>& intPointsToSend,
-    List<DynamicList<intPoint>>& intPointsRecv
-)
-{
-    PstreamBuffers pBufsIntPoints(Pstream::commsTypes::nonBlocking);
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
-            UOPstream sendIntPoints(proci, pBufsIntPoints);
-            sendIntPoints << intPointsToSend[proci];
-        }
-    }
-
-    pBufsIntPoints.finishedSends();
-
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
-            UIPstream recvIntPoints(proci, pBufsIntPoints);
-            DynamicList<intPoint> recIntPoints (recvIntPoints);
-            intPointsRecv[proci] = recIntPoints;
-        }
-    }
-
-    pBufsIntPoints.clear();
-}
-
 //---------------------------------------------------------------------------//
 void lineIntInfo::syncIntPoints()
 {

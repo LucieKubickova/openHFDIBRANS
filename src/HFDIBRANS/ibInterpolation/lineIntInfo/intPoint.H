@@ -77,6 +77,34 @@ namespace Foam
 
         // Destructor
         ~intPoint(){};
+
+        // Operators
+        friend bool operator==(const intPoint& aP, const intPoint& bP)
+        {
+            return aP.iPoint_ == bP.iPoint_ &&
+                   aP.iCell_ == bP.iCell_ &&
+                   aP.iProc_ == bP.iProc_ &&
+                   aP.oProc_ == bP.oProc_;
+        }
+
+        friend bool operator!=(const intPoint& aP, const intPoint& bP)
+        {
+            return !(aP==bP);
+        }
+
+        friend Foam::Ostream& operator<<(Foam::Ostream& os, const intPoint& iP)
+        {
+            return os << iP.iPoint_ << token::SPACE
+                      << iP.iCell_ << token::SPACE
+                      << iP.iProc_ << token::SPACE
+                      << iP.oProc_;
+        }
+        
+        friend Foam::Istream& operator>>(Foam::Istream& is, intPoint& iP)
+        {
+            return is >> iP.iPoint_ >> iP.iCell_ >> iP.iProc_ >> iP.oProc_;
+        }
     };
 }
+
 #endif
