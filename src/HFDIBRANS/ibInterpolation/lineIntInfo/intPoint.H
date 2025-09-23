@@ -44,21 +44,21 @@ namespace Foam
         // interpolation point
         point iPoint_ = vector::zero;
 
-        // cell label
+        // info about current cell 
         label iCell_ = 0;
-
-        // current processor
         label iProc_ = -1;
 
-        // processor of origin
+        // info about cell of origin 
         label oProc_ = -1;
+        label oLabel_ = -1;
 
         // Constructor
         intPoint():
         iPoint_(vector::zero),
         iCell_(0),
         iProc_(-1),
-        oProc_(-1)
+        oProc_(-1),
+        oLabel_(-1)
         {};
 
         // Copy constructor
@@ -67,12 +67,14 @@ namespace Foam
             point iPoint,
             label iCell,
             label iProc,
-            label oProc
+            label oProc,
+            label oLabel
         ):
         iPoint_(iPoint),
         iCell_(iCell),
         iProc_(iProc),
-        oProc_(oProc)
+        oProc_(oProc),
+        oLabel_(oLabel)
         {};
 
         // Destructor
@@ -84,7 +86,8 @@ namespace Foam
             return aP.iPoint_ == bP.iPoint_ &&
                    aP.iCell_ == bP.iCell_ &&
                    aP.iProc_ == bP.iProc_ &&
-                   aP.oProc_ == bP.oProc_;
+                   aP.oProc_ == bP.oProc_ &&
+                   aP.oLabel_ == bP.oLabel_;
         }
 
         friend bool operator!=(const intPoint& aP, const intPoint& bP)
@@ -97,12 +100,13 @@ namespace Foam
             return os << iP.iPoint_ << token::SPACE
                       << iP.iCell_ << token::SPACE
                       << iP.iProc_ << token::SPACE
-                      << iP.oProc_;
+                      << iP.oProc_ << token::SPACE
+                      << iP.oLabel_;
         }
         
         friend Foam::Istream& operator>>(Foam::Istream& is, intPoint& iP)
         {
-            return is >> iP.iPoint_ >> iP.iCell_ >> iP.iProc_ >> iP.oProc_;
+            return is >> iP.iPoint_ >> iP.iCell_ >> iP.iProc_ >> iP.oProc_ >> iP.oLabel_;
         }
     };
 }

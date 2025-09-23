@@ -128,7 +128,17 @@ class lineIntInfo
 
     void sendAndRecvIntPoints
     (
+        List<DynamicList<point>>& ibPointsToSend,
+        List<DynamicList<vector>>& ibNormalsToSend,
         List<DynamicList<intPoint>>& intPointsToSend,
+        List<DynamicList<point>>& ibPointsRecv,
+        List<DynamicList<vector>>& ibNormalsRecv,
+        List<DynamicList<intPoint>>& intPointsRecv
+    );
+
+    void returnIntPoints
+    (
+        List<DynamicList<intPoint>>& intPointsFromOthers,
         List<DynamicList<intPoint>>& intPointsRecv
     );
 
