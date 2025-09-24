@@ -66,11 +66,9 @@ void ibInterpolation::unifunctionalInterp
 
     // get values in interpolation points
     List<List<Type>> phiInIntPoints(intInfos.size());
-    Info << "interpolate to poitns" << endl;
     interpolateToIntPoints<Type, volTypeField>(phi, *interpPhi, intInfos, phiInIntPoints);
 
     // interpolate and assign values to the imposed field
-    Info << "boundaryCells" << endl;
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
@@ -484,14 +482,18 @@ void ibInterpolation::interpolateToIntPoints
         forAll(intInfos[iInfo], iPoint)
         {
             // Note (LK): think about the inclusion of surface point in interpolation points
+            intPoint cPoint = intInfos[iInfo][iPoint];
             if (iPoint == 0) // skip the first intPoint (surface point)
             {
+                if (Pstream::myProcNo() == 1 and iInfo == 9)
+                {
+                    Pout << "after: " << iInfo << " " << iPoint << " " << cPoint.iPoint_ << " " << cPoint.iCell_ << " " << cPoint.iProc_ << endl;
+                }
                 phiInIntPoints[iInfo][iPoint] *= 0.0;
                 continue;
             }
 
             // read data
-            intPoint cPoint = intInfos[iInfo][iPoint];
             label iProc = cPoint.iProc_;
 
             if (Pstream::myProcNo() == iProc)
@@ -499,6 +501,11 @@ void ibInterpolation::interpolateToIntPoints
                 // interpolate and save
                 Type phiP = interpPhi.interpolate(cPoint.iPoint_, cPoint.iCell_);
                 phiInIntPoints[iInfo][iPoint] = phiP;
+            }
+
+            if (Pstream::myProcNo() == 1 and iInfo == 9)
+            {
+                Pout << iInfo << " " << iPoint << " " << cPoint.iPoint_ << " " << cPoint.iCell_ << " " << cPoint.iProc_ << endl;
             }
 
             else

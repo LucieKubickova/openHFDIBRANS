@@ -136,10 +136,11 @@ class lineIntInfo
         List<DynamicList<intPoint>>& intPointsRecv
     );
 
-    void returnIntPoints
+    void returnSolvedIntPoints
     (
-        List<DynamicList<intPoint>>& intPointsFromOthers,
-        List<DynamicList<intPoint>>& intPointsRecv
+        List<DynamicList<intPoint>>& intPointsToCont,
+        List<DynamicList<intPoint>>& intPointsRecv,
+        List<DynamicList<intPoint>>& intPointsSolved
     );
 
     void syncIntPoints();
