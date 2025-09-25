@@ -485,10 +485,6 @@ void ibInterpolation::interpolateToIntPoints
             intPoint cPoint = intInfos[iInfo][iPoint];
             if (iPoint == 0) // skip the first intPoint (surface point)
             {
-                if (Pstream::myProcNo() == 1 and iInfo == 9)
-                {
-                    Pout << "after: " << iInfo << " " << iPoint << " " << cPoint.iPoint_ << " " << cPoint.iCell_ << " " << cPoint.iProc_ << endl;
-                }
                 phiInIntPoints[iInfo][iPoint] *= 0.0;
                 continue;
             }
@@ -501,11 +497,6 @@ void ibInterpolation::interpolateToIntPoints
                 // interpolate and save
                 Type phiP = interpPhi.interpolate(cPoint.iPoint_, cPoint.iCell_);
                 phiInIntPoints[iInfo][iPoint] = phiP;
-            }
-
-            if (Pstream::myProcNo() == 1 and iInfo == 9)
-            {
-                Pout << iInfo << " " << iPoint << " " << cPoint.iPoint_ << " " << cPoint.iCell_ << " " << cPoint.iProc_ << endl;
             }
 
             else

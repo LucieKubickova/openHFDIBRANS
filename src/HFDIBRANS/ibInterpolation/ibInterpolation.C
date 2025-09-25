@@ -302,12 +302,6 @@ void ibInterpolation::calculateInterpolationPoints
         boundaryCells_[Pstream::myProcNo()][bCell].fProc_ = intPoints[1].iProc_;
     }
 
-    // prepare lists for surface cells
-    if (Pstream::myProcNo() == 1)
-    {
-        Pout << "now surface" << endl;
-    }
-
     // Note (LK): parallelization of this was not fixed nor checked
     List<label> sCells(surfaceCells_[Pstream::myProcNo()].size());
     List<point> sPoints(surfaceCells_[Pstream::myProcNo()].size());
