@@ -106,7 +106,7 @@ SIMPLE
         {
             surfaceType     setValue;
             boundaryValue   0.0;
-            tolEqn          1e-6;
+            tolEqn          1e-8;
             maxEqnIters     10;
         }
     }

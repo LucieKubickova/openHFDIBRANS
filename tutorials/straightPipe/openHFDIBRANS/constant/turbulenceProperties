@@ -24,7 +24,7 @@ HFDIBRAS
     disGSurfaceType     setValue;
     disGBoundaryValue   1.0;
     kSurfaceType        setValue;
-    kBoundaryValue      0.0;
+    kBoundaryValue      1.0;
     tolKEqn             1e-8;
     maxKEqnIters        10;
 }
