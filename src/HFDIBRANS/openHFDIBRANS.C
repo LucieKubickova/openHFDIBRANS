@@ -81,7 +81,9 @@ fvSchemes_
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
     cpDisToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyDisToInner", false);
     scaleDisG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleDisG", false);
+    scaleG_ = HFDIBDEMDict_.lookupOrDefault<bool>("scaleG", true);
     scaleCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeff", 1.0);
+    scaleCoeffG_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeffG", scaleCoeff_);
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", false);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 
@@ -464,7 +466,10 @@ void openHFDIBRANS::correctOmegaG
 
             // user-defined scaling
             omegaIB[bCell] = omegaIB[bCell]*scaleCoeff_;
-            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+            if (scaleG_)
+            {
+                GIB[bCell] = GIB[bCell]*scaleCoeffG_;
+            }
 
             // old versions
             //~ omegaIB[bCell] = omegaIB[bCell]*(2*yOrtho)/l;
@@ -586,7 +591,10 @@ void openHFDIBRANS::correctEpsilonG
 
             // user-defined scaling
             epsilonIB[bCell] = epsilonIB[bCell]*scaleCoeff_;
-            GIB[bCell] = GIB[bCell]*scaleCoeff_;
+            if (scaleG_)
+            {
+                GIB[bCell] = GIB[bCell]*scaleCoeffG_;
+            }
 
             //~ // old
             //~ if (body_[cellI] > thrSurf_) // yOrtho < l

@@ -79,7 +79,9 @@ class openHFDIBRANS
     bool save_;
     bool cpDisToInner_;
     bool scaleDisG_;
+    bool scaleG_;
     scalar scaleCoeff_;
+    scalar scaleCoeffG_;
     bool useYEff_;
 
     // save
