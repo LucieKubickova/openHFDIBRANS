@@ -59,53 +59,59 @@ class logarithmicScheme
     scalar interpolate
     (
         volScalarField& phi,
-        interpolation<scalar>& interpPhi,
-        const volScalarField& body,
+        List<scalar>& phiPs,
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
-        return interpolateT(phi, interpPhi, body, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
     }
 
     vector interpolate
     (
         volVectorField& phi,
-        interpolation<vector>& interpPhi,
-        const volScalarField& body,
+        List<vector>& phiPs,
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
-        return interpolateT(phi, interpPhi, body, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
     }
 
     tensor interpolate
     (
         volTensorField& phi,
-        interpolation<tensor>& interpPhi,
-        const volScalarField& body,
+        List<tensor>& phiPs,
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,
-        interpolationInfo& intInfo,
+        List<intPoint>& intInfo,
         label& cellI
     )
     {
-        return interpolateT(phi, interpPhi, body, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
     }
     
     private:
 
     // -- templated interpolate funtion
     template <typename Type, typename volTypeField>
-    Type interpolateT(volTypeField& phi, interpolation<Type>& interpPhi, const volScalarField& body, Type& dirichletVal, scalar& scale, scalar& ds, interpolationInfo& intInfo, label& cellI);
+    Type interpolateT
+    (
+        volTypeField& phi,
+        List<Type>& phiPs,
+        Type& dirichletVal,
+        scalar& scale,
+        scalar& ds,
+        List<intPoint>& intInfo,
+        label& cellI
+    );
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

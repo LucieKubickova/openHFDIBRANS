@@ -1,11 +1,6 @@
 volScalarField rAU(1.0/UEqn.A());
 volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
-surfaceScalarField phiHbyA
-(
-    "phiHbyA",
-    fvc::flux(HbyA)
-);
-
+surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 MRF.makeRelative(phiHbyA);
 adjustPhi(phiHbyA, U, p);
 
@@ -37,11 +32,11 @@ while (simple.correctNonOrthogonal())
     fvScalarMatrix pEqn
     (
         fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
-                                 + fvc::div(phiFbyA)
+                                   + fvc::div(phiFbyA)
     );
 
     pEqn.setReference(pRefCell, pRefValue);
-    
+
     pEqn.solve();
 
     if (simple.finalNonOrthogonalIter())

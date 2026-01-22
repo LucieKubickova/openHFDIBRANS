@@ -41,37 +41,42 @@ template <typename Type, typename volTypeField>
 Type zeroGradientScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    interpolationInfo& intInfo,
+    List<intPoint>& intInfo,
     label& cellI
 )
 {
+    // get interpolation order
+    label order = getIntOrder(intInfo);
+
     // check whether there are enough interpolation points
-    if (intInfo.order_ == 0)
+    if (order == 0)
     {
-        return 0.0*dirichletVal; // UGLYYYYYYYYYYYYYYYYYYYYY
+        return 0.0*dirichletVal;
     }
-    
-    if (intInfo.order_ == 1)
+
+    if (order == 1)
     {
         // value in the interpolation point
-        Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]);
+        //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+        Type phiP1 = phiPs[1];
 
         // interpolated value
         return phiP1;
     }
 
     // values in the interpolation points
-    Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]);
-    Type phiP2 = interpPhi.interpolate(intInfo.intPoints_[2], intInfo.intCells_[1]);
+    //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_);
+    //~ Type phiP2 = interpPhi.interpolate(intInfo[2].iPoint_, intInfo[2].iCell_);
+    Type phiP1 = phiPs[1];
+    Type phiP2 = phiPs[2];
 
     // distance between interpolation points
-    scalar deltaR2 = mag(intInfo.intPoints_[2] - intInfo.intPoints_[1]);
-    scalar deltaR1 = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
+    scalar deltaR2 = mag(intInfo[2].iPoint_ - intInfo[1].iPoint_);
+    scalar deltaR1 = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
 
     // second polynomial coefficient
     Type quadCoeff = phiP1 - phiP2;

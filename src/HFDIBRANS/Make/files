@@ -1,5 +1,6 @@
 
 ibDirichletBCs/ibDirichletBCs.C
+ibInterpolation/lineIntInfo/lineIntInfo.C
 ibInterpolation/ibScheme/ibScheme.C
 ibInterpolation/ibScheme/constantScheme/constantScheme.C
 ibInterpolation/ibScheme/linearScheme/linearScheme.C

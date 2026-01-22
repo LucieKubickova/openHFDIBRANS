@@ -23,7 +23,8 @@ if (simple.momentumPredictor())
 {
     for (label nCorr = 0; nCorr < maxEqnItersU; nCorr++)
     {
-        f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        //~ f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::reconstruct((ghf*fvc::snGrad(rhok) + fvc::snGrad(p_rgh))*mesh.magSf()));
         solve
         (
             UEqn

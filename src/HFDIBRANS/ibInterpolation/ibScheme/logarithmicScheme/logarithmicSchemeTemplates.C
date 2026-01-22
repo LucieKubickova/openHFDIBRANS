@@ -41,27 +41,30 @@ template <typename Type, typename volTypeField>
 Type logarithmicScheme::interpolateT
 (
     volTypeField& phi,
-    interpolation<Type>& interpPhi,
-    const volScalarField& body,
+    List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    interpolationInfo& intInfo,
+    List<intPoint>& intInfo,
     label& cellI
 )
 {
+    // get interpolation order
+    label order = getIntOrder(intInfo);
+
     // check whether there are enough interpolation points
-    if (intInfo.order_ == 0)
+    if (order == 0)
     {
-        return dirichletVal; // UGLYYYYYYYYYYYYYYYYYYY
+        return dirichletVal; // Note (LK): should call the constant interpolation, just dunno how to do it effectively
         //~ return constant<Type, volTypeField>(phi, interpPhi, dirichletVal, scale, bCell);
     }
 
-    // value in the first interpolation point
-    Type phiP1 = interpPhi.interpolate(intInfo.intPoints_[1], intInfo.intCells_[0]) - dirichletVal;
+    // value in the interpolation point
+    //~ Type phiP1 = interpPhi.interpolate(intInfo[1].iPoint_, intInfo[1].iCell_) - dirichletVal;
+    Type phiP1 = phiPs[1] - dirichletVal;
 
     // distance between interpolation points
-    scalar deltaR = mag(intInfo.intPoints_[1] - intInfo.intPoints_[0]);
+    scalar deltaR = mag(intInfo[1].iPoint_ - intInfo[0].iPoint_);
 
     // compute A-log coefficient: 
     // y = A*ln(B*x + C) + D

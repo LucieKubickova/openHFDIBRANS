@@ -60,16 +60,23 @@ tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F
         dimensionedScalar(dimless/sqr(dimTime), 1.0e-10)
     );
 
+    // HFDIB: correct value
+    tmp<volScalarField> y = max // NOTE: wrong
+    (
+        y_,
+        yIB_
+    );
+
     tmp<volScalarField> arg1 = min
     (
         min
         (
             max
             (
-                (scalar(1)/betaStar_)*sqrt(k_)/(omega_*y_),
-                scalar(500)*(this->mu()/this->rho_)/(sqr(y_)*omega_)
+                (scalar(1)/betaStar_)*sqrt(k_)/(omega_*y()),
+                scalar(500)*(this->mu()/this->rho_)/(sqr(y())*omega_)
             ),
-            (4*alphaOmega2_)*k_/(CDkOmegaPlus*sqr(y_))
+            (4*alphaOmega2_)*k_/(CDkOmegaPlus*sqr(y()))
         ),
         scalar(10)
     );
@@ -81,12 +88,19 @@ tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F
 template<class BasicHFDIBTurbulenceModel>
 tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F2() const
 {
+    // HFDIB: correct value
+    tmp<volScalarField> y = max // NOTE: wrong
+    (
+        y_,
+        yIB_
+    );
+
     tmp<volScalarField> arg2 = min
     (
         max
         (
-            (scalar(2)/betaStar_)*sqrt(k_)/(omega_*y_),
-            scalar(500)*(this->mu()/this->rho_)/(sqr(y_)*omega_)
+            (scalar(2)/betaStar_)*sqrt(k_)/(omega_*y()),
+            scalar(500)*(this->mu()/this->rho_)/(sqr(y())*omega_)
         ),
         scalar(100)
     );
@@ -98,9 +112,16 @@ tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F
 template<class BasicHFDIBTurbulenceModel>
 tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F3() const
 {
+    // HFDIB: correct value
+    tmp<volScalarField> y = max // NOTE: wrong
+    (
+        y_,
+        yIB_
+    );
+
     tmp<volScalarField> arg3 = min
     (
-        150*(this->mu()/this->rho_)/(omega_*sqr(y_)),
+        150*(this->mu()/this->rho_)/(omega_*sqr(y())),
         scalar(10)
     );
 
@@ -413,7 +434,19 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
     ),
 
     y_(wallDist::New(this->mesh_).y()),
-
+    yIB_
+    (
+        IOobject
+        (
+            "HFDIBKOmegaSST::yIB",
+            this->runTime_.timeName(),
+            this->mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        this->mesh_,
+        dimensionedScalar("zero",y_.dimensions(),0.0)
+    ),
     k_
     (
         IOobject
@@ -553,6 +586,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
     HFDIBRASDict.readEntry("tolKEqn", tolKEqn_);
     HFDIBRASDict.readEntry("maxKEqnIters", maxKEqnIters_);
     useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
+    correctFs_ = HFDIBRASDict.lookupOrDefault<bool>("correctFs", true);
 
     // bound
     bound(k_, this->kMin_);
@@ -656,8 +690,27 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
         (2*alphaOmega2_)*(fvc::grad(k_) & fvc::grad(omega_))/omega_
     );
 
+    // HFDIB: correct y_
+    if (correctFs_)
+    {
+        HFDIBRANS.correctY(yIB_);
+    }
+
     const volScalarField F1(this->F1(CDkOmega));
     const volScalarField F23(this->F23());
+    //~ F1.rename("F1"); // Note (LK): not working for v2412
+    //~ F23.rename("F23"); // Note (LK): not working for v2412
+
+    if (this->runTime_.writeTime())
+    {
+        F1.write();
+        F23.write();
+        y_.write();
+    }
+
+    // HFDIB: correct F1 and F23
+    //~ HFDIBRANS.correctF1(F1);
+    //~ HFDIBRANS.correctF23(F23);
 
     {
         const volScalarField::Internal gamma(this->gamma(F1));

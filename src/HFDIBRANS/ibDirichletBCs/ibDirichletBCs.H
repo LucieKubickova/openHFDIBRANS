@@ -70,6 +70,8 @@ Contributors
 #include "PstreamReduceOps.H"
 #include "nearWallDist.H"
 
+#include "boundaryCell.H"
+
 using namespace Foam;
 
 //---------------------------------------------------------------------------//
@@ -85,14 +87,14 @@ class ibDirichletBCs
     // lambda related things
     const volScalarField& body_;
     scalar thrSurf_;
+    bool useYEff_;
 
     // fields
-    List<scalar> nutAtIB_;
-    List<scalar> uTauAtIB_;
+    List<List<scalar>> nutAtIB_;
+    List<List<scalar>> uTauAtIB_;
 
     // references to shared data
-    DynamicList<Tuple2<label,label>>& boundaryCells_;
-    List<Tuple2<scalar,scalar>>& boundaryDists_;
+    List<DynamicList<boundaryCell>>& boundaryCells_;
     labelField& isBoundaryCell_;
 
     // dictionaries
@@ -161,8 +163,7 @@ class ibDirichletBCs
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists,
+        List<DynamicList<boundaryCell>>& boundaryCells,
         labelField& isBoundaryCell
     );
 
@@ -234,6 +235,9 @@ class ibDirichletBCs
     {
         return E_;
     }
+
+    // post processing of uTau
+    void postProcessUTau();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

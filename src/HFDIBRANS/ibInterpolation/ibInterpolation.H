@@ -45,6 +45,10 @@ Contributors
 #include "fixedGradientScheme.H"
 #include "zeroGradientScheme.H"
 
+#include "lineIntInfo.H"
+#include "boundaryCell.H"
+#include "surfaceCell.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -72,25 +76,27 @@ class ibInterpolation
     bool readSurfNorm_;
     bool aveYOrtho_;
     bool totalYOrthoAve_;
-    bool approxCutCellYOrtho_;
     scalar aveCoeff_;
     label nAveYOrtho_;
     bool averageV_;
+    bool readL_;
+    scalar valueL_;
 
     // saves
+    volScalarField iProci_;
+    volScalarField sigmai_;
     volScalarField yOrthoi_;
+    volScalarField yEffi_;
 
     // references to shared data
-    DynamicList<Tuple2<label,label>>& boundaryCells_;
-    List<Tuple2<scalar,scalar>>& boundaryDists_;
-    DynamicList<label>& surfaceCells_;
-    List<scalar>& surfaceDists_;
-    DynamicList<label>& internalCells_;
+    List<DynamicList<boundaryCell>>& boundaryCells_;
+    List<DynamicList<surfaceCell>>& surfaceCells_;
+    List<DynamicList<label>>& internalCells_;
     labelField& isBoundaryCell_;
 
     // interpolation info lists
-    List<interpolationInfo> intInfoListBoundary_;
-    List<interpolationInfo> intInfoListSurface_;
+    autoPtr<lineIntInfo> lineIntInfoBoundary_;
+    autoPtr<lineIntInfo> lineIntInfoSurface_;
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
@@ -108,11 +114,9 @@ class ibInterpolation
     (
         const fvMesh& mesh,
         const volScalarField& body,
-        DynamicList<Tuple2<label,label>>& boundaryCells,
-        List<Tuple2<scalar,scalar>>& boundaryDists,
-        DynamicList<label>& surfaceCells,
-        List<scalar>& surfaceDists,
-        DynamicList<label>& internalCells,
+        List<DynamicList<boundaryCell>>& boundaryCells,
+        List<DynamicList<surfaceCell>>& surfaceCells,
+        List<DynamicList<label>>& internalCells,
         labelField& isBoundaryCell
     );
 
@@ -142,31 +146,40 @@ class ibInterpolation
     void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
     // TODO: blended interpolation
+
+    // interpolate to interpolation points
+    template <typename Type, typename volTypeField>
+    void interpolateToIntPoints(volTypeField& phi, interpolation<Type>& interpPhi, List<List<intPoint>>& intInfos, List<List<Type>>& phiInIntPoints);
     
     // identification
     void findBoundaryCells();
     void findSurfaceCells();
 
+    // auxiliar functions
+    void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
+    bool isWallCell(label& cellI);
+    label getFaceInDir(label cellI, vector dir); // Note (LK): copy of a function from lineIntInfo
+
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
     void setLambdaBasedSurface(volScalarField& surface, scalar boundaryVal);
+    void setOnlyInnerSurface(volScalarField& surface, scalar boundaryVal);
     void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
     // TODO: blended surface
 
     // surface distance calculation
     void calculateBoundaryDist();
     void calculateSurfaceDist();
+
+    // post processing of distance
+    scalar getCellSize(label cellI);
+    void postProcessYOrtho();
     
     // calculate interpolation points
     void calculateInterpolationPoints();
-    void getInterpolationPoint(label cellI, point surfPoint, vector surfNormToSend, interpolationInfo& intInfo);
-    void setInterpolationOrder(List<interpolationInfo>& intInfoList);
 
     // surface normals
     void calculateSurfNorm();
-
-    // find cell
-    Tuple2<vector,Tuple2<label,label>> findCellCustom(vector& prevPoint, label& startCell, label& startProc, vector& gradToBody, scalar& intDist);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);

@@ -952,7 +952,7 @@ $(WM_PROJECT_DIR)/src/meshTools/lnInclude/cellSet.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/topoSet.H \
 $(WM_PROJECT_DIR)/src/meshTools/lnInclude/topoSetTemplates.C \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
-../../HFDIBRANS/lnInclude/interpolationInfo.H \
+../../HFDIBRANS/lnInclude/intPoint.H \
 ../../HFDIBRANS/lnInclude/constantScheme.H \
 ../../HFDIBRANS/lnInclude/constantSchemeTemplates.C \
 ../../HFDIBRANS/lnInclude/linearScheme.H \
@@ -965,6 +965,10 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 ../../HFDIBRANS/lnInclude/fixedGradientSchemeTemplates.C \
 ../../HFDIBRANS/lnInclude/zeroGradientScheme.H \
 ../../HFDIBRANS/lnInclude/zeroGradientSchemeTemplates.C \
+../../HFDIBRANS/lnInclude/lineIntInfo.H \
+$(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/processorPolyPatch.H \
+../../HFDIBRANS/lnInclude/boundaryCell.H \
+../../HFDIBRANS/lnInclude/surfaceCell.H \
 ../../HFDIBRANS/lnInclude/ibInterpolationTemplates.C \
 ../../HFDIBRANS/lnInclude/ibDirichletBCs.H \
 ../turbulenceModels/lnInclude/HFDIBTurbulenceModel.C \

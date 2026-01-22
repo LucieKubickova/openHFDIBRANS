@@ -9,7 +9,7 @@
       |_|                    with R eynolds A veraged N avier S tokes equations          
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -25,17 +25,17 @@ InNamspace
     Foam
 
 Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
+    class for interpolation
+
+SourceFiles
 
 Contributors
-    Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Kotouč Šourek (2019-*),
+    Ondřej Studeník (2020-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-#ifndef ibScheme_H
-#define ibScheme_H
+#ifndef lineIntInfo_H
+#define lineIntInfo_H
 
 #include "polyMesh.H"
 #include "fvCFD.H"
@@ -71,60 +71,111 @@ Contributors
 #include "addToRunTimeSelectionTable.H"
 
 #include "intPoint.H"
+#include "processorPolyPatch.H"
 
 using namespace Foam;
 
 //---------------------------------------------------------------------------//
-class ibScheme
+class lineIntInfo
 {
+    typedef DynamicList<label> DynamicLabelList;
+    typedef DynamicList<scalar> DynamicScalarList;
+    typedef DynamicList<vector> DynamicVectorList;
+    typedef DynamicList<point> DynamicPointList;
+
+    protected:
+
+    // mesh reference
+    const Foam::fvMesh& mesh_;
+
+    // lists
+    List<label> ibCells_;
+    List<point> ibPoints_;
+    List<vector> ibNormals_;
+
+    private:
+
+    autoPtr<List<List<intPoint>>> intPointsPtr_; // Points used for interp.
+
+    intPoint  findIntPoint
+    (
+        intPoint& fromP,
+        point& endP
+    );
+
+    void correctIntPoint
+    (
+        point ibPoint,
+        intPoint& cPoint
+    );
+
+    vector getClosestPoint
+    (
+        vector ibPoint,
+        intPoint& cPoint
+    );
+
+    label getFaceInDir
+    (
+        const intPoint& retPoint,
+        const label prevFace
+    );
+
+    bool pointInCell
+    (
+        point pToCheck,
+        label cToCheck
+    );
+
+    void sendAndRecvIntPoints
+    (
+        List<DynamicList<point>>& ibPointsToSend,
+        List<DynamicList<vector>>& ibNormalsToSend,
+        List<DynamicList<intPoint>>& intPointsToSend,
+        List<DynamicList<point>>& ibPointsRecv,
+        List<DynamicList<vector>>& ibNormalsRecv,
+        List<DynamicList<intPoint>>& intPointsRecv
+    );
+
+    void returnSolvedIntPoints
+    (
+        List<DynamicList<intPoint>>& intPointsToCont,
+        List<DynamicList<intPoint>>& intPointsRecv,
+        List<DynamicList<intPoint>>& intPointsSolved
+    );
+
+    void syncIntPoints();
+
     public:
 
-    // Constructors ----------------------------------------------------
-    ibScheme();
-
-    // Destructors -----------------------------------------------------
-    virtual ~ibScheme();
-
-    // Public methods --------------------------------------------------
-    // -- virtual wrapper functions for interpolation
-    virtual scalar interpolate
+    // Constructors ------------------------------------------------
+    lineIntInfo
     (
-        volScalarField& phi,
-        List<scalar>& phiPs,
-        scalar& dirichletVal,
-        scalar& scale,
-        scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
-    ) = 0;
-
-    virtual vector interpolate
-    (
-        volVectorField& phi,
-        List<vector>& phiPs,
-        vector& dirichletVal,
-        scalar& scale,
-        scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
-    ) = 0;
-
-    virtual tensor interpolate
-    (
-        volTensorField& phi,
-        List<tensor>& phiPs,
-        tensor& dirichletVal,
-        scalar& scale,
-        scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
-    ) = 0;
-
-    // get interpolation order
-    label getIntOrder
-    (
-        List<intPoint>& intPoints
+        const fvMesh& mesh,
+        List<label> ibCells,
+        List<point> ibPoints,
+        List<vector> ibNormals
     );
+
+    // Destructors -------------------------------------------------
+    ~lineIntInfo();
+
+    void setIntpInfo();
+
+    void resetIntpInfo(label newSize)
+    {
+        intPointsPtr_.reset(new List<List<intPoint>>(newSize));
+    }
+
+    List<List<intPoint>>& getIntPoints()
+    {
+        return intPointsPtr_();
+    }
+
+    const List<List<intPoint>>& getIntPoints() const
+    {
+        return intPointsPtr_();
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
