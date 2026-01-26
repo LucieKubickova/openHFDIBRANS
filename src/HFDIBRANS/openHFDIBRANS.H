@@ -83,6 +83,7 @@ class openHFDIBRANS
     scalar scaleCoeff_;
     scalar scaleCoeffG_;
     bool useYEff_;
+    bool assignNut_;
 
     // save
     word outDir_;
@@ -106,7 +107,7 @@ class openHFDIBRANS
     void updateUTau(volScalarField& k);
     
     // correct values
-    void correctNut(volScalarField& k, volScalarField& nu);
+    void correctNut(volScalarField& nut, volScalarField& k, volScalarField& nu);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 

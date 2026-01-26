@@ -379,9 +379,15 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     volScalarField& nut = this->nut_;
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
-    // HFDIBRANS references
+    // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    kSurface_.correctBoundaryConditions();
+
+    // HFDIBRANS: create surface for epsilon
     HFDIBRANS.createBaseSurface(epsilonGSurface_, epsilonGSurfaceType_, epsilonGBoundaryValue_);
+    HFDIBRANS.updateSurface(epsilonGSurface_, epsilonGSurfaceType_);
+    epsilonGSurface_.correctBoundaryConditions();
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
 
@@ -416,6 +422,8 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
 
     // HFDIB: correct epsilon and G
     HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonGSurface_);
+    epsilon_.correctBoundaryConditions();
+    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn
@@ -448,6 +456,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
+    ki_.correctBoundaryConditions();
 
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
@@ -471,6 +480,7 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
         for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
             kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            kQ_.correctBoundaryConditions();
             solve(kEqn == kQ_);
 
             Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
@@ -496,7 +506,8 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut(tgradU(), S2, magS);
-    HFDIBRANS.correctNut(k_, nu_);
+    HFDIBRANS.correctNut(this->nut_, k_, nu_);
+    this->nut_.correctBoundaryConditions();
 }
 
 template<class BasicMomentumTransportModel>

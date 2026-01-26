@@ -1296,24 +1296,27 @@ void ibInterpolation::saveInterpolationInfo
 
     // Note (LK): this needs fixing 
     // loop over boundary cells
-    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    //~ if (Pstream::nProcs() == 1)
     //~ {
-        //~ outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].bCell_ << ","
-            //~ << boundaryCells_[Pstream::myProcNo()][bCell].iCell_ << ","
-            //~ << boundaryCells_[Pstream::myProcNo()][bCell].fCell_ << ","
-            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
-            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
-            //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].fCell_] << ","
-            //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
-            //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
-            //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
-            //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
-            //~ << boundaryCells_[Pstream::myProcNo()][bCell].sigma_ << ","
-            //~ << boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ << ","
-            //~ << boundaryCells_[Pstream::myProcNo()][bCell].yEff_ << ","
-            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
-            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
-            //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
+        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        //~ {
+            //~ outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].bCell_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].iCell_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].fCell_ << ","
+                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
+                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
+                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].fCell_] << ","
+                //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
+                //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
+                //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
+                //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].sigma_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].yEff_ << ","
+                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
+                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
+                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
+        //~ }
     //~ }
 
     // prepare file
@@ -1321,17 +1324,20 @@ void ibInterpolation::saveInterpolationInfo
     outFilePtr.reset(new OFstream(outDir/fileName));
     outFilePtr() << "cellI,cellCenter,surfNorm,body,sigma,order,intPoints,intCells" << endl;
 
-    //~ // loop over surface cells
-    //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    // loop over surface cells
+    //~ if (Pstream::nProcs() == 1)
     //~ {
-        //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell].sCell_ << ","
-            //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-            //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-            //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-            //~ << surfaceCells_[Pstream::myProcNo()][sCell].sigma_ << ","
-            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
-            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
-            //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
+        //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+        //~ {
+            //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell].sCell_ << ","
+                //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                //~ << surfaceCells_[Pstream::myProcNo()][sCell].sigma_ << ","
+                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
+                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
+                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
+        //~ }
     //~ }
 }
 

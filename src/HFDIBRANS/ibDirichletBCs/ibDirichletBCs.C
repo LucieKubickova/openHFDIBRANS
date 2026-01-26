@@ -514,7 +514,7 @@ void ibDirichletBCs::omegaGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            vector snGradU = (zeroU - U[cellI])/yOrtho;
+            vector snGradU = (zeroU - U[cellI])/yOrtho; // Note (LK): should this be ever done from yEff?
             scalar magGradUWall = mag(snGradU);
 
             // get the friction velocity

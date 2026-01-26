@@ -224,6 +224,12 @@ class ibDirichletBCs
         return E_;
     }
 
+    // get nut at immersed boundary
+    List<List<scalar>>& getNutAtIB()
+    {
+        return nutAtIB_;
+    }
+
     // post processing of uTau
     void postProcessUTau();
 };
