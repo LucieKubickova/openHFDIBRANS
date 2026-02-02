@@ -88,6 +88,7 @@ class ibDirichletBCs
     const volScalarField& body_;
     scalar thrSurf_;
     bool useYEff_;
+    bool uTauFromFreeStream_;
 
     // fields
     List<List<scalar>> nutAtIB_;

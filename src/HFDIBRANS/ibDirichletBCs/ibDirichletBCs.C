@@ -102,6 +102,7 @@ beta1_(0.075)
     // read HFDIBDEMDict
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
+    uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", false);
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -200,106 +201,125 @@ void ibDirichletBCs::updateUTauAtIB
     // prepare sync
     List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
 
-    // loop over boundary cells
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    // if uTau from boundary cell
+    if (!uTauFromFreeStream_)
     {
-        // reset field
-        uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
-
-        // get cell label
-        //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-        label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
-        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
-
-        // compute uTau based on values from the free stream
-        if (Pstream::myProcNo() == fProc)
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
-        }
-        else
-        {
-            fCellsToSync[fProc].append(fCell);
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // compute uTau
+            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[cellI]);
         }
     }
 
-    // sync with other processors
-    PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
+    else
     {
-        if(proci != Pstream::myProcNo())
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            UOPstream sendFCells(proci, pBufsFCells);
-            sendFCells << fCellsToSync[proci];
-        }
-    }
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
 
-    pBufsFCells.finishedSends();
+            // get cell label
+            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+            label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
+            label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
 
-    // recieve
-    List<DynamicList<scalar>> uTausToRetr(Pstream::nProcs());
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
-            UIPstream recvFCells(proci, pBufsFCells);
-            DynamicList<label> recFCells (recvFCells);
-
-            forAll(recFCells, rCell)
+            // compute uTau based on values from the free stream
+            if (Pstream::myProcNo() == fProc)
             {
-                // get the cell label
-                label cellI = recFCells[rCell];
-
-                // compute utau
-                scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
-                uTausToRetr[proci].append(uTau);
+                uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+            }
+            else
+            {
+                fCellsToSync[fProc].append(fCell);
             }
         }
-    }
 
-    // return
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if(proci != Pstream::myProcNo())
+        // sync with other processors
+        PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
         {
-            UOPstream sendUTaus(proci, pBufsFCells);
-            sendUTaus << uTausToRetr[proci];
+            if(proci != Pstream::myProcNo())
+            {
+                UOPstream sendFCells(proci, pBufsFCells);
+                sendFCells << fCellsToSync[proci];
+            }
         }
-    }
 
-    pBufsFCells.finishedSends();
+        pBufsFCells.finishedSends();
 
-    List<DynamicList<scalar>> uTausCmpl(Pstream::nProcs());
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
+        // recieve
+        List<DynamicList<scalar>> uTausToRetr(Pstream::nProcs());
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
         {
-            UIPstream recvUTaus(proci, pBufsFCells);
-            DynamicList<scalar> recUTaus (recvUTaus);
-            uTausCmpl[proci] = recUTaus;
+            if (proci != Pstream::myProcNo())
+            {
+                UIPstream recvFCells(proci, pBufsFCells);
+                DynamicList<label> recFCells (recvFCells);
+
+                forAll(recFCells, rCell)
+                {
+                    // get the cell label
+                    label cellI = recFCells[rCell];
+
+                    // compute utau
+                    scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+                    uTausToRetr[proci].append(uTau);
+                }
+            }
         }
-    }
 
-    pBufsFCells.clear();
-
-    // prepare counter
-    List<label> counter(Pstream::nProcs());
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        counter[proci] = 0;
-    }
-
-    // complete uTau
-    forAll(uTauAtIB_[Pstream::myProcNo()], bCell)
-    {
-        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
-        if (fProc != Pstream::myProcNo())
+        // return
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
         {
-            // get the returned uTau
-            scalar uTau = uTausCmpl[fProc][counter[fProc]];
-            ++counter[fProc];
+            if(proci != Pstream::myProcNo())
+            {
+                UOPstream sendUTaus(proci, pBufsFCells);
+                sendUTaus << uTausToRetr[proci];
+            }
+        }
 
-            // save
-            uTauAtIB_[Pstream::myProcNo()][bCell] = uTau;
+        pBufsFCells.finishedSends();
+
+        List<DynamicList<scalar>> uTausCmpl(Pstream::nProcs());
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            if (proci != Pstream::myProcNo())
+            {
+                UIPstream recvUTaus(proci, pBufsFCells);
+                DynamicList<scalar> recUTaus (recvUTaus);
+                uTausCmpl[proci] = recUTaus;
+            }
+        }
+
+        pBufsFCells.clear();
+
+        // prepare counter
+        List<label> counter(Pstream::nProcs());
+        for (label proci = 0; proci < Pstream::nProcs(); proci++)
+        {
+            counter[proci] = 0;
+        }
+
+        // complete uTau
+        forAll(uTauAtIB_[Pstream::myProcNo()], bCell)
+        {
+            label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
+            if (fProc != Pstream::myProcNo())
+            {
+                // get the returned uTau
+                scalar uTau = uTausCmpl[fProc][counter[fProc]];
+                ++counter[fProc];
+
+                // save
+                uTauAtIB_[Pstream::myProcNo()][bCell] = uTau;
+            }
         }
     }
 
