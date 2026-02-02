@@ -233,7 +233,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
             "HFDIBKEpsilon::kSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,
@@ -246,7 +246,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
             "HFDIBKEpsilon::epsilonGSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,

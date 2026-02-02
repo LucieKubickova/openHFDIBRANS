@@ -684,7 +684,12 @@ void openHFDIBRANS::createBaseSurface
     scalar boundaryVal
 )
 {
-    if (surfType == "setValue" or surfType == "switched")
+    if (surfType == "readOnly")
+    {
+        return;
+    }
+
+    else if (surfType == "setValue" or surfType == "switched")
     {
         ibInterpolation_->setUpSurface(surface, boundaryVal);
     }
