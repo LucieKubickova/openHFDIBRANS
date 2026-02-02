@@ -72,7 +72,7 @@ void lineIntInfo::setIntpInfo
     {
         // get surface cell label
         label cellI = ibCells_[sCell];
-        scalar intDist = Foam::pow(mesh_.V()[cellI],0.333)*0.5;
+        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333)*0.5;
 
         // save first interpolation point (surfPoint)
         intPoints[sCell].setSize(ORDER+1);
@@ -193,7 +193,7 @@ void lineIntInfo::setIntpInfo
                 intPointsRecv[proci][iInfo].iCell_ = cellI;
 
                 // find interpolation point
-                point cPoint = mesh_.C()[cellI];
+                //~ point cPoint = mesh_.C()[cellI];
                 intPoint cIntPoint
                 (
                     //~ cPoint,
@@ -204,7 +204,7 @@ void lineIntInfo::setIntpInfo
                     intPointsRecv[proci][iInfo].oLabel_
                 );
 
-                scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+                //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
                 vector dir = cIntPoint.iPoint_ - ibPointsRecv[proci][iInfo];
                 dir /= mag(dir);
 
@@ -414,6 +414,7 @@ label lineIntInfo::getFaceInDir
         {
             vector outNorm = (mesh_.faceOwner()[fI] == retPoint.iCell_)
                 ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
+            outNorm /= mag(outNorm); // LK: this should be there, no?
 
             scalar auxDotProd(outNorm & dir);
             if (auxDotProd > dotProd)
@@ -743,7 +744,7 @@ void lineIntInfo::syncIntPoints()
 
             cIntPoint = foundP;
 
-            label outICell = foundP.iCell_;
+            //~ label outICell = foundP.iCell_;
             for(label i = orderRecv[proci][ibpI]; i < ORDER; ++i) // Note (LK): had to change this, since I have the surface point as intPoint[0]
             {
                 cPoint = cIntPoint.iPoint_;

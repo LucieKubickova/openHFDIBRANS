@@ -155,7 +155,8 @@ fvSchemes_
     nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
     averageV_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageVolume", false);
     readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
-    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // EXPERIMENTAL
+    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
+    innerThres_ = HFDIBDEMDict_.lookupOrDefault<scalar>("innerThreshold", 0.5); // LK: experimental
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -227,8 +228,7 @@ void ibInterpolation::calculateInterpolationPoints
         label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
         label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
 
-        // find surf point
-        label surfCell;
+        // find surface point
         point surfPoint;
         vector surfNormToSend;
         scalar sigma;
@@ -252,9 +252,16 @@ void ibInterpolation::calculateInterpolationPoints
                         if (sProc == iProc)
                         {
                             // access neighbor processor patch
-                            const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
-                            const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
-                            const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+                            //~ const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
+                            //~ const tmp<scalarField> tbodyN(body_.boundaryField()[patchI].patchNeighbourField());
+                            //~ const scalarField& bodyN = tbodyN();
+
+                            //~ const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
+                            //~ const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+                            const tmp<vectorField> tsurfNormN(surfNorm_.boundaryField()[patchI].patchNeighbourField());
+                            const tmp<vectorField> tcellCenterN(cellCenters.boundaryField()[patchI].patchNeighbourField());
+                            const vectorField& surfNormN = tsurfNormN();
+                            const vectorField& cellCenterN = tcellCenterN();
 
                             // calc data
                             surfPoint = cellCenterN[iFace];
@@ -339,7 +346,6 @@ void ibInterpolation::findBoundaryCells
 {
     // preparation
     boundaryCell bCellToAdd;
-    isBoundaryCell_ = -1;
 
     // loop over cells
     forAll(mesh_.cellCells(), cellI)
@@ -360,7 +366,7 @@ void ibInterpolation::findBoundaryCells
 
         else if (body_[cellI] < thrSurf_)
         {
-            findNeighborInBody(cellI, 0.5, iCell, iFace, iProc, isBoundary);
+            findNeighborInBody(cellI, innerThres_, iCell, iFace, iProc, isBoundary);
         }
 
         // check whether the cell is adjecent to a regular wall
@@ -497,6 +503,8 @@ void ibInterpolation::findBoundaryCells
     }
 
     // prepare label field
+    isBoundaryCell_ *= 0.0;
+    isBoundaryCell_ += -1;
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the cell label
@@ -565,12 +573,116 @@ void ibInterpolation::findNeighborInBody
                 }
             }
         }
-    
+
         else
         {
             // Note (LK): should be fixed later
             FatalError << "Boundary cell search " << boundarySearch_ << " not implemented in parallel" << exit(FatalError);
         }
+    }
+
+    else if (boundarySearch_ == "edge")
+    {
+        // get the best face, edge and vertex
+        label faceI = getFaceInDir(cellI, -1*surfNorm_[cellI]);
+        label edgeI = getEdgeInDir(faceI, cellI, -1*surfNorm_[cellI]);
+        //~ label vertI = getVertInDir(edgeI, cellI, -1*surfNorm_[cellI]);
+
+        label faceNI(-1);
+        label edgeNI(-1);
+    
+        // check for non-internal cells
+        if (!mesh_.isInternalFace(faceI))
+        {
+            //~ // get the patch the face belongs to
+            //~ label facePatchI(mesh_.boundaryMesh().whichPatch(faceI));
+            //~ const polyPatch& cPatch = mesh_.boundaryMesh()[facePatchI];
+    
+            //~ // check if it is a processor boundary
+            //~ if (cPatch.type() == "processor")
+            //~ {
+                //~ // get the processor patch
+                //~ const processorPolyPatch& procPatch
+                    //~ = refCast<const processorPolyPatch>(cPatch);
+    
+                //~ // get the neighboring processor id
+                //~ label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                    //~ ? procPatch.neighbProcNo() : procPatch.myProcNo();
+    
+                //~ // access neighbor processor patch
+                //~ const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+    
+                //~ // get local face value
+                //~ label localI = cPatch.whichFace(faceI);
+    
+                //~ // acces neighbor value
+                //~ if (bodyN[localI] >= threshold)
+                //~ {
+                    //~ isBoundary = true;
+                    //~ iFace = localI;
+                    //~ iProc = sProc;
+                //~ }
+            //~ }
+        }
+    
+        else
+        {
+            // get the face neighbor
+            label owner(mesh_.owner()[faceI]);
+            label neighbor(mesh_.neighbour()[faceI]);
+            faceNI = (cellI == owner) ? neighbor : owner;
+
+            // get the edge neighbor
+            bool found(false);
+            forAll(mesh_.edgeCells()[edgeI], cI)
+            {
+                // get cell label
+                edgeNI = mesh_.edgeCells()[edgeI][cI];
+
+                // skip current cell and the face neighbor
+                if (edgeNI == cellI or edgeNI == faceNI)
+                {
+                    continue;
+                }
+
+                // check if vertex neighbor is neighbor with face neighbor O:)
+                forAll(mesh_.cellCells()[faceNI], pI)
+                {
+                    label posNI = mesh_.cellCells()[faceNI][pI];
+                    if (posNI == edgeNI)
+                    {
+                        found = true;
+                    }
+                }
+
+                if (found)
+                {
+                    break;
+                }
+            }
+    
+            // check lambda field
+            // LK: needs check if edgeNI found
+            // LK: needs check which more in dir
+            if (body_[faceNI] >= threshold)
+            {
+                isBoundary = true;
+                Info << cellI << " " << mesh_.C()[cellI] << " face neighbor" << endl;
+                iCell = faceNI;
+                iProc = Pstream::myProcNo();
+            }
+
+            else if (body_[edgeNI] >= threshold)
+            {
+                isBoundary = true;
+                Info << cellI << " " << mesh_.C()[cellI] << " edge neighbor" << endl;
+                iCell = edgeNI;
+                iProc = Pstream::myProcNo();
+            }
+        }
+
+        // Note (LK): should be fixed later
+        FatalError << "Boundary cell search " << boundarySearch_ << " not finished" << exit(FatalError);
     }
     
     else if (boundarySearch_ == "face")
@@ -598,7 +710,9 @@ void ibInterpolation::findNeighborInBody
                     ? procPatch.neighbProcNo() : procPatch.myProcNo();
     
                 // access neighbor processor patch
-                const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+                //~ const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
+                const tmp<scalarField> tbodyN(body_.boundaryField()[facePatchI].patchNeighbourField());
+                const scalarField& bodyN = tbodyN();
     
                 // get local face value
                 label localI = cPatch.whichFace(faceI);
@@ -651,11 +765,15 @@ label ibInterpolation::getFaceInDir
     scalar dotProd(-GREAT);
 
     // loop over cell faces
-    forAll (cellFaces, faceI)
+    forAll(cellFaces, faceI)
     {
         label fI = cellFaces[faceI];
-        vector outNorm = (mesh_.faceOwner()[fI] == cellI)
-            ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
+        vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
+        outNorm /= mag(outNorm);
+
+        //~ vector outNorm = (mesh_.faceOwner()[fI] == cellI)
+            //~ ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
+        //~ outNorm /= mag(outNorm); // LK: this should be there, no?
 
         scalar auxDotProd(outNorm & dir);
         if (auxDotProd > dotProd)
@@ -666,6 +784,81 @@ label ibInterpolation::getFaceInDir
     }
 
     return faceToReturn;
+}
+
+//---------------------------------------------------------------------------//
+label ibInterpolation::getEdgeInDir
+(
+    label faceI,
+    label cellI,
+    vector dir
+)
+{
+    // prepare data
+    label edgeToReturn = -1;
+    const labelList& faceEdges(mesh_.faceEdges()[faceI]);
+
+    // auxiliar scalar
+    scalar dotProd(-GREAT);
+
+    // loop over face edges
+    forAll(faceEdges, edgeI)
+    {
+        // get edge label
+        label eI = faceEdges[edgeI];
+
+        // get edge nodes
+        const label& own = mesh_.edges()[eI][0];
+        const label& nei = mesh_.edges()[eI][1];
+
+        vector Ce = 0.5*(mesh_.points()[own] + mesh_.points()[nei]);
+
+        // get direction to edge center
+        vector outNorm = Ce - mesh_.C()[cellI];
+        outNorm /= mag(outNorm);
+
+        scalar auxDotProd(outNorm & dir);
+        if (auxDotProd > dotProd)
+        {
+            dotProd = auxDotProd;
+            edgeToReturn = eI;
+        }
+    }
+
+    return edgeToReturn;
+}
+
+//---------------------------------------------------------------------------//
+label ibInterpolation::getVertInDir
+(
+    label edgeI,
+    label cellI,
+    vector dir
+)
+{
+    // prepare data
+    label vertexToReturn = -1;
+    const edge& edgeVertices(mesh_.edges()[edgeI]);
+
+    // auxiliar scalar
+    scalar dotProd(-GREAT);
+
+    // loop over edge vertices
+    forAll(edgeVertices, verI)
+    {
+        label vI = edgeVertices[verI];
+        vector outNorm = mesh_.points()[vI] - mesh_.C()[cellI];
+        outNorm /= mag(outNorm);
+
+        scalar auxDotProd(outNorm & dir);
+        if (auxDotProd > dotProd)
+        {
+            dotProd = auxDotProd;
+            vertexToReturn = vI;
+        }
+    }
+
+    return vertexToReturn;
 }
 
 //---------------------------------------------------------------------------//
@@ -1010,9 +1203,17 @@ void ibInterpolation::calculateBoundaryDist
                     if (sProc == iProc)
                     {
                         // access neighbor processor patch
-                        const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
-                        const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
-                        const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+                        //~ const scalarField& bodyN = body_.boundaryField()[patchI].patchNeighbourField();
+                        //~ const vectorField& surfNormN = surfNorm_.boundaryField()[patchI].patchNeighbourField();
+                        //~ const vectorField& cellCenterN = cellCenters.boundaryField()[patchI].patchNeighbourField();
+
+                        const tmp<scalarField> tbodyN(body_.boundaryField()[patchI].patchNeighbourField());
+                        const tmp<vectorField> tsurfNormN(surfNorm_.boundaryField()[patchI].patchNeighbourField());
+                        const tmp<vectorField> tcellCenterN(cellCenters.boundaryField()[patchI].patchNeighbourField());
+
+                        const scalarField& bodyN = tbodyN();
+                        const vectorField& surfNormN = tsurfNormN();
+                        const vectorField& cellCenterN = tcellCenterN();
 
                         if (bodyN[iFace] < 1.0)
                         {

@@ -186,7 +186,7 @@ void ibDirichletBCs::TAtIB
 {
     forAll(TIB, bCell)
     {
-        // assign zero
+        // assign value
         TIB[bCell] = TIn;
     }
 }

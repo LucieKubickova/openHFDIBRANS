@@ -81,6 +81,7 @@ class ibInterpolation
     bool averageV_;
     bool readL_;
     scalar valueL_;
+    scalar innerThres_; // LK: experimental
 
     // saves
     volScalarField iProci_;
@@ -158,7 +159,11 @@ class ibInterpolation
     // auxiliar functions
     void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
     bool isWallCell(label& cellI);
-    label getFaceInDir(label cellI, vector dir); // Note (LK): copy of a function from lineIntInfo
+
+    // best instance in direction
+    label getFaceInDir(label cellI, vector dir);
+    label getEdgeInDir(label faceI, label cellI, vector dir);
+    label getVertInDir(label edgeI, label cellI, vector dir);
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
