@@ -275,7 +275,7 @@ void ibInterpolation::calculateInterpolationPoints
 
             else
             {
-                surfPoint = mesh_.C()[inCellI];;
+                surfPoint = mesh_.C()[inCellI];
                 sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
                 surfNormToSend = surfNorm_[inCellI];
                 surfPoint += surfNormToSend*sigma;

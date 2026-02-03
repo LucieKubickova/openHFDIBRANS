@@ -72,7 +72,7 @@ void lineIntInfo::setIntpInfo
     {
         // get surface cell label
         label cellI = ibCells_[sCell];
-        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333)*0.5;
+        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
 
         // save first interpolation point (surfPoint)
         intPoints[sCell].setSize(ORDER+1);
@@ -113,9 +113,9 @@ void lineIntInfo::setIntpInfo
             {
                 // latest interpolation point
                 intPoint cIntPoint = intPointsToSolve[proci][iInfo];
-
                 point cPoint = cIntPoint.iPoint_;
-                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333)*0.5;
+                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
+
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
                 } while(pointInCell(cPoint, cIntPoint.iCell_));
@@ -204,7 +204,7 @@ void lineIntInfo::setIntpInfo
                     intPointsRecv[proci][iInfo].oLabel_
                 );
 
-                //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+                //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
                 vector dir = cIntPoint.iPoint_ - ibPointsRecv[proci][iInfo];
                 dir /= mag(dir);
 
@@ -730,7 +730,7 @@ void lineIntInfo::syncIntPoints()
             intPoint foundP =
                 findIntPoint(cIntPoint, intPointRecv[proci][ibpI]);
 
-            scalar intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333);
+            scalar intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
             vector dir = foundP.iPoint_ - ibPointsRecv[proci][ibpI];
             dir /= mag(dir);
 
