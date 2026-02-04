@@ -8,12 +8,6 @@ cd $cwd/straightPipe/openHFDIBRANS
 cd $cwd/straightPipe/simpleFoam
 ./Allclean
 
-cd $cwd/straightPipe/laminar_openHFDIBRANS
-./Allclean
-
-cd $cwd/straightPipe/laminar_simpleFoam
-./Allclean
-
 cd $cwd/asymmetricalPipe/openHFDIBRANS
 ./Allclean
 

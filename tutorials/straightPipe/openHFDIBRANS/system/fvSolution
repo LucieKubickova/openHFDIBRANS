@@ -104,8 +104,8 @@ SIMPLE
     {
         U
         {
-            surfaceType     setValue;
-            boundaryValue   0.0;
+            surfaceType     switched;
+            boundaryValue   1.0;
             tolEqn          1e-8;
             maxEqnIters     10;
         }
