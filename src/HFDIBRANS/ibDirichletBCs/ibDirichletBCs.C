@@ -102,7 +102,7 @@ beta1_(0.075)
     // read HFDIBDEMDict
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
-    uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", false);
+    uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", true);
 
     // read simulation type
     if (simulationType_ != "laminar")

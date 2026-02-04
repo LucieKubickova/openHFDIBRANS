@@ -48,6 +48,9 @@
 **useEffectiveDistance** - *optional* > If to yEff instead of yOrtho for yPlus calculation. Default true
 > Possible values: {*true*, *false*}
 
+**uTauFromFreeStream** - *optional* > If to use k from free stream cells to compute uTau. Default true
+> Possible values: {*true*, *false*}
+
 # Documentation for HFDIBSchemes subdict in fvSchemes
 **outerSchemes** - *required* > Interpolation schemes for reconstruction of the surface value at the immerse boundary. Separate entry for each field consisting of two tokens
 > **U** - *required* > Scheme for velocity
