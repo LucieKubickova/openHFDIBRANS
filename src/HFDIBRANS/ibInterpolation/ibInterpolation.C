@@ -532,6 +532,16 @@ void ibInterpolation::findBoundaryCells
         // assign
         isBoundaryCell_[cellI] = bCell;
     }
+
+    // assign surface normal to boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // save surface normal
+        boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[cellI];
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -686,7 +696,6 @@ void ibInterpolation::findNeighborInBody
             if (body_[faceNI] >= threshold)
             {
                 isBoundary = true;
-                Info << cellI << " " << mesh_.C()[cellI] << " face neighbor" << endl;
                 iCell = faceNI;
                 iProc = Pstream::myProcNo();
             }
@@ -694,7 +703,6 @@ void ibInterpolation::findNeighborInBody
             else if (body_[edgeNI] >= threshold)
             {
                 isBoundary = true;
-                Info << cellI << " " << mesh_.C()[cellI] << " edge neighbor" << endl;
                 iCell = edgeNI;
                 iProc = Pstream::myProcNo();
             }
@@ -1150,7 +1158,7 @@ void ibInterpolation::calculateSurfNorm
 {
     if (readSurfNorm_)
     {
-        return;
+        // pass
     }
 
     else if (sdBasedLambda_)
@@ -1161,16 +1169,6 @@ void ibInterpolation::calculateSurfNorm
         // calculate the surface normal based on the body gradient
         surfNorm_ = -fvc::grad(body_);
         surfNorm_ /= (mag(surfNorm_) + deltaN);
-    }
-
-    // assign to boundary cells
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    {
-        // get the cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-        // save surface normal
-        boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[cellI];
     }
 }
 
