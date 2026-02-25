@@ -114,7 +114,7 @@ beta1_(0.075)
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
     uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", true);
-    interpolateUTau_ = HFDIBDEMDict_.lookupOrDefault<bool>("interpolateUTau", false);
+    interpolateKForUTau_ = HFDIBDEMDict_.lookupOrDefault<bool>("interpolateKForUTau", false);
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -250,7 +250,7 @@ void ibDirichletBCs::updateUTauAtIB
             // compute uTau based on values from the free stream
             if (Pstream::myProcNo() == fProc)
             {
-                if (interpolateUTau_)
+                if (interpolateKForUTau_)
                 {
                     // interpolate k
                     scalar kPoint = interpK->interpolate(fPoint, fCell);
@@ -306,19 +306,20 @@ void ibDirichletBCs::updateUTauAtIB
                     label recCell = recFCells[rCell];
                     point recPoint = recFPoints[rCell];
 
-                    if (interpolateUTau_)
+                    scalar uTau;
+                    if (interpolateKForUTau_)
                     {
                         // interpolate k
                         scalar kPoint = interpK->interpolate(recPoint, recCell);
 
                         // compute friction velocity
-                        scalar uTau = Cmu25_*Foam::sqrt(kPoint);
+                        uTau = Cmu25_*Foam::sqrt(kPoint);
                     }
 
                     else
                     {
                         // compute friction velocity
-                        scalar uTau = Cmu25_*Foam::sqrt(k[recCell]);
+                        uTau = Cmu25_*Foam::sqrt(k[recCell]);
                     }
 
                     uTausToRetr[proci].append(uTau);

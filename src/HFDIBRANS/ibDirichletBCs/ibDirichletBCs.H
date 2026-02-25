@@ -89,7 +89,7 @@ class ibDirichletBCs
     scalar thrSurf_;
     bool useYEff_;
     bool uTauFromFreeStream_;
-    bool interpolateUTau_;
+    bool interpolateKForUTau_;
 
     // fields
     List<List<scalar>> nutAtIB_;
