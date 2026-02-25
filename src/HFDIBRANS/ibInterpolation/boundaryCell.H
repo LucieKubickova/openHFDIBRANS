@@ -51,7 +51,9 @@ namespace Foam
         label iFace_ = -1; // label of the shared face at the proc-proc boundary
         label fProc_ = -1; // proc of the free stream cell
 
-        // interpolation points
+        // interpolation info
+        vector sNorm_ = vector::zero;
+        point sPoint_ = vector::zero;
         point fPoint_ = vector::zero;
 
         // distances
@@ -67,6 +69,8 @@ namespace Foam
         iProc_(-1),
         iFace_(-1),
         fProc_(-1),
+        sNorm_(vector::zero),
+        sPoint_(vector::zero),
         fPoint_(vector::zero),
         sigma_(0.0),
         yOrtho_(0.0),
@@ -82,6 +86,8 @@ namespace Foam
             label iProc,
             label iFace,
             label fProc,
+            vector sNorm,
+            point sPoint,
             point fPoint,
             scalar sigma,
             scalar yOrtho,
@@ -93,6 +99,7 @@ namespace Foam
         iProc_(iProc),
         iFace_(iFace),
         fProc_(fProc),
+        sNorm_(sNorm),
         fPoint_(fPoint),
         sigma_(sigma),
         yOrtho_(yOrtho),

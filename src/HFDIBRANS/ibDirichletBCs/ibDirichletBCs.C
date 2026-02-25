@@ -97,6 +97,19 @@ yPlusi_
     mesh_,
     dimensionedScalar("zero", dimless, -1.0)
 ),
+uTaui_
+(
+    IOobject
+    (
+        "uTaui",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, 0.0)
+),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -113,8 +126,8 @@ beta1_(0.075)
     // read HFDIBDEMDict
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
-    uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", true);
-    interpolateKForUTau_ = HFDIBDEMDict_.lookupOrDefault<bool>("interpolateKForUTau", false);
+    uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
+    uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -215,7 +228,7 @@ void ibDirichletBCs::updateUTauAtIB
     List<DynamicList<point>> fPointsToSync(Pstream::nProcs());
 
     // if uTau from boundary cell
-    if (!uTauFromFreeStream_)
+    if (uTauType_ == "boundaryCell")
     {
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
@@ -230,7 +243,40 @@ void ibDirichletBCs::updateUTauAtIB
         }
     }
 
-    else
+    else if (uTauType_ == "effectiveDistance")
+    {
+        // prepare interpolation scheme
+        dictionary HFDIBInnerSchemes = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
+        autoPtr<interpolation<scalar>> interpK = interpolation<scalar>::New(HFDIBInnerSchemes, k);
+
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // get surface point and normal
+            point sPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+            vector sNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+            // get distance
+            scalar yEff = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+
+            // fictional point in effective distance
+            point yEffPoint = sPoint + uTauCoeff_*yEff*sNorm;
+
+            // interpolate k
+            scalar kPoint = interpK->interpolate(yEffPoint, cellI);
+
+            // compute friction velocity
+            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(kPoint);
+        }
+    }
+
+    else if (uTauType_ == "freeStreamCell" or uTauType_ == "firstInterpPoint")
     {
         // prepare interpolation scheme
         dictionary HFDIBInnerSchemes = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -250,7 +296,7 @@ void ibDirichletBCs::updateUTauAtIB
             // compute uTau based on values from the free stream
             if (Pstream::myProcNo() == fProc)
             {
-                if (interpolateKForUTau_)
+                if (uTauType_ == "firstInterpPoint")
                 {
                     // interpolate k
                     scalar kPoint = interpK->interpolate(fPoint, fCell);
@@ -307,7 +353,7 @@ void ibDirichletBCs::updateUTauAtIB
                     point recPoint = recFPoints[rCell];
 
                     scalar uTau;
-                    if (interpolateKForUTau_)
+                    if (uTauType_ == "firstInterpType")
                     {
                         // interpolate k
                         scalar kPoint = interpK->interpolate(recPoint, recCell);
@@ -375,9 +421,18 @@ void ibDirichletBCs::updateUTauAtIB
         }
     }
 
+    else
+    {
+        FatalError << "uTau type " << uTauType_ << " not implemented" << exit(FatalError);
+    }
+
     // post processing
     postProcessUTau();
+
+    // save
+    saveUTau();
 }
+
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::correctNutAtIB
 (
@@ -830,6 +885,25 @@ void ibDirichletBCs::postProcessUTau
 
     //~ // divide by total area
     //~ uTauAtIB_[Pstream::myProcNo()][bCell] /= totA;
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::saveUTau
+(
+)
+{
+    // reset saved data
+    uTaui_ *= 0.0;
+
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // save
+        uTaui_[cellI] = uTauAtIB_[Pstream::myProcNo()][bCell];
+    }
 }
 
 // ************************************************************************* //

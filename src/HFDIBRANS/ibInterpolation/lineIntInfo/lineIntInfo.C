@@ -122,7 +122,16 @@ void lineIntInfo::setIntpInfo
 
                 // new interpolation points
                 intPoint nIntPoint = findIntPoint(cIntPoint, cPoint);
+                if (i == 0)
+                {
+                    Info << iInfo << " old point: " << cIntPoint.iPoint_ << endl;
+                    Info << iInfo << " new point: " << nIntPoint.iPoint_ << endl;
+                }
                 correctIntPoint(ibPointsToSolve[proci][iInfo], nIntPoint);
+                if (i == 0)
+                {
+                    Info << iInfo << " corr point: " << nIntPoint.iPoint_ << endl;
+                }
 
                 // check if to send or keep
                 if (Pstream::myProcNo() != nIntPoint.iProc_)
@@ -282,6 +291,10 @@ void lineIntInfo::correctIntPoint
     }
 
     vector closestPoint = getClosestPoint(ibPoint, cPoint);
+    if (Foam::mag(cPoint.iPoint_.x()-0.02525) < 1e-6)
+    {
+        Info << "close: " << closestPoint << endl;
+    }
 
     if(pointInCell(closestPoint, cPoint.iCell_))
     {

@@ -322,9 +322,10 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
+        boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = intPoints[0].iPoint_;
+        boundaryCells_[Pstream::myProcNo()][bCell].fPoint_ = intPoints[1].iPoint_;
         boundaryCells_[Pstream::myProcNo()][bCell].fCell_ = intPoints[1].iCell_; 
         boundaryCells_[Pstream::myProcNo()][bCell].fProc_ = intPoints[1].iProc_;
-        boundaryCells_[Pstream::myProcNo()][bCell].fPoint_ = intPoints[1].iPoint_;
     }
 
     // Note (LK): parallelization of this was not fixed nor checked
@@ -1160,6 +1161,16 @@ void ibInterpolation::calculateSurfNorm
         // calculate the surface normal based on the body gradient
         surfNorm_ = -fvc::grad(body_);
         surfNorm_ /= (mag(surfNorm_) + deltaN);
+    }
+
+    // assign to boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // save surface normal
+        boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[cellI];
     }
 }
 

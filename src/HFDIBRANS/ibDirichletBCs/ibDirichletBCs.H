@@ -88,8 +88,8 @@ class ibDirichletBCs
     const volScalarField& body_;
     scalar thrSurf_;
     bool useYEff_;
-    bool uTauFromFreeStream_;
-    bool interpolateKForUTau_;
+    word uTauType_;
+    scalar uTauCoeff_;
 
     // fields
     List<List<scalar>> nutAtIB_;
@@ -110,6 +110,7 @@ class ibDirichletBCs
 
     // saves
     volScalarField yPlusi_;
+    volScalarField uTaui_;
 
     // RAS wall function names
     word nutWF_;
@@ -235,6 +236,9 @@ class ibDirichletBCs
 
     // post processing of uTau
     void postProcessUTau();
+
+    // save
+    void saveUTau();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
