@@ -724,6 +724,17 @@ void openHFDIBRANS::updateSurface
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::correctSurfaceByNormal
+(
+    volSymmTensorField& normSurface,
+    volScalarField& surface,
+    scalar bodyOnLimit
+)
+{
+    ibInterpolation_->correctSurfaceByNormal(normSurface, surface, bodyOnLimit);
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::correctY
 (
     volScalarField& y

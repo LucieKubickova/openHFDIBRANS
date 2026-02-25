@@ -114,6 +114,7 @@ class openHFDIBRANS
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
+    void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
 
     // correct y for blending functions in kOmegaSST
     void correctY(volScalarField& y);

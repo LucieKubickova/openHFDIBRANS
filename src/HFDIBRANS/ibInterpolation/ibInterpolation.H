@@ -49,6 +49,9 @@ Contributors
 #include "boundaryCell.H"
 #include "surfaceCell.H"
 
+#include "triSurfaceMesh.H"
+#include "triangleFuncs.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -72,6 +75,7 @@ class ibInterpolation
 
     // options
     word boundarySearch_;
+    word stlName_;
     bool excludeWalls_;
     bool readSurfNorm_;
     bool aveYOrtho_;
@@ -82,6 +86,13 @@ class ibInterpolation
     bool readL_;
     scalar valueL_;
     scalar innerThres_; // LK: experimental
+    bool sdBasedLambda_;
+
+    // stl things
+    word stlPath_;
+    autoPtr<triSurfaceMesh> bodySurfMesh_;
+    autoPtr<triSurface> triSurf_;
+    autoPtr<triSurfaceSearch> triSurfSearch_;
 
     // saves
     volScalarField iProci_;
@@ -172,6 +183,9 @@ class ibInterpolation
     void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
     // TODO: blended surface
 
+    // surface correction
+    void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
+
     // surface distance calculation
     void calculateBoundaryDist();
     void calculateSurfaceDist();
@@ -185,6 +199,9 @@ class ibInterpolation
 
     // surface normals
     void calculateSurfNorm();
+
+    // get closest point and normal from stl file
+    void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);

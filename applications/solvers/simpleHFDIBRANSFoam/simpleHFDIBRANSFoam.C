@@ -81,11 +81,15 @@ int main(int argc, char *argv[])
     bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
     bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
     bool enforceVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
+    bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>("useNormSurface", false);
+    scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>("normalCorrectionLimit", 0.5);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
     HFDIBRANS.createBaseSurface(surface, surfaceType, boundaryVal);
-    surface.correctBoundaryConditions(); // HERE NEW
+    surface.correctBoundaryConditions();
+    HFDIBRANS.correctSurfaceByNormal(normSurface, surface, normCorrLimit);
+    normSurface.correctBoundaryConditions();
 
     Ui *= 0.0;
     Ui.correctBoundaryConditions();

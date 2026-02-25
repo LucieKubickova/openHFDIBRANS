@@ -73,6 +73,17 @@ HFDIBDEMDict_
         IOobject::NO_WRITE
     )
 ),
+fvSchemes_
+(
+    IOobject
+    (
+        "fvSchemes",
+        "system",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+),
 yPlusi_
 (
     IOobject
@@ -103,6 +114,7 @@ beta1_(0.075)
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
     uTauFromFreeStream_ = HFDIBDEMDict_.lookupOrDefault<bool>("uTauFromFreeStream", true);
+    interpolateUTau_ = HFDIBDEMDict_.lookupOrDefault<bool>("interpolateUTau", false);
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -200,6 +212,7 @@ void ibDirichletBCs::updateUTauAtIB
 {
     // prepare sync
     List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
+    List<DynamicList<point>> fPointsToSync(Pstream::nProcs());
 
     // if uTau from boundary cell
     if (!uTauFromFreeStream_)
@@ -219,6 +232,10 @@ void ibDirichletBCs::updateUTauAtIB
 
     else
     {
+        // prepare interpolation scheme
+        dictionary HFDIBInnerSchemes = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
+        autoPtr<interpolation<scalar>> interpK = interpolation<scalar>::New(HFDIBInnerSchemes, k);
+
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
@@ -226,33 +243,51 @@ void ibDirichletBCs::updateUTauAtIB
             uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
 
             // get cell label
-            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
             label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
             label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
+            point fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint_;
 
             // compute uTau based on values from the free stream
             if (Pstream::myProcNo() == fProc)
             {
-                uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+                if (interpolateUTau_)
+                {
+                    // interpolate k
+                    scalar kPoint = interpK->interpolate(fPoint, fCell);
+
+                    // compute friction velocity
+                    uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(kPoint);
+                }
+
+                else
+                {
+                    // compute friction velocity
+                    uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+                }
             }
             else
             {
                 fCellsToSync[fProc].append(fCell);
+                fPointsToSync[fProc].append(fPoint);
             }
         }
 
         // sync with other processors
         PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
+        PstreamBuffers pBufsFPoints(Pstream::commsTypes::nonBlocking);
         for (label proci = 0; proci < Pstream::nProcs(); proci++)
         {
             if(proci != Pstream::myProcNo())
             {
                 UOPstream sendFCells(proci, pBufsFCells);
+                UOPstream sendFPoints(proci, pBufsFPoints);
                 sendFCells << fCellsToSync[proci];
+                sendFPoints << fPointsToSync[proci];
             }
         }
 
         pBufsFCells.finishedSends();
+        pBufsFPoints.finishedSends();
 
         // recieve
         List<DynamicList<scalar>> uTausToRetr(Pstream::nProcs());
@@ -261,15 +296,31 @@ void ibDirichletBCs::updateUTauAtIB
             if (proci != Pstream::myProcNo())
             {
                 UIPstream recvFCells(proci, pBufsFCells);
+                UIPstream recvFPoints(proci, pBufsFPoints);
                 DynamicList<label> recFCells (recvFCells);
+                DynamicList<point> recFPoints (recvFPoints);
 
                 forAll(recFCells, rCell)
                 {
                     // get the cell label
-                    label cellI = recFCells[rCell];
+                    label recCell = recFCells[rCell];
+                    point recPoint = recFPoints[rCell];
 
-                    // compute utau
-                    scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+                    if (interpolateUTau_)
+                    {
+                        // interpolate k
+                        scalar kPoint = interpK->interpolate(recPoint, recCell);
+
+                        // compute friction velocity
+                        scalar uTau = Cmu25_*Foam::sqrt(kPoint);
+                    }
+
+                    else
+                    {
+                        // compute friction velocity
+                        scalar uTau = Cmu25_*Foam::sqrt(k[recCell]);
+                    }
+
                     uTausToRetr[proci].append(uTau);
                 }
             }

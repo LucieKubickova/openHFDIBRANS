@@ -14,31 +14,60 @@ UEqn.relax();
 fvOptions.constrain(UEqn);
 
 HFDIBRANS.computeUi(U, Ui, surfaceType);
-Ui.correctBoundaryConditions(); // HERE NEW
+Ui.correctBoundaryConditions();
 HFDIBRANS.updateSurface(surface, surfaceType);
-surface.correctBoundaryConditions(); // HERE NEW
+surface.correctBoundaryConditions();
+HFDIBRANS.correctSurfaceByNormal(normSurface, surface, normCorrLimit);
+normSurface.correctBoundaryConditions();
 
 if (simple.momentumPredictor())
 {
     for (label nCorr = 0; nCorr < maxEqnIters; nCorr++)
     {
-        f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        if (useNormSurface)
+        {
+            f = normSurface & (UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        }
+
+        else
+        {
+            f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+        }
+
         if (cutForce)
         {
             HFDIBRANS.cutFInBoundaryCells(f);
         }
         solve(UEqn == -fvc::grad(p) + f);
 
-        Info << "HFDIBRANS: Max error in U -> Ui is " << (max(mag(surface*(Ui - U))).value()) << endl;
+        scalar error(0.0);
+        if (useNormSurface)
+        {
+            error = max(mag(normSurface & (Ui - U))).value();
+        }
 
-        if (max(mag(surface*(Ui - U))).value() < tolEqn)
+        else
+        {
+            error = max(mag(surface*(Ui - U))).value();
+        }
+        Info << "HFDIBRANS: Max error in U -> Ui is " << error << endl;
+
+        if (error < tolEqn)
         {
             Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolEqn << endl;
             break;
         }
 
         // apply correction 
-        U += 1.0*surface*(Ui - U);
+        if (useNormSurface)
+        {
+            U += 1.0*normSurface & (Ui - U);
+        }
+
+        else
+        {
+            U += 1.0*surface*(Ui - U);
+        }
     }
 
     fvOptions.correct(U);

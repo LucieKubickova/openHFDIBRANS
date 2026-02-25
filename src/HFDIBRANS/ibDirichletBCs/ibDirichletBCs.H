@@ -89,6 +89,7 @@ class ibDirichletBCs
     scalar thrSurf_;
     bool useYEff_;
     bool uTauFromFreeStream_;
+    bool interpolateUTau_;
 
     // fields
     List<List<scalar>> nutAtIB_;
@@ -101,6 +102,7 @@ class ibDirichletBCs
     // dictionaries
     IOdictionary turbulenceProperties_;
     IOdictionary HFDIBDEMDict_;
+    IOdictionary fvSchemes_;
     dictionary HFDIBBCsDict_;
 
     // simulation type
