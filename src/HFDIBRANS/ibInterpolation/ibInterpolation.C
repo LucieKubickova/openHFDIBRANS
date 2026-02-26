@@ -511,7 +511,7 @@ void ibInterpolation::findBoundaryCells
     {
         if (proci != Pstream::myProcNo())
         {
-            forAll(iCellsCmpl, rCell)
+            forAll(iCellsCmpl[proci], rCell)
             {
                 label iCell = iCellsCmpl[proci][rCell];
                 label bCell = bLabelsToRecv[proci][rCell];
