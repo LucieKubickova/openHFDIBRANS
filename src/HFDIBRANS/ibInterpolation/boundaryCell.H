@@ -44,17 +44,20 @@ namespace Foam
         // cell labels
         label bCell_ = 0; // boundary cell
         label iCell_ = 0; // inner cell
-        label fCell_ = 0; // free stream cell
+        label fCell1_ = 0; // first free stream cell
+        label fCell2_ = 0; // second free stream cell
 
         // proc labels
         label iProc_ = -1; // proc of the inner cell
         label iFace_ = -1; // label of the shared face at the proc-proc boundary
-        label fProc_ = -1; // proc of the free stream cell
+        label fProc1_ = -1; // proc of the first free stream cell
+        label fProc2_ = -1; // proc of the second free stream cell
 
         // interpolation info
         vector sNorm_ = vector::zero;
         point sPoint_ = vector::zero;
-        point fPoint_ = vector::zero;
+        point fPoint1_ = vector::zero;
+        point fPoint2_ = vector::zero;
 
         // distances
         scalar sigma_ = 0.0; // signed distance 
@@ -65,13 +68,16 @@ namespace Foam
         boundaryCell():
         bCell_(0),
         iCell_(0),
-        fCell_(0),
+        fCell1_(0),
+        fCell2_(0),
         iProc_(-1),
         iFace_(-1),
-        fProc_(-1),
+        fProc1_(-1),
+        fProc2_(-1),
         sNorm_(vector::zero),
         sPoint_(vector::zero),
-        fPoint_(vector::zero),
+        fPoint1_(vector::zero),
+        fPoint2_(vector::zero),
         sigma_(0.0),
         yOrtho_(0.0),
         yEff_(0.0)
@@ -82,25 +88,31 @@ namespace Foam
         (
             label bCell,
             label iCell,
-            label fCell,
+            label fCell1,
+            label fCell2,
             label iProc,
             label iFace,
-            label fProc,
+            label fProc1,
+            label fProc2,
             vector sNorm,
             point sPoint,
-            point fPoint,
+            point fPoint1,
+            point fPoint2,
             scalar sigma,
             scalar yOrtho,
             scalar yEff
         ):
         bCell_(bCell),
         iCell_(iCell),
-        fCell_(fCell),
+        fCell1_(fCell1),
+        fCell2_(fCell2),
         iProc_(iProc),
         iFace_(iFace),
-        fProc_(fProc),
+        fProc1_(fProc1),
+        fProc2_(fProc2),
         sNorm_(sNorm),
-        fPoint_(fPoint),
+        fPoint1_(fPoint1),
+        fPoint2_(fPoint2),
         sigma_(sigma),
         yOrtho_(yOrtho),
         yEff_(yEff)

@@ -239,6 +239,9 @@ class ibDirichletBCs
 
     // save
     void saveUTau();
+
+    // point in cell
+    bool pointInCell(point pToCheck, label cToCheck);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
