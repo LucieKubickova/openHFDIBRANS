@@ -248,7 +248,7 @@ void ibDirichletBCs::updateUTauAtIB
         }
     }
 
-    else if (uTauType_ == "effectiveDistance")
+    else if (uTauType_ == "effectiveDistance" or uTauType_ == "cellDistance" or uTauType_ == "coeffDistance")
     {
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -268,34 +268,46 @@ void ibDirichletBCs::updateUTauAtIB
             vector sNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
 
             // get distance
-            scalar yEff = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+            scalar dist;
+            if (uTauType_ == "effectiveDistance")
+            {
+                dist = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+            }
+            else if (uTauType_ == "cellDistance")
+            {
+                dist = Foam::pow(mesh_.V()[cellI],0.333);
+            }
+            else if (uTauType_ == "coeffDistance")
+            {
+                dist = 1.0; // Note (LK): value set by uTauCoeff
+            }
 
             // fictional point in effective distance
-            point yEffPoint = sPoint + uTauCoeff_*yEff*sNorm;
+            point distPoint = sPoint + uTauCoeff_*dist*sNorm;
 
             // check in which cell the point is
             label kCell;
             label kProc;
-            if (pointInCell(yEffPoint, cellI))
+            if (pointInCell(distPoint, cellI))
             {
                 kCell = cellI;
                 kProc = Pstream::myProcNo();
             }
-            else if (pointInCell(yEffPoint, fCell1))
+            else //~ if (pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
             {
                 kCell = fCell1;
                 kProc = fProc1;
             }
-            else
-            {
-                kCell = fCell2;
-                kProc = fProc2;
-            }
+            //~ else
+            //~ {
+                //~ kCell = fCell2;
+                //~ kProc = fProc2;
+            //~ }
 
             if (kProc == Pstream::myProcNo())
             {
                 // interpolate k
-                scalar kPoint = interpK->interpolate(yEffPoint, kCell);
+                scalar kPoint = interpK->interpolate(distPoint, kCell);
 
                 // compute friction velocity
                 uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(kPoint);
@@ -304,7 +316,7 @@ void ibDirichletBCs::updateUTauAtIB
             else
             {
                 fCellsToSync[kProc].append(kCell);
-                fPointsToSync[kProc].append(yEffPoint);
+                fPointsToSync[kProc].append(distPoint);
                 bLabelsToRecv[kProc].append(bCell);
             }
         }

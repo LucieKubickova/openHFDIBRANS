@@ -1220,9 +1220,10 @@ void ibInterpolation::calculateBoundaryDist
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
+            l = getCellSize(outCellI);
+
             if (sdBasedLambda_)
             {
-                l = getCellSize(outCellI);
                 sigma = -1*Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y < 0 for lambda < 0.5
             }
 
