@@ -230,6 +230,7 @@ void ibDirichletBCs::updateUTauAtIB
     // prepare sync
     List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
     List<DynamicList<point>> fPointsToSync(Pstream::nProcs());
+    List<DynamicList<label>> bLabelsToRecv(Pstream::nProcs());
 
     // if uTau from boundary cell
     if (uTauType_ == "boundaryCell")
@@ -304,6 +305,7 @@ void ibDirichletBCs::updateUTauAtIB
             {
                 fCellsToSync[kProc].append(kCell);
                 fPointsToSync[kProc].append(yEffPoint);
+                bLabelsToRecv[kProc].append(bCell);
             }
         }
     }
@@ -343,6 +345,7 @@ void ibDirichletBCs::updateUTauAtIB
             {
                 fCellsToSync[fProc].append(fCell);
                 fPointsToSync[fProc].append(fPoint);
+                bLabelsToRecv[fProc].append(bCell);
             }
         }
     }
@@ -432,25 +435,18 @@ void ibDirichletBCs::updateUTauAtIB
 
     pBufsFCells.clear();
 
-    // prepare counter
-    List<label> counter(Pstream::nProcs());
+    // complete uTau
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
-        counter[proci] = 0;
-    }
-
-    // complete uTau
-    forAll(uTauAtIB_[Pstream::myProcNo()], bCell)
-    {
-        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
-        if (fProc != Pstream::myProcNo())
+        if (proci != Pstream::myProcNo())
         {
-            // get the returned uTau
-            scalar uTau = uTausCmpl[fProc][counter[fProc]];
-            ++counter[fProc];
+            forAll(uTausCmpl[proci], rCell)
+            {
+                scalar uTau = uTausCmpl[proci][rCell];
+                label bLabel = bLabelsToRecv[proci][rCell];
 
-            // save
-            uTauAtIB_[Pstream::myProcNo()][bCell] = uTau;
+                uTauAtIB_[Pstream::myProcNo()][bLabel] = uTau;
+            }
         }
     }
 

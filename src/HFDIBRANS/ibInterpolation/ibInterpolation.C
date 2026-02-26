@@ -415,6 +415,9 @@ void ibInterpolation::findBoundaryCells
 
     // sync with other processors
     List<DynamicList<label>> iFacesToSync(Pstream::nProcs());
+    List<DynamicList<label>> bLabelsToRecv(Pstream::nProcs());
+
+    // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
@@ -423,6 +426,7 @@ void ibInterpolation::findBoundaryCells
         if (iProc != Pstream::myProcNo())
         {
             iFacesToSync[iProc].append(iFace);
+            bLabelsToRecv[iProc].append(bCell);
         }
     }
 
@@ -480,7 +484,7 @@ void ibInterpolation::findBoundaryCells
     // return
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
-        if(proci != Pstream::myProcNo())
+        if (proci != Pstream::myProcNo())
         {
             UOPstream sendICells(proci, pBufsIFaces);
             sendICells << iCellsToRetr[proci];
@@ -502,25 +506,17 @@ void ibInterpolation::findBoundaryCells
 
     pBufsIFaces.clear();
 
-    // prepare counter
-    List<label> counter(Pstream::nProcs());
+    // complete boundary cells
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
-        counter[proci] = 0;
-    }
-
-    // complete boundary cells
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    {
-        label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
-        if (iProc != Pstream::myProcNo())
-        {   
-            // get the returned cell label
-            label rCell = iCellsCmpl[iProc][counter[iProc]];
-            ++counter[iProc];
-
-            // save
-            boundaryCells_[Pstream::myProcNo()][bCell].iCell_ = rCell;
+        if (proci != Pstream::myProcNo())
+        {
+            forAll(iCellsCmpl, rCell)
+            {
+                label iCell = iCellsCmpl[proci][rCell];
+                label bCell = bLabelsToRecv[proci][rCell];
+                boundaryCells_[Pstream::myProcNo()][bCell].iCell_ = iCell;
+            }
         }
     }
 
