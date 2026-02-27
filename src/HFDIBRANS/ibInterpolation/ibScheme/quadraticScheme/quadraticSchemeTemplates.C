@@ -37,16 +37,14 @@ Contributors
 using namespace Foam;
 
 //--------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
+template <typename Type>
 Type quadraticScheme::interpolateT
 (
-    volTypeField& phi,
     List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    List<intPoint>& intInfo,
-    label& cellI
+    List<intPoint>& intInfo
 )
 {
     // get interpolation order

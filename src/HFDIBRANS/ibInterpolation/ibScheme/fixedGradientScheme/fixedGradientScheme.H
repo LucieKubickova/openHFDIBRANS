@@ -58,59 +58,51 @@ class fixedGradientScheme
     // -- wrapper on interpolate functions
     scalar interpolate
     (
-        volScalarField& phi,
         List<scalar>& phiPs,
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     )
     {
-        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phiPs, dirichletVal, scale, ds, intInfo);
     }
 
     vector interpolate
     (
-        volVectorField& phi,
         List<vector>& phiPs,
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     )
     {
-        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phiPs, dirichletVal, scale, ds, intInfo);
     }
 
     tensor interpolate
     (
-        volTensorField& phi,
         List<tensor>& phiPs,
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     )
     {
-        return interpolateT(phi, phiPs, dirichletVal, scale, ds, intInfo, cellI);
+        return interpolateT(phiPs, dirichletVal, scale, ds, intInfo);
     }
     
     private:
 
     // -- templated interpolate funtion
-    template <typename Type, typename volTypeField>
+    template <typename Type>
     Type interpolateT
     (
-        volTypeField& phi,
         List<Type>& phiPs,
         Type& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     );
 };
 

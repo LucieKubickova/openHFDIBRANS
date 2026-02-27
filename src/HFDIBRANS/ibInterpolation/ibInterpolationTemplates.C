@@ -42,7 +42,7 @@ using namespace Foam;
 
 //---------------------------------------------------------------------------//
 template <typename Type, typename volTypeField>
-void ibInterpolation::unifunctionalInterp
+void ibInterpolation::outerInterp
 (
     ITstream& ibSchemeName,
     volTypeField& phi,
@@ -77,13 +77,11 @@ void ibInterpolation::unifunctionalInterp
         // interpolate
         phii[cellI] = interpFunc->interpolate
         (
-            phi,
             phiInIntPoints[bCell],
             dirichletVals[bCell],
             scales[bCell],
             boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-            lineIntInfoBoundary_->getIntPoints()[bCell],
-            cellI
+            lineIntInfoBoundary_->getIntPoints()[bCell]
         );
     }
 }
@@ -126,13 +124,11 @@ void ibInterpolation::lambdaBasedInterp
         // interpolate
         phii[cellI] = interpFunc->interpolate
         (
-            phi,
             phiInIntPoints[sCell],
             dirichletVals[sCell],
             scales[sCell],
             surfaceCells_[Pstream::myProcNo()][sCell].sigma_,
-            lineIntInfoSurface_->getIntPoints()[sCell],
-            cellI
+            lineIntInfoSurface_->getIntPoints()[sCell]
         );
     }
 }
@@ -180,13 +176,11 @@ void ibInterpolation::switchedInterp
         {
             phii[cellI] = higherFunc->interpolate
             (
-                phi,
                 phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-                lineIntInfoBoundary_->getIntPoints()[bCell],
-                cellI
+                lineIntInfoBoundary_->getIntPoints()[bCell]
             );
         }
 
@@ -194,13 +188,11 @@ void ibInterpolation::switchedInterp
         {
             phii[cellI] = lowerFunc->interpolate
             (
-                phi,
                 phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-                lineIntInfoBoundary_->getIntPoints()[bCell],
-                cellI
+                lineIntInfoBoundary_->getIntPoints()[bCell]
             );
         }
     }
@@ -266,13 +258,11 @@ void ibInterpolation::outerInnerInterp
             // Note (LK): constant won't work
             Type phiS = innerFunc->interpolate
             (
-                phi,
                 phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
-                lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed, but not used now
-                outCellI
+                lineIntInfoBoundary_->getIntPoints()[bCell] // Note (LK): wrong interpolation info passed, but not used now
             );
 
             if (Pstream::myProcNo() == iProc)
@@ -291,13 +281,11 @@ void ibInterpolation::outerInnerInterp
         {
             phii[outCellI] = outerFunc->interpolate
             (
-                phi,
                 phiInIntPoints[bCell],
                 dirichletVals[bCell],
                 scales[bCell],
                 boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_,
-                lineIntInfoBoundary_->getIntPoints()[bCell],
-                outCellI
+                lineIntInfoBoundary_->getIntPoints()[bCell]
             );
         }
     }
@@ -381,7 +369,6 @@ void ibInterpolation::innerInterp
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get the inner cell label
-        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
         label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
 
@@ -395,13 +382,11 @@ void ibInterpolation::innerInterp
         // Note (LK): logarithm of negative number?
         Type phiS = interpFunc->interpolate
         (
-            phi,
             phiInIntPoints[bCell],
             dirichletVals[bCell],
             scales[bCell],
             boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
-            lineIntInfoBoundary_->getIntPoints()[bCell], // Note (LK): wrong interpolation info passed, but not used now
-            outCellI
+            lineIntInfoBoundary_->getIntPoints()[bCell] // Note (LK): wrong interpolation info passed, but not used now
         );
 
         if (Pstream::myProcNo() == iProc)

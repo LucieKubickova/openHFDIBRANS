@@ -189,9 +189,9 @@ void openHFDIBRANS::computeUi
     word interpType = UIBScheme[0].wordToken();
 
     // interpolation
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
+        ibInterpolation_->outerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
     }
 
     else if (interpType == "lambdaBased")
@@ -268,9 +268,9 @@ void openHFDIBRANS::computeKi
     word interpType = kIBScheme[0].wordToken();
 
     // interpolation
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales);
+        ibInterpolation_->outerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales);
     }
 
     else if (interpType == "switched")
@@ -373,9 +373,9 @@ void openHFDIBRANS::computeTi
     word interpType = TIBScheme[0].wordToken();
 
     // use boundary condition
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+        ibInterpolation_->outerInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
     }
 
     else if (interpType == "lambdaBased")

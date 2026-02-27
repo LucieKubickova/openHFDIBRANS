@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*\
+*---------------------------------------------------------------------------*\
                         _   _ ____ ____ _____ _____ _____ _____ _    _  _____
                        | | | |  __|  _ \_   _|  __ \  __ \  _  \ \  | |/  _  \
   ___  _ __   ___ _ __ | |_| | |_ | | | || | | |_/ / |_/ / |_| |  \ | |  |_|_/
@@ -37,16 +37,14 @@ Contributors
 using namespace Foam;
 
 //--------------------------------------------------------------------------//
-template <typename Type, typename volTypeField>
+template <typename Type>
 Type logarithmicScheme::interpolateT
 (
-    volTypeField& phi,
     List<Type>& phiPs,
     Type& dirichletVal,
     scalar& scale,
     scalar& ds,
-    List<intPoint>& intInfo,
-    label& cellI
+    List<intPoint>& intInfo
 )
 {
     // get interpolation order

@@ -137,11 +137,11 @@ class ibInterpolation
 
     // Public methods --------------------------------------------------
     // -- interpolation approaches
-    // unifunctional interpolation
+    // outer interpolation
     template <typename Type, typename volTypeField>
-    void unifunctionalInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
+    void outerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
-    // lambda based interpolation (unifuncional)
+    // lambda based interpolation
     template <typename Type, typename volTypeField>
     void lambdaBasedInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
@@ -153,7 +153,7 @@ class ibInterpolation
     template <typename Type, typename volTypeField>
     void outerInnerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
-    // inner unifunctional interpolation
+    // inner interpolation
     template <typename Type, typename volTypeField>
     void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
