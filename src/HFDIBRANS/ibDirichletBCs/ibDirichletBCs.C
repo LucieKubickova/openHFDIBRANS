@@ -322,7 +322,7 @@ void ibDirichletBCs::updateUTauAtIB
         }
     }
 
-    else if (uTauType_ == "freeStreamCell" or uTauType_ == "firstInterpPoint")
+    else if (uTauType_ == "freeStreamCell" or uTauType_ == "interpPoint")
     {
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -331,14 +331,31 @@ void ibDirichletBCs::updateUTauAtIB
             uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
 
             // get cell label
-            label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
-            label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
-            point fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // prepare
+            label fCell(0);
+            label fProc(-1);
+            point fPoint(vector::zero);
+
+            // check body
+            if (body_[cellI] < thrSurf_)
+            {
+                fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+                fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+                fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+            }
+            else
+            {
+                fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
+                fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
+                fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_;
+            }
 
             // compute uTau based on values from the free stream
             if (Pstream::myProcNo() == fProc)
             {
-                if (uTauType_ == "firstInterpPoint")
+                if (uTauType_ == "interpPoint")
                 {
                     // interpolate k
                     scalar kPoint = interpK->interpolate(fPoint, fCell);

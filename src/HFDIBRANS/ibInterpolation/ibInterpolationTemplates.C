@@ -378,6 +378,18 @@ void ibInterpolation::innerInterp
         //~ intInfoToSend.intPoints_[2] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_[1];
         //~ intInfoToSend.intCells_[0] = outCellI;
         //~ intInfoToSend.intCells_[1] = intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_[0];
+
+        // get distance from surface point
+        scalar ds(0.0);
+        if (Pstream::myProcNo() == iProc)
+        {
+            ds = mag(mesh_.C()[inCellI] - boundaryCells_[Pstream::myProcNo()][bCell].sPoint_);
+            ds *= -1;
+        }
+        else
+        {
+            FatalError << "Inner interpolation not implemented in parallel" << exit(FatalError);
+        }
         
         // Note (LK): logarithm of negative number?
         Type phiS = interpFunc->interpolate
@@ -385,7 +397,8 @@ void ibInterpolation::innerInterp
             phiInIntPoints[bCell],
             dirichletVals[bCell],
             scales[bCell],
-            boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
+            ds,
+            //~ boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
             lineIntInfoBoundary_->getIntPoints()[bCell] // Note (LK): wrong interpolation info passed, but not used now
         );
 

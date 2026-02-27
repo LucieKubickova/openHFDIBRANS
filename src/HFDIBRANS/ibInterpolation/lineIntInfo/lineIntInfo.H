@@ -91,6 +91,7 @@ class lineIntInfo
     List<label> ibCells_;
     List<point> ibPoints_;
     List<vector> ibNormals_;
+    bool correctIntPoints_;
 
     private:
 
@@ -153,7 +154,8 @@ class lineIntInfo
         const fvMesh& mesh,
         List<label> ibCells,
         List<point> ibPoints,
-        List<vector> ibNormals
+        List<vector> ibNormals,
+        bool correctIntPoints
     );
 
     // Destructors -------------------------------------------------

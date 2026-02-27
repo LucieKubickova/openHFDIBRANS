@@ -40,13 +40,15 @@ lineIntInfo::lineIntInfo
     const fvMesh& mesh,
     List<label> ibCells,
     List<point> ibPoints,
-    List<vector> ibNormals
+    List<vector> ibNormals,
+    bool correctIntPoints
 )
 :
 mesh_(mesh),
 ibCells_(ibCells),
 ibPoints_(ibPoints),
-ibNormals_(ibNormals)
+ibNormals_(ibNormals),
+correctIntPoints_(correctIntPoints)
 {}
 lineIntInfo::~lineIntInfo()
 {}
@@ -122,7 +124,10 @@ void lineIntInfo::setIntpInfo
 
                 // new interpolation points
                 intPoint nIntPoint = findIntPoint(cIntPoint, cPoint);
-                correctIntPoint(ibPointsToSolve[proci][iInfo], nIntPoint);
+                if (correctIntPoints_)
+                {
+                    correctIntPoint(ibPointsToSolve[proci][iInfo], nIntPoint);
+                }
 
                 // check if to send or keep
                 if (Pstream::myProcNo() != nIntPoint.iProc_)
@@ -208,7 +213,10 @@ void lineIntInfo::setIntpInfo
                 vector dir = cIntPoint.iPoint_ - ibPointsRecv[proci][iInfo];
                 dir /= mag(dir);
 
-                correctIntPoint(ibPointsRecv[proci][iInfo], cIntPoint);
+                if (correctIntPoints_)
+                {
+                    correctIntPoint(ibPointsRecv[proci][iInfo], cIntPoint);
+                }
 
                 intPointsRecv[proci][iInfo] = cIntPoint;
             }
@@ -734,7 +742,10 @@ void lineIntInfo::syncIntPoints()
             vector dir = foundP.iPoint_ - ibPointsRecv[proci][ibpI];
             dir /= mag(dir);
 
-            correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
+            if (correctIntPoints_)
+            {
+                correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
+            }
 
             intPointToRetr[proci].append(foundP.iPoint_);
             intCellToRetr[proci].append(foundP.iCell_);
@@ -753,7 +764,10 @@ void lineIntInfo::syncIntPoints()
                 } while(pointInCell(cPoint, cIntPoint.iCell_));
 
                 foundP = findIntPoint(cIntPoint, cPoint);
-                correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
+                if (correctIntPoints_)
+                {
+                    correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
+                }
                 cIntPoint = foundP;
 
                 if(cIntPoint.iProc_ != Pstream::myProcNo()) // Note (LK): changed this to be the intPoints proci, not the sCell proci, needs check elsewhere

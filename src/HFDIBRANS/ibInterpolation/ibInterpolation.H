@@ -87,6 +87,7 @@ class ibInterpolation
     scalar valueL_;
     scalar innerThres_; // LK: experimental
     bool sdBasedLambda_;
+    bool correctIntPoints_;
 
     // stl things
     word stlPath_;

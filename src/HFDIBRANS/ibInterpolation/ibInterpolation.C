@@ -159,6 +159,7 @@ fvSchemes_
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
     innerThres_ = HFDIBDEMDict_.lookupOrDefault<scalar>("innerThreshold", 0.5); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
+    correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", true);
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -313,7 +314,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, bCells, bPoints, bNormals));
+    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, bCells, bPoints, bNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoBoundary_->setIntpInfo();
@@ -355,7 +356,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoSurface_.set(new lineIntInfo(mesh_, sCells, sPoints, sNormals));
+    lineIntInfoSurface_.set(new lineIntInfo(mesh_, sCells, sPoints, sNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoSurface_->setIntpInfo();
@@ -1648,20 +1649,75 @@ void ibInterpolation::saveInterpolationInfo
     autoPtr<OFstream> outFilePtr;
     word fileName = name + "_boundary.dat";
     outFilePtr.reset(new OFstream(outDir/fileName));
-    outFilePtr() << "cellI,inCellI,freeCellI,outCellCenter,inCellCenter,freeCellCenter,surfNorm,surfNormIn,bodyOut,bodyIn,sigma,yOrtho,yEff,order,intPoints,intCells" << endl;
+    outFilePtr() << "cellI" << ","
+        << "surfNorm_x" << ","
+        << "surfNorm_y" << ","
+        << "surfNorm_z" << ","
+        << "sigma" << ","
+        << "yOrtho" << ","
+        << "intCell0" << ","
+        << "intCell1" << ","
+        << "intCell2" << ","
+        << "intPoint0_x" << ","
+        << "intPoint0_y" << ","
+        << "intPoint0_z" << ","
+        << "intPoint1_x" << ","
+        << "intPoint1_y" << ","
+        << "intPoint1_z" << ","
+        << "intPoint2_x" << ","
+        << "intPoint2_y" << ","
+        << "intPoint2_z" << endl;
+
+    // loop over boundary cells
+    if (Pstream::nProcs() == 1)
+    {
+        List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            boundaryCell cellToSave = boundaryCells_[Pstream::myProcNo()][bCell];
+
+            outFilePtr() << cellToSave.bCell_ << ","
+                << surfNorm_[cellToSave.bCell_].x() << ","
+                << surfNorm_[cellToSave.bCell_].y() << ","
+                << surfNorm_[cellToSave.bCell_].z() << ","
+                << cellToSave.sigma_ << ","
+                << cellToSave.yOrtho_ << ","
+                << intInfos[bCell][0].iCell_ << ","
+                << intInfos[bCell][1].iCell_ << ","
+                << intInfos[bCell][2].iCell_ << ","
+                << intInfos[bCell][0].iPoint_.x() << ","
+                << intInfos[bCell][0].iPoint_.y() << ","
+                << intInfos[bCell][0].iPoint_.z() << ","
+                << intInfos[bCell][1].iPoint_.x() << ","
+                << intInfos[bCell][1].iPoint_.y() << ","
+                << intInfos[bCell][1].iPoint_.z() << ","
+                << intInfos[bCell][2].iPoint_.x() << ","
+                << intInfos[bCell][2].iPoint_.y() << ","
+                << intInfos[bCell][2].iPoint_.z() << endl;
+        }
+    }
+
+
+    // Note (LK): OLD SAVE SYSTEM
+    //~ outFilePtr() << "cellI,inCellI,freeCellI1,freeCellI2,outCellCenter,inCellCenter,freeCellCenter1,freeCellCenter2,surfNorm,surfNormIn,bodyOut,bodyIn,sigma,yOrtho,yEff,intCells,intPoints" << endl;
 
     // Note (LK): this needs fixing 
     // loop over boundary cells
     //~ if (Pstream::nProcs() == 1)
     //~ {
+        //~ List<List<intPoint>>& intInfos = lineIntInfoBoundary_->getIntPoints();
+
         //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         //~ {
             //~ outFilePtr() << boundaryCells_[Pstream::myProcNo()][bCell].bCell_ << ","
                 //~ << boundaryCells_[Pstream::myProcNo()][bCell].iCell_ << ","
-                //~ << boundaryCells_[Pstream::myProcNo()][bCell].fCell_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].fCell1_ << ","
+                //~ << boundaryCells_[Pstream::myProcNo()][bCell].fCell2_ << ","
                 //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
                 //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
-                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].fCell_] << ","
+                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].fCell1_] << ","
+                //~ << mesh_.C()[boundaryCells_[Pstream::myProcNo()][bCell].fCell2_] << ","
                 //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
                 //~ << surfNorm_[boundaryCells_[Pstream::myProcNo()][bCell].iCell_] << ","
                 //~ << body_[boundaryCells_[Pstream::myProcNo()][bCell].bCell_] << ","
@@ -1669,9 +1725,12 @@ void ibInterpolation::saveInterpolationInfo
                 //~ << boundaryCells_[Pstream::myProcNo()][bCell].sigma_ << ","
                 //~ << boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_ << ","
                 //~ << boundaryCells_[Pstream::myProcNo()][bCell].yEff_ << ","
-                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].order_ << ","
-                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intPoints_ << ","
-                //~ << intInfoListBoundary_[Pstream::myProcNo()][bCell].intCells_ << endl;
+                //~ << intInfos[bCell][0].iCell_ << ","
+                //~ << intInfos[bCell][0].iPoint_ << ","
+                //~ << intInfos[bCell][1].iCell_ << ","
+                //~ << intInfos[bCell][1].iPoint_ << ","
+                //~ << intInfos[bCell][2].iCell_ << ","
+                //~ << intInfos[bCell][2].iPoint_ << endl;
         //~ }
     //~ }
 
@@ -1681,20 +1740,25 @@ void ibInterpolation::saveInterpolationInfo
     outFilePtr() << "cellI,cellCenter,surfNorm,body,sigma,order,intPoints,intCells" << endl;
 
     // loop over surface cells
-    //~ if (Pstream::nProcs() == 1)
-    //~ {
-        //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
-        //~ {
-            //~ outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell].sCell_ << ","
-                //~ << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-                //~ << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-                //~ << body_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
-                //~ << surfaceCells_[Pstream::myProcNo()][sCell].sigma_ << ","
-                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].order_ << ","
-                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intPoints_ << ","
-                //~ << intInfoListSurface_[Pstream::myProcNo()][sCell].intCells_ << endl;
-        //~ }
-    //~ }
+    if (Pstream::nProcs() == 1)
+    {
+        List<List<intPoint>>& intInfos = lineIntInfoSurface_->getIntPoints();
+
+        forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+        {
+            outFilePtr () << surfaceCells_[Pstream::myProcNo()][sCell].sCell_ << ","
+                << mesh_.C()[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                << surfNorm_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                << body_[surfaceCells_[Pstream::myProcNo()][sCell].sCell_] << ","
+                << surfaceCells_[Pstream::myProcNo()][sCell].sigma_ << ","
+                << intInfos[sCell][0].iCell_ << ","
+                << intInfos[sCell][0].iPoint_ << ","
+                << intInfos[sCell][1].iCell_ << ","
+                << intInfos[sCell][1].iPoint_ << ","
+                << intInfos[sCell][2].iCell_ << ","
+                << intInfos[sCell][2].iPoint_ << endl;
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//
