@@ -159,7 +159,7 @@ fvSchemes_
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
     innerThres_ = HFDIBDEMDict_.lookupOrDefault<scalar>("innerThreshold", 0.5); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
-    correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", true);
+    correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", false);
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
