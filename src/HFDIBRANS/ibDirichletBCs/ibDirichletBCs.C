@@ -110,6 +110,19 @@ uTaui_
     mesh_,
     dimensionedScalar("zero", dimless, 0.0)
 ),
+tauwi_
+(
+    IOobject
+    (
+        "tauwi",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedVector("zero", dimless, vector::zero)
+),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -118,6 +131,7 @@ beta1_(0.075)
 {
     // initiate lists
     nutAtIB_.setSize(Pstream::nProcs());
+    kAtIB_.setSize(Pstream::nProcs());
     uTauAtIB_.setSize(Pstream::nProcs());
 
     // read turbulence properties
@@ -173,10 +187,12 @@ void ibDirichletBCs::setSizeToLists
     {
         // set size
         nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+        kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
         uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
 
         // reset
         nutAtIB_[Pstream::myProcNo()] = 0.0;
+        kAtIB_[Pstream::myProcNo()] = 0.0;
         uTauAtIB_[Pstream::myProcNo()] = 0.0;
     }
 }
@@ -268,7 +284,7 @@ void ibDirichletBCs::updateUTauAtIB
             vector sNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
 
             // get distance
-            scalar dist;
+            scalar dist(0.0);
             if (uTauType_ == "effectiveDistance")
             {
                 dist = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
@@ -590,6 +606,12 @@ void ibDirichletBCs::kAtIB
             kIB[bCell] = max(kIB[bCell], small);
         }
 
+        // save
+        forAll(kIB, bCell)
+        {
+            kAtIB_[Pstream::myProcNo()][bCell] = kIB[bCell];
+        }
+
         // save kIB
         //~ word fileName = "k.dat";
         //~ word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
@@ -670,7 +692,12 @@ void ibDirichletBCs::omegaGAtIB
         //~ nearWallDist yWall(mesh_); // not used now
 
         // prepare
-        vector zeroU = vector::zero;
+        //~ vector zeroU = vector::zero;
+
+        // get surface normal gradient
+        List<DynamicList<vector>> snGradU;
+        snGradU.setSize(Pstream::nProcs());
+        snGradUAtIB(U, snGradU);
 
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -694,8 +721,8 @@ void ibDirichletBCs::omegaGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            vector snGradU = (zeroU - U[cellI])/yOrtho; // Note (LK): should this be ever done from yEff?
-            scalar magGradUWall = mag(snGradU);
+            //~ vector snGradU = (zeroU - U[cellI])/yOrtho; // Note (LK): should this be ever done from yEff?
+            scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -771,7 +798,12 @@ void ibDirichletBCs::epsilonGAtIB
         //~ nearWallDist yWall(mesh_); // not used now
 
         // prepare
-        vector zeroU = vector::zero;
+        //~ vector zeroU = vector::zero;
+
+        // get surface normal gradient
+        List<DynamicList<vector>> snGradU;
+        snGradU.setSize(Pstream::nProcs());
+        snGradUAtIB(U, snGradU);
 
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -795,8 +827,9 @@ void ibDirichletBCs::epsilonGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            vector snGradU = (zeroU - U[cellI])/yOrtho;
-            scalar magGradUWall = mag(snGradU);
+            //~ vector snGradU = (zeroU - U[cellI])/yOrtho;
+            //~ scalar magGradUWall = mag(snGradU);
+            scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -941,6 +974,50 @@ void ibDirichletBCs::postProcessUTau
 }
 
 //---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateWallShearStress
+(
+    const volVectorField& U,
+    volScalarField& nu
+)
+{
+    // reset
+    tauwi_ *= 0.0;
+
+    // prepare list
+    List<vector> tauwIB;
+    tauwIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
+
+    // prepare grad fields
+    volTensorField gradU = fvc::grad(U);
+    List<DynamicList<vector>> snGradU;
+    snGradU.setSize(Pstream::nProcs());
+    snGradUAtIB(U, snGradU);
+
+    // loop over boundar cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // calculate effective nu
+        scalar nuEff = nu[cellI] + nutAtIB_[Pstream::myProcNo()][bCell];
+
+        // correct gradient
+        vector normal = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+        tensor correction = normal * (snGradU[Pstream::myProcNo()][bCell] - (normal & gradU[cellI]));
+
+        // calculate dev tau
+        symmTensor devTau = -nuEff * dev(twoSymm(gradU[cellI] + correction));
+
+        // calculate wall shear stress
+        tauwIB[bCell] = -normal & devTau;
+
+        // save
+        tauwi_[cellI] = tauwIB[bCell];
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibDirichletBCs::saveUTau
 (
 )
@@ -979,6 +1056,32 @@ bool ibDirichletBCs::pointInCell // copy from lineIntInfo
         }
     }
     return true;
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::snGradUAtIB
+(
+    const volVectorField& U,
+    List<DynamicList<vector>>& snGradU
+)
+{
+    // Note (LK): possibility to add new sn grad schemes here
+
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // get distance to surface
+        scalar yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+
+        // calculate surface normal gradient
+        vector snGrad = (vector::zero - U[cellI])/yOrtho; // Note (LK): not moving solid considered, should be changed
+
+        // assign
+        snGradU[Pstream::myProcNo()].append(snGrad);
+    }
 }
 
 // ************************************************************************* //

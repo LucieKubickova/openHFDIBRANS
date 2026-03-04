@@ -116,6 +116,9 @@ class openHFDIBRANS
     void updateSurface(volScalarField& surface, word surfType);
     void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
 
+    // calculations
+    void calculateWallShearStress(const volVectorField& U, volScalarField& nu);
+
     // correct y for blending functions in kOmegaSST
     void correctY(volScalarField& y);
 

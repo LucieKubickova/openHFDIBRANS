@@ -735,6 +735,16 @@ void openHFDIBRANS::correctSurfaceByNormal
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateWallShearStress
+(
+    const volVectorField& U,
+    volScalarField& nu
+)
+{
+    ibDirichletBCs_->calculateWallShearStress(U, nu);
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::correctY
 (
     volScalarField& y

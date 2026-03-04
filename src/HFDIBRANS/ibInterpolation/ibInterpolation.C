@@ -1585,7 +1585,31 @@ void ibInterpolation::calculateSurfaceDist
         scalar l = getCellSize(cellI);
 
         // calculate signed distance
-        sigma = -1*Foam::atanh(1-2*body_[cellI])*l/intSpan_;
+        if (sdBasedLambda_)
+        {
+            sigma = -1*Foam::atanh(1-2*body_[cellI])*l/intSpan_;
+        }
+
+        else
+        {
+            scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+            vector surfPoint = vector::zero;
+            vector surfNorm = vector::zero;
+
+            getClosestPointAndNormal(
+                mesh_.C()[cellI],
+                intDist*2*vector::one,
+                surfPoint,
+                surfNorm
+            );
+
+            sigma = mag(surfPoint - mesh_.C()[cellI]);
+            if (body_[cellI] < 0.5)
+            {
+                sigma *= -1;
+            }
+            surfNorm_[cellI] = surfNorm/mag(surfNorm);
+        }
 
         // assign
         surfaceCells_[Pstream::myProcNo()][sCell].sigma_ = sigma;

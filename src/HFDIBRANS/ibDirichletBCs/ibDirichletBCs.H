@@ -93,6 +93,7 @@ class ibDirichletBCs
 
     // fields
     List<List<scalar>> nutAtIB_;
+    List<List<scalar>> kAtIB_;
     List<List<scalar>> uTauAtIB_;
 
     // references to shared data
@@ -111,6 +112,7 @@ class ibDirichletBCs
     // saves
     volScalarField yPlusi_;
     volScalarField uTaui_;
+    volVectorField tauwi_;
 
     // RAS wall function names
     word nutWF_;
@@ -234,14 +236,26 @@ class ibDirichletBCs
         return nutAtIB_;
     }
 
+    // get k at immersed boundary
+    List<List<scalar>>& getKAtIB()
+    {
+        return kAtIB_;
+    }
+
     // post processing of uTau
     void postProcessUTau();
+
+    // wall shear stress
+    void calculateWallShearStress(const volVectorField& U, volScalarField& nu);
 
     // save
     void saveUTau();
 
     // point in cell
     bool pointInCell(point pToCheck, label cToCheck);
+
+    // surface gradient
+    void snGradUAtIB(const volVectorField& U, List<DynamicList<vector>>& snGradU);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
