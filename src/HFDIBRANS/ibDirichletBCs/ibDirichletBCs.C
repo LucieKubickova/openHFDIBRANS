@@ -977,7 +977,7 @@ void ibDirichletBCs::postProcessUTau
 void ibDirichletBCs::calculateWallShearStress
 (
     const volVectorField& U,
-    volScalarField& nu
+    const volScalarField& nu
 )
 {
     // reset
@@ -1073,8 +1073,16 @@ void ibDirichletBCs::snGradUAtIB
         // get the cell label
         label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
-        // get distance to surface
-        scalar yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        // get distance to the surface
+        scalar yOrtho;
+        if (useYEff_)
+        {
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+        }
+        else
+        {
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        }
 
         // calculate surface normal gradient
         vector snGrad = (vector::zero - U[cellI])/yOrtho; // Note (LK): not moving solid considered, should be changed

@@ -62,7 +62,7 @@ surfNorm_
         IOobject::AUTO_WRITE
     ),
     mesh_,
-    dimensionedVector("zero", dimless/dimLength, vector::zero)
+    dimensionedVector("zero", dimless, vector::zero)
 ),
 iProci_
 (
@@ -1163,12 +1163,15 @@ void ibInterpolation::calculateSurfNorm
 
     else if (sdBasedLambda_)
     {
-        // stabilisation
-        dimensionedScalar deltaN("deltaN", dimless/dimLength, SMALL);
+        // calculate body gradient
+        volVectorField gradBody = fvc::grad(body_);
 
-        // calculate the surface normal based on the body gradient
-        surfNorm_ = -fvc::grad(body_);
-        surfNorm_ /= (mag(surfNorm_) + deltaN);
+        // convert to dimmless
+        gradBody *= dimensionedScalar("one", dimLength, 1.0);
+
+        // calculate surface normal
+        surfNorm_ = -gradBody;
+        surfNorm_ /= (mag(surfNorm_) + SMALL);
     }
 }
 

@@ -246,7 +246,11 @@ class ibDirichletBCs
     void postProcessUTau();
 
     // wall shear stress
-    void calculateWallShearStress(const volVectorField& U, volScalarField& nu);
+    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+    volVectorField& getWallShearStress()
+    {
+        return tauwi_;
+    }
 
     // save
     void saveUTau();
