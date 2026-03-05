@@ -147,10 +147,11 @@ beta1_(0.075)
     if (simulationType_ != "laminar")
     {
         HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
-        HFDIBBCsDict_.lookup("nut") >> nutWF_;
         HFDIBBCsDict_.lookup("k") >> kWF_;
         HFDIBBCsDict_.lookup("omega") >> omegaWF_;
         HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+
+        nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "uncorrected");
     }
 
     // compute turbulence parameters
@@ -508,7 +509,7 @@ void ibDirichletBCs::updateUTauAtIB
 }
 
 //---------------------------------------------------------------------------//
-void ibDirichletBCs::correctNutAtIB
+void ibDirichletBCs::nutAtIB
 (
     volScalarField& nut,
     volScalarField& k,
@@ -556,6 +557,22 @@ void ibDirichletBCs::correctNutAtIB
             {
                 nutAtIB_[Pstream::myProcNo()][bCell] = nut[cellI];
             }
+        }
+    }
+
+    else if (nutWF_ == "uncorrected")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // reset field
+            nutAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // copy nut
+            nutAtIB_[Pstream::myProcNo()][bCell] = nut[cellI];
         }
     }
 }

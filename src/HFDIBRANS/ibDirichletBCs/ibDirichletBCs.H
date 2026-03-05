@@ -182,7 +182,7 @@ class ibDirichletBCs
     void updateUTauAtIB(volScalarField& k);
 
     // correct nut at the immersed boundary
-    void correctNutAtIB(volScalarField& nut, volScalarField& k, volScalarField& nu);
+    void nutAtIB(volScalarField& nut, volScalarField& k, volScalarField& nu);
 
     // turbulence fields boundary conditions
     void kAtIB
