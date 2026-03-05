@@ -510,6 +510,7 @@ void ibDirichletBCs::updateUTauAtIB
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::correctNutAtIB
 (
+    volScalarField& nut,
     volScalarField& k,
     volScalarField& nu
 )
@@ -549,6 +550,11 @@ void ibDirichletBCs::correctNutAtIB
             if (yPlus > yPlusLam_)
             {
                 nutAtIB_[Pstream::myProcNo()][bCell] = nu[cellI]*(yPlus*kappa_/Foam::log(E_*yPlus) - 1.0);
+            }
+
+            else
+            {
+                nutAtIB_[Pstream::myProcNo()][bCell] = nut[cellI];
             }
         }
     }

@@ -421,7 +421,7 @@ void openHFDIBRANS::correctNut
     volScalarField& nu
 )
 {
-    ibDirichletBCs_->correctNutAtIB(k, nu);
+    ibDirichletBCs_->correctNutAtIB(nut, k, nu);
 
     if (assignNut_)
     {
