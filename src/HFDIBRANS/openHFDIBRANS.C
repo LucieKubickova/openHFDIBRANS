@@ -86,7 +86,6 @@ fvSchemes_
     scaleCoeffG_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeffG", scaleCoeff_);
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", false);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
-    assignNut_ = HFDIBDEMDict_.lookupOrDefault<bool>("assignNut", false);
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -423,24 +422,21 @@ void openHFDIBRANS::correctNut
 {
     ibDirichletBCs_->nutAtIB(nut, k, nu);
 
-    if (assignNut_)
+    // get nut
+    List<List<scalar>>& nutAtIB = ibDirichletBCs_->getNutAtIB();
+
+    // assign nut
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        // get nut
-        List<List<scalar>>& nutAtIB = ibDirichletBCs_->getNutAtIB();
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
 
-        // assign nut
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            // get cell label
-            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-            // assign
-            nut[cellI] = nutAtIB[Pstream::myProcNo()][bCell];
-        }
-
-        // sync boundary conditions
-        nut.correctBoundaryConditions();
+        // assign
+        nut[cellI] = nutAtIB[Pstream::myProcNo()][bCell];
     }
+
+    // sync boundary conditions
+    nut.correctBoundaryConditions();
 }
 
 //---------------------------------------------------------------------------//

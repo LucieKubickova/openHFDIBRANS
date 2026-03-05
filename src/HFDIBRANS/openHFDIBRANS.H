@@ -83,7 +83,6 @@ class openHFDIBRANS
     scalar scaleCoeff_;
     scalar scaleCoeffG_;
     bool useYEff_;
-    bool assignNut_;
 
     // save
     word outDir_;
