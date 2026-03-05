@@ -123,6 +123,19 @@ tauwi_
     mesh_,
     dimensionedVector("zero", dimless, vector::zero)
 ),
+nuti_
+(
+    IOobject
+    (
+        "nuti",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, 0.0)
+),
 kappa_(0.41),
 E_(9.8),
 Cmu_(0.09),
@@ -143,15 +156,17 @@ beta1_(0.075)
     uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
     uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
 
+    // read boundary condition for velocity
+    HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
+    UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
+
     // read simulation type
     if (simulationType_ != "laminar")
     {
-        HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
+        HFDIBBCsDict_.lookup("nut") >> nutWF_;
         HFDIBBCsDict_.lookup("k") >> kWF_;
         HFDIBBCsDict_.lookup("omega") >> omegaWF_;
         HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
-
-        nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "uncorrected");
     }
 
     // compute turbulence parameters
@@ -202,10 +217,10 @@ void ibDirichletBCs::setSizeToLists
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
-    word BCType
+    volVectorField& U
 )
 {
-    if (simulationType_ == "laminar" or BCType == "noSlip")
+    if (simulationType_ == "laminar" or UBC_ == "noSlip")
     {
         forAll(UIB, uCell)
         {
@@ -214,9 +229,31 @@ void ibDirichletBCs::UAtIB
         }
     }
 
+    else if (UBC_ == "partialSlip")
+    {
+        // read partial clip coefficient
+        scalar alpha = HFDIBBCsDict_.lookupOrDefault<scalar>("UCoeff", 0.0);
+
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // reset field
+            UIB[bCell] = vector::zero;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // get surface normal
+            vector normal = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+            // calculate value at boundary
+            UIB[bCell] += (1 - alpha)*transform(I - sqr(normal), U[cellI]);
+        }
+    }
+
     else
     {
-        FatalError << BCType << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
+        FatalError << UBC_ << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -511,7 +548,6 @@ void ibDirichletBCs::updateUTauAtIB
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::nutAtIB
 (
-    volScalarField& nut,
     volScalarField& k,
     volScalarField& nu
 )
@@ -553,27 +589,14 @@ void ibDirichletBCs::nutAtIB
                 nutAtIB_[Pstream::myProcNo()][bCell] = nu[cellI]*(yPlus*kappa_/Foam::log(E_*yPlus) - 1.0);
             }
 
-            else
-            {
-                nutAtIB_[Pstream::myProcNo()][bCell] = nut[cellI];
-            }
+            // save
+            nuti_[cellI] = nutAtIB_[Pstream::myProcNo()][bCell];
         }
     }
 
-    else if (nutWF_ == "uncorrected")
+    else
     {
-        // loop over boundary cells
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            // reset field
-            nutAtIB_[Pstream::myProcNo()][bCell] = 0.0;
-
-            // get cell label
-            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-            // copy nut
-            nutAtIB_[Pstream::myProcNo()][bCell] = nut[cellI];
-        }
+        FatalError << nutWF_ << " condition for nut not implemented at the IB" << exit(FatalError);
     }
 }
 

@@ -83,6 +83,7 @@ class openHFDIBRANS
     scalar scaleCoeff_;
     scalar scaleCoeffG_;
     bool useYEff_;
+    bool assignNut_;
 
     // save
     word outDir_;
@@ -136,6 +137,11 @@ class openHFDIBRANS
     volVectorField& getWallShearStress()
     {
         return ibDirichletBCs_->getWallShearStress();
+    }
+
+    volScalarField& getNuti()
+    {
+        return ibDirichletBCs_->getNuti();
     }
 };
 

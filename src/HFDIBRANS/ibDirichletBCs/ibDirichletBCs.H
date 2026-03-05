@@ -113,6 +113,10 @@ class ibDirichletBCs
     volScalarField yPlusi_;
     volScalarField uTaui_;
     volVectorField tauwi_;
+    volScalarField nuti_;
+
+    // boundary conditions
+    word UBC_;
 
     // RAS wall function names
     word nutWF_;
@@ -173,7 +177,7 @@ class ibDirichletBCs
     void setSizeToLists();
 
     // velocity boundary condition
-    void UAtIB(List<vector>& UIB, word BCType);
+    void UAtIB(List<vector>& UIB, volVectorField& U);
 
     // scalar boundary condition
     void TAtIB(List<scalar>& TIB, scalar TIn);
@@ -182,7 +186,7 @@ class ibDirichletBCs
     void updateUTauAtIB(volScalarField& k);
 
     // correct nut at the immersed boundary
-    void nutAtIB(volScalarField& nut, volScalarField& k, volScalarField& nu);
+    void nutAtIB(volScalarField& k, volScalarField& nu);
 
     // turbulence fields boundary conditions
     void kAtIB
@@ -250,6 +254,11 @@ class ibDirichletBCs
     volVectorField& getWallShearStress()
     {
         return tauwi_;
+    }
+
+    volScalarField& getNuti()
+    {
+        return nuti_;
     }
 
     // save

@@ -398,7 +398,6 @@ void ibInterpolation::innerInterp
             dirichletVals[bCell],
             scales[bCell],
             ds,
-            //~ boundaryCells_[Pstream::myProcNo()][bCell].sigma_,
             lineIntInfoBoundary_->getIntPoints()[bCell] // Note (LK): wrong interpolation info passed, but not used now
         );
 
