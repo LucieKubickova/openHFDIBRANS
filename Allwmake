@@ -17,4 +17,7 @@ cd $cwd/applications/solvers/simpleHFDIBRANSFoam
 cd $cwd/applications/solvers/scalarHFDIBTransportFoam
 ./Allwmake
 
+cd $cwd/applications/utilities/calculateWallShearStress
+./Allwmake
+
 cd $cwd

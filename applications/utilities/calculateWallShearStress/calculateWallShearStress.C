@@ -106,6 +106,21 @@ int main(int argc, char *argv[])
         mesh
     );
 
+    // read the nut field
+    Info << "Reading field nut\n" << endl;
+    volScalarField nut
+    (
+        IOobject
+        (
+            "nut",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh
+    );
+
     // prepare turbulence model
     singlePhaseTransportModel laminarTransport(U, phi);
 
@@ -120,12 +135,10 @@ int main(int argc, char *argv[])
     // read viscosity fields
     const tmp<volScalarField> tnu(turbulence->nu());
     const volScalarField& nu = tnu();
-    const tmp<volScalarField> tnut(turbulence->nut());
-    const volScalarField& nut = tnut();
 
     // correct nut
     HFDIBRANS.updateUTau(k);
-    HFDIBRANS.correctNut(const_cast<volScalarField&>(nut), k, const_cast<volScalarField&>(nu));
+    HFDIBRANS.correctNut(nut, k, const_cast<volScalarField&>(nu));
 
     // calculate wall shear stress
     HFDIBRANS.calculateWallShearStress(U, nu);

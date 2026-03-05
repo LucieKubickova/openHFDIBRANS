@@ -354,19 +354,24 @@ void ibDirichletBCs::updateUTauAtIB
             label fProc(-1);
             point fPoint(vector::zero);
 
-            // check body
-            if (body_[cellI] < thrSurf_)
-            {
-                fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
-                fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
-                fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
-            }
-            else
-            {
-                fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
-                fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
-                fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_;
-            }
+            // use the first interpolation point
+            fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+            fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+            fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+
+            // check body -- Note (LK): not really working for pipe or anything, but idea to smooth out
+            //~ if (body_[cellI] < thrSurf_)
+            //~ {
+                //~ fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+                //~ fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+                //~ fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+            //~ }
+            //~ else
+            //~ {
+                //~ fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
+                //~ fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
+                //~ fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_;
+            //~ }
 
             // compute uTau based on values from the free stream
             if (Pstream::myProcNo() == fProc)
@@ -691,9 +696,6 @@ void ibDirichletBCs::omegaGAtIB
         // load near wall dist
         //~ nearWallDist yWall(mesh_); // not used now
 
-        // prepare
-        //~ vector zeroU = vector::zero;
-
         // get surface normal gradient
         List<DynamicList<vector>> snGradU;
         snGradU.setSize(Pstream::nProcs());
@@ -721,7 +723,6 @@ void ibDirichletBCs::omegaGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            //~ vector snGradU = (zeroU - U[cellI])/yOrtho; // Note (LK): should this be ever done from yEff?
             scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity
@@ -797,9 +798,6 @@ void ibDirichletBCs::epsilonGAtIB
         // load near wall dist
         //~ nearWallDist yWall(mesh_); // not used now
 
-        // prepare
-        //~ vector zeroU = vector::zero;
-
         // get surface normal gradient
         List<DynamicList<vector>> snGradU;
         snGradU.setSize(Pstream::nProcs());
@@ -827,8 +825,6 @@ void ibDirichletBCs::epsilonGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            //~ vector snGradU = (zeroU - U[cellI])/yOrtho;
-            //~ scalar magGradUWall = mag(snGradU);
             scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity

@@ -17,4 +17,7 @@ cd $cwd/applications/solvers/simpleHFDIBRANSFoam
 cd $cwd/applications/solvers/scalarHFDIBTransportFoam
 ./Allwclean
 
+cd $cwd/applications/utilities/calculateWallShearStress
+./Allwclean
+
 cd $cwd
