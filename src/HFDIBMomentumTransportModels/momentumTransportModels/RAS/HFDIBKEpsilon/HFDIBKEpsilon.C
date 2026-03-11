@@ -216,15 +216,15 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     ),
     lambda_
     (
-    	IOobject
-	    (
-	        "lambda",
+        IOobject
+        (
+            "lambda",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
             IOobject::NO_WRITE
-	    ),
-	    this->mesh_
+        ),
+        this->mesh_
     ),
     kSurface_
     (
@@ -256,7 +256,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     (
         IOobject
         (
-	        "ki",
+            "ki",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -269,7 +269,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     (
         IOobject
         (
-	        "kQ",
+            "kQ",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::READ_IF_PRESENT,
