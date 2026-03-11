@@ -251,6 +251,8 @@ class ibDirichletBCs
 
     // wall shear stress
     void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+
+    // get functions
     volVectorField& getWallShearStress()
     {
         return tauwi_;

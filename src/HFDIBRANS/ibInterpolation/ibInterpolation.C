@@ -62,7 +62,7 @@ surfNorm_
         IOobject::AUTO_WRITE
     ),
     mesh_,
-    dimensionedVector("zero", dimless, vector::zero)
+    dimensionedVector("zero", dimless/dimLength, vector::zero)
 ),
 iProci_
 (
@@ -744,7 +744,6 @@ void ibInterpolation::findNeighborInBody
                     ? procPatch.neighbProcNo() : procPatch.myProcNo();
     
                 // access neighbor processor patch
-                //~ const scalarField& bodyN = body_.boundaryField()[facePatchI].patchNeighbourField();
                 const tmp<scalarField> tbodyN(body_.boundaryField()[facePatchI].patchNeighbourField());
                 const scalarField& bodyN = tbodyN();
     
