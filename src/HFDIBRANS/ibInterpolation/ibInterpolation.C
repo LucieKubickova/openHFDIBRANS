@@ -62,7 +62,7 @@ surfNorm_
         IOobject::AUTO_WRITE
     ),
     mesh_,
-    dimensionedVector("zero", dimless/dimLength, vector::zero)
+    dimensionedVector("zero", dimless, vector::zero)
 ),
 iProci_
 (
