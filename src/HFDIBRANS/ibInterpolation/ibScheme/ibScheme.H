@@ -89,35 +89,29 @@ class ibScheme
     // -- virtual wrapper functions for interpolation
     virtual scalar interpolate
     (
-        volScalarField& phi,
         List<scalar>& phiPs,
         scalar& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     ) = 0;
 
     virtual vector interpolate
     (
-        volVectorField& phi,
         List<vector>& phiPs,
         vector& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     ) = 0;
 
     virtual tensor interpolate
     (
-        volTensorField& phi,
         List<tensor>& phiPs,
         tensor& dirichletVal,
         scalar& scale,
         scalar& ds,
-        List<intPoint>& intInfo,
-        label& cellI
+        List<intPoint>& intInfo
     ) = 0;
 
     // get interpolation order

@@ -1,6 +1,11 @@
 volScalarField rAU(1.0/UEqn.A());
 volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
-surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+surfaceScalarField phiHbyA
+(
+    "phiHbyA",
+    fvc::flux(HbyA)
+);
+
 MRF.makeRelative(phiHbyA);
 adjustPhi(phiHbyA, U, p);
 
@@ -19,12 +24,19 @@ UEqn.clear();
 // Update the pressure BCs to ensure flux consistency
 constrainPressure(p, U, phiHbyA, rAtU(), MRF);
 
-volVectorField FbyA(rAU*f);
-surfaceScalarField phiFbyA
+// calculate lambda phi
+surfaceScalarField phiLambda
 (
-    "phiFbyA",
-    fvc::flux(FbyA)
+    "phiLambda",
+    phi*fvc::interpolate(lambda)
 );
+
+//~ volVectorField FbyA(rAU*f);
+//~ surfaceScalarField phiFbyA
+//~ (
+    //~ "phiFbyA",
+    //~ fvc::flux(FbyA)
+//~ );
 
 // Non-orthogonal pressure corrector loop
 while (simple.correctNonOrthogonal())
@@ -32,16 +44,17 @@ while (simple.correctNonOrthogonal())
     fvScalarMatrix pEqn
     (
         fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
-                                   + fvc::div(phiFbyA)
+                                   //~ + fvc::div(phiFbyA)
+                                    - fvc::div(phiLambda)
     );
 
     pEqn.setReference(pRefCell, pRefValue);
-
+    
     pEqn.solve();
 
     if (simple.finalNonOrthogonalIter())
     {
-        phi = phiHbyA - pEqn.flux() + phiFbyA;
+        phi = phiHbyA - pEqn.flux() - phiLambda; //~ + phiFbyA;
     }
 }
 
@@ -56,7 +69,7 @@ if (cutPhi)
 p.relax();
 
 // Momentum corrector
-U = HbyA - rAtU()*fvc::grad(p) + rAU*f;
+U = HbyA - rAtU()*fvc::grad(p); //~ + rAU*f;
 U.correctBoundaryConditions();
 fvOptions.correct(U);
 
@@ -70,6 +83,3 @@ if (enforceVelocity)
 {
     HFDIBRANS.enforceUiInBody(U, Ui);
 }
-
-// Sync proc-proc boundaries
-f.correctBoundaryConditions();

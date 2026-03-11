@@ -223,7 +223,6 @@ HFDIBRealizableKE<BasicTurbulenceModel>::HFDIBRealizableKE
             1.2
         )
     ),
-
     k_
     (
         IOobject
@@ -267,7 +266,7 @@ HFDIBRealizableKE<BasicTurbulenceModel>::HFDIBRealizableKE
             "HFDIBRealizableKE::kSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,
@@ -280,7 +279,7 @@ HFDIBRealizableKE<BasicTurbulenceModel>::HFDIBRealizableKE
             "HFDIBRealizableKE::epsilonGSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,
@@ -380,9 +379,15 @@ void HFDIBRealizableKE<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
     volScalarField& nut = this->nut_;
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
-    // HFDIBRANS references
+    // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    kSurface_.correctBoundaryConditions();
+
+    // HFDIBRANS: create surface for epsilon
     HFDIBRANS.createBaseSurface(epsilonGSurface_, epsilonGSurfaceType_, epsilonGBoundaryValue_);
+    HFDIBRANS.updateSurface(epsilonGSurface_, epsilonGSurfaceType_);
+    epsilonGSurface_.correctBoundaryConditions();
 
     eddyViscosity<HFDIBRASModel<BasicTurbulenceModel>>::correct();
 
@@ -405,6 +410,8 @@ void HFDIBRealizableKE<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIB: correct epsilon and G
     HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonGSurface_);
+    epsilon_.correctBoundaryConditions();
+    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // SAF: limiting thermo->nu(). If psiThermo is used rho might be < 0
     // temporarily when p < 0 then nu < 0 which needs limiting
@@ -448,6 +455,7 @@ void HFDIBRealizableKE<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
+    ki_.correctBoundaryConditions();
 
     // Turbulent kinetic energy equation
     fvScalarMatrix kEqn
@@ -471,6 +479,7 @@ void HFDIBRealizableKE<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
         for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
             kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            kQ_.correctBoundaryConditions();
             solve(kEqn == kQ_);
 
             Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
@@ -496,7 +505,8 @@ void HFDIBRealizableKE<BasicTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS)
     //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut(tgradU(), S2, magS);
-    HFDIBRANS.correctNut(k_, nu_);
+    HFDIBRANS.correctNut(this->nut_, k_, nu_);
+    this->nut_.correctBoundaryConditions();
 }
 
 template<class BasicTurbulenceModel>

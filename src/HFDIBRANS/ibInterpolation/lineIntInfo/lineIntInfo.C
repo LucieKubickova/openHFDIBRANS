@@ -40,13 +40,15 @@ lineIntInfo::lineIntInfo
     const fvMesh& mesh,
     List<label> ibCells,
     List<point> ibPoints,
-    List<vector> ibNormals
+    List<vector> ibNormals,
+    bool correctIntPoints
 )
 :
 mesh_(mesh),
 ibCells_(ibCells),
 ibPoints_(ibPoints),
-ibNormals_(ibNormals)
+ibNormals_(ibNormals),
+correctIntPoints_(correctIntPoints)
 {}
 lineIntInfo::~lineIntInfo()
 {}
@@ -72,7 +74,7 @@ void lineIntInfo::setIntpInfo
     {
         // get surface cell label
         label cellI = ibCells_[sCell];
-        scalar intDist = Foam::pow(mesh_.V()[cellI],0.333)*0.5;
+        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
 
         // save first interpolation point (surfPoint)
         intPoints[sCell].setSize(ORDER+1);
@@ -82,7 +84,8 @@ void lineIntInfo::setIntpInfo
             cellI,
             Pstream::myProcNo(), // current processor
             Pstream::myProcNo(), // processor of origin (same for the first int point)
-            sCell                // label of the cell of origin
+            sCell,               // label of the cell of origin
+            false                // if its the last int point
         );
         intPoints[sCell][0] = cIntPoint;
 
@@ -113,19 +116,28 @@ void lineIntInfo::setIntpInfo
             {
                 // latest interpolation point
                 intPoint cIntPoint = intPointsToSolve[proci][iInfo];
-
                 point cPoint = cIntPoint.iPoint_;
-                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333)*0.5;
+                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
+
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
                 } while(pointInCell(cPoint, cIntPoint.iCell_));
 
                 // new interpolation points
                 intPoint nIntPoint = findIntPoint(cIntPoint, cPoint);
-                correctIntPoint(ibPointsToSolve[proci][iInfo], nIntPoint);
+                if (correctIntPoints_)
+                {
+                    correctIntPoint(ibPointsToSolve[proci][iInfo], nIntPoint);
+                }
+
+                // check for cells at domain boundary
+                if (nIntPoint.iProc_ == -1)
+                {
+                    intPoints[cIntPoint.oLabel_][i].last_ = true;
+                }
 
                 // check if to send or keep
-                if (Pstream::myProcNo() != nIntPoint.iProc_)
+                else if (Pstream::myProcNo() != nIntPoint.iProc_)
                 {
                     ibPointsToSend[nIntPoint.iProc_].append(ibPointsToSolve[proci][iInfo]);
                     ibNormalsToSend[nIntPoint.iProc_].append(ibNormalsToSolve[proci][iInfo]);
@@ -193,7 +205,7 @@ void lineIntInfo::setIntpInfo
                 intPointsRecv[proci][iInfo].iCell_ = cellI;
 
                 // find interpolation point
-                point cPoint = mesh_.C()[cellI];
+                //~ point cPoint = mesh_.C()[cellI];
                 intPoint cIntPoint
                 (
                     //~ cPoint,
@@ -201,14 +213,18 @@ void lineIntInfo::setIntpInfo
                     cellI,
                     Pstream::myProcNo(),
                     intPointsRecv[proci][iInfo].oProc_,
-                    intPointsRecv[proci][iInfo].oLabel_
+                    intPointsRecv[proci][iInfo].oLabel_,
+                    intPointsRecv[proci][iInfo].last_
                 );
 
-                scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+                //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
                 vector dir = cIntPoint.iPoint_ - ibPointsRecv[proci][iInfo];
                 dir /= mag(dir);
 
-                correctIntPoint(ibPointsRecv[proci][iInfo], cIntPoint);
+                if (correctIntPoints_)
+                {
+                    correctIntPoint(ibPointsRecv[proci][iInfo], cIntPoint);
+                }
 
                 intPointsRecv[proci][iInfo] = cIntPoint;
             }
@@ -350,7 +366,8 @@ intPoint lineIntInfo::findIntPoint
         fromP.iCell_,
         fromP.iProc_,
         fromP.oProc_,
-        fromP.oLabel_
+        fromP.oLabel_,
+        fromP.last_
     );
 
     if(fromP.iProc_ == Pstream::myProcNo())
@@ -414,6 +431,7 @@ label lineIntInfo::getFaceInDir
         {
             vector outNorm = (mesh_.faceOwner()[fI] == retPoint.iCell_)
                 ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
+            outNorm /= mag(outNorm); // LK: this should be there, no?
 
             scalar auxDotProd(outNorm & dir);
             if (auxDotProd > dotProd)
@@ -577,274 +595,4 @@ void lineIntInfo::returnSolvedIntPoints
     pBufsIntPoints.clear();
 }
 
-//---------------------------------------------------------------------------//
-void lineIntInfo::syncIntPoints()
-{
-    List<List<intPoint>>& intPoints = getIntPoints();
-
-    List<DynamicPointList> ibPointsToSync(Pstream::nProcs());
-    List<DynamicPointList> intPointToSync(Pstream::nProcs());
-    List<DynamicLabelList> faceLabelToSync(Pstream::nProcs());
-    List<DynamicLabelList> orderToSync(Pstream::nProcs());
-    List<DynamicLabelList> labelToSync(Pstream::nProcs());
-    List<DynamicVectorList> normalToSync(Pstream::nProcs());
-
-    forAll(ibPoints_, pI)
-    {
-        forAll(intPoints[pI], ipI)
-        {
-            if(intPoints[pI][ipI].iProc_ != Pstream::myProcNo()
-                &&
-                intPoints[pI][ipI].iProc_ != -1)
-            {
-                intPoint& cIntPoint = intPoints[pI][ipI];
-                ibPointsToSync[cIntPoint.iProc_].append(ibPoints_[pI]);
-                intPointToSync[cIntPoint.iProc_].append(cIntPoint.iPoint_);
-                faceLabelToSync[cIntPoint.iProc_].append(cIntPoint.iCell_);
-                orderToSync[cIntPoint.iProc_].append(ipI);
-                labelToSync[cIntPoint.iProc_].append(pI);
-                normalToSync[cIntPoint.iProc_].append(ibNormals_[pI]);
-            }
-        }
-    }
-
-    PstreamBuffers pBufsIbP(Pstream::commsTypes::nonBlocking);
-    PstreamBuffers pBufsIntP(Pstream::commsTypes::nonBlocking);
-    PstreamBuffers pBufsFaceL(Pstream::commsTypes::nonBlocking);
-    PstreamBuffers pBufsOrder(Pstream::commsTypes::nonBlocking);
-    PstreamBuffers pBufsLabel(Pstream::commsTypes::nonBlocking);
-    PstreamBuffers pBufsNormal(Pstream::commsTypes::nonBlocking);
-
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if(proci != Pstream::myProcNo())
-        {
-            UOPstream sendIbP(proci, pBufsIbP);
-            UOPstream sendIntP(proci, pBufsIntP);
-            UOPstream sendFaceL(proci, pBufsFaceL);
-            UOPstream sendOrder(proci, pBufsOrder);
-            UOPstream sendLabel(proci, pBufsLabel);
-            UOPstream sendNormal(proci, pBufsNormal);
-
-            sendIbP << ibPointsToSync[proci];
-            sendIntP << intPointToSync[proci];
-            sendFaceL << faceLabelToSync[proci];
-            sendOrder << orderToSync[proci];
-            sendLabel << labelToSync[proci];
-            sendNormal << normalToSync[proci];
-        }
-    }
-
-    pBufsIbP.finishedSends();
-    pBufsIntP.finishedSends();
-    pBufsFaceL.finishedSends();
-    pBufsOrder.finishedSends();
-    pBufsLabel.finishedSends();
-    pBufsNormal.finishedSends();
-
-    List<DynamicPointList> ibPointsRecv(Pstream::nProcs());
-    List<DynamicPointList> intPointRecv(Pstream::nProcs());
-    List<DynamicLabelList> faceLabelRecv(Pstream::nProcs());
-    List<DynamicLabelList> orderRecv(Pstream::nProcs());
-    List<DynamicLabelList> labelRecv(Pstream::nProcs());
-    List<DynamicVectorList> normalRecv(Pstream::nProcs());
-
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
-            UIPstream recvIbP(proci, pBufsIbP);
-            UIPstream recvIntP(proci, pBufsIntP);
-            UIPstream recvFaceL(proci, pBufsFaceL);
-            UIPstream recvOrder(proci, pBufsOrder);
-            UIPstream recvLabel(proci, pBufsLabel);
-            UIPstream recvNormal(proci, pBufsNormal);
-
-            DynamicPointList recIbP (recvIbP);
-            DynamicPointList recIntP (recvIntP);
-            DynamicLabelList recFaceL (recvFaceL);
-            DynamicLabelList recOrder (recvOrder);
-            DynamicLabelList recLabel (recvLabel);
-            DynamicVectorList recNormal (recvNormal);
-
-            ibPointsRecv[proci] = recIbP;
-            intPointRecv[proci] = recIntP;
-            faceLabelRecv[proci] = recFaceL;
-            orderRecv[proci] = recOrder;
-            labelRecv[proci] = recLabel;
-            normalRecv[proci] = recNormal;
-        }
-    }
-
-    pBufsIbP.clear();
-    pBufsIntP.clear();
-    pBufsFaceL.clear();
-    pBufsOrder.clear();
-    pBufsLabel.clear();
-    pBufsNormal.clear();
-
-    List<DynamicLabelList> cellLabelRecv(Pstream::nProcs());
-
-    forAll (mesh_.boundaryMesh(), patchi)
-    {
-        const polyPatch& cPatch = mesh_.boundaryMesh()[patchi];
-        if (cPatch.type() == "processor")
-        {
-            const processorPolyPatch& procPatch
-                = refCast<const processorPolyPatch>(cPatch);
-
-            label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-            cellLabelRecv[sProc].setSize(faceLabelRecv[sProc].size());
-            forAll(faceLabelRecv[sProc], faceI)
-            {
-                cellLabelRecv[sProc][faceI]
-                    = mesh_.faceOwner()[cPatch.start()
-                    + faceLabelRecv[sProc][faceI]];
-            }
-        }
-    }
-
-    List<DynamicPointList> intPointToRetr(Pstream::nProcs());
-    List<DynamicLabelList> intCellToRetr(Pstream::nProcs());
-    List<DynamicLabelList> intProcToRetr(Pstream::nProcs());
-    List<DynamicLabelList> orderToRetr(Pstream::nProcs());
-    List<DynamicLabelList> labelToRetr(Pstream::nProcs());
-
-    forAll(ibPointsRecv, proci)
-    {
-        forAll(ibPointsRecv[proci], ibpI)
-        {
-            point cPoint = mesh_.C()[cellLabelRecv[proci][ibpI]];
-            intPoint cIntPoint
-            (
-                cPoint,
-                cellLabelRecv[proci][ibpI],
-                Pstream::myProcNo(),
-                proci, // Note (LK): the processor of origin
-                labelRecv[proci][ibpI] // Note (LK): the label of the cell of origin 
-            );
-
-            intPoint foundP =
-                findIntPoint(cIntPoint, intPointRecv[proci][ibpI]);
-
-            scalar intDist = Foam::pow(mesh_.V()[foundP.iCell_],0.333);
-            vector dir = foundP.iPoint_ - ibPointsRecv[proci][ibpI];
-            dir /= mag(dir);
-
-            correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
-
-            intPointToRetr[proci].append(foundP.iPoint_);
-            intCellToRetr[proci].append(foundP.iCell_);
-            intProcToRetr[proci].append(foundP.iProc_);
-            orderToRetr[proci].append(orderRecv[proci][ibpI]);
-            labelToRetr[proci].append(labelRecv[proci][ibpI]);
-
-            cIntPoint = foundP;
-
-            label outICell = foundP.iCell_;
-            for(label i = orderRecv[proci][ibpI]; i < ORDER; ++i) // Note (LK): had to change this, since I have the surface point as intPoint[0]
-            {
-                cPoint = cIntPoint.iPoint_;
-                do {
-                    cPoint += dir*intDist;
-                } while(pointInCell(cPoint, cIntPoint.iCell_));
-
-                foundP = findIntPoint(cIntPoint, cPoint);
-                correctIntPoint(ibPointsRecv[proci][ibpI], foundP);
-                cIntPoint = foundP;
-
-                if(cIntPoint.iProc_ != Pstream::myProcNo()) // Note (LK): changed this to be the intPoints proci, not the sCell proci, needs check elsewhere
-                {
-                    break;
-                }
-
-                intPointToRetr[proci].append(foundP.iPoint_);
-                intCellToRetr[proci].append(foundP.iCell_);
-                intProcToRetr[proci].append(foundP.iProc_);
-                orderToRetr[proci].append(i+1);
-                labelToRetr[proci].append(labelRecv[proci][ibpI]);
-            }
-        }
-    }
-
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if(proci != Pstream::myProcNo())
-        {
-            UOPstream sendIbP(proci, pBufsIbP);
-            UOPstream sendIntP(proci, pBufsIntP);
-            UOPstream sendFaceL(proci, pBufsFaceL);
-            UOPstream sendOrder(proci, pBufsOrder);
-            UOPstream sendLabel(proci, pBufsLabel);
-
-            sendIbP << intProcToRetr[proci];
-            sendIntP << intPointToRetr[proci];
-            sendFaceL << intCellToRetr[proci];
-            sendOrder << orderToRetr[proci];
-            sendLabel << labelToRetr[proci];
-        }
-    }
-
-    pBufsIbP.finishedSends();
-    pBufsIntP.finishedSends();
-    pBufsFaceL.finishedSends();
-    pBufsOrder.finishedSends();
-    pBufsLabel.finishedSends();
-
-    List<DynamicPointList> intPointCmpl(Pstream::nProcs());
-    List<DynamicLabelList> intCellCmpl(Pstream::nProcs());
-    List<DynamicLabelList> intProcCmpl(Pstream::nProcs());
-    List<DynamicLabelList> orderCmpl(Pstream::nProcs());
-    List<DynamicLabelList> labelCmpl(Pstream::nProcs());
-
-    for (label proci = 0; proci < Pstream::nProcs(); proci++)
-    {
-        if (proci != Pstream::myProcNo())
-        {
-            UIPstream recvIntP(proci, pBufsIntP);
-            UIPstream recvCell(proci, pBufsFaceL);
-            UIPstream recvProc(proci, pBufsIbP);
-            UIPstream recvOrder(proci, pBufsOrder);
-            UIPstream recvLabel(proci, pBufsLabel);
-
-            DynamicPointList recIntP (recvIntP);
-            DynamicLabelList recCell (recvCell);
-            DynamicLabelList recProc (recvProc);
-            DynamicLabelList recOrder (recvOrder);
-            DynamicLabelList recLabel (recvLabel);
-
-            intPointCmpl[proci] = recIntP;
-            intCellCmpl[proci] = recCell;
-            intProcCmpl[proci] = recProc;
-            orderCmpl[proci] = recOrder;
-            labelCmpl[proci] = recLabel;
-        }
-    }
-
-    pBufsIbP.clear();
-    pBufsIntP.clear();
-    pBufsFaceL.clear();
-    pBufsOrder.clear();
-    pBufsLabel.clear();
-
-    forAll(intPointCmpl, proci)
-    {
-        forAll(intPointCmpl[proci], iPointI)
-        {
-            intPoint cIntPoint
-            (
-                intPointCmpl[proci][iPointI],
-                intCellCmpl[proci][iPointI],
-                intProcCmpl[proci][iPointI],
-                intProcCmpl[proci][iPointI], // Note (LK): the processor of origin
-                labelCmpl[proci][iPointI] // Note (LK): the label of the cell of origin
-            );
-
-            intPoints[labelCmpl[proci][iPointI]][orderCmpl[proci][iPointI]]
-                = cIntPoint;
-        }
-    }
-}
 //---------------------------------------------------------------------------//

@@ -520,7 +520,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
             "HFDIBKOmegaSST::kSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,
@@ -533,7 +533,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
             "HFDIBKOmegaSST::omegaGSurface",
             this->runTime_.timeName(),
             this->mesh_,
-            IOobject::NO_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
         this->mesh_,
@@ -668,9 +668,15 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
 
     BasicHFDIBTurbulenceModel::correct();
 
-    // HFDIBRANS references
+    // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    kSurface_.correctBoundaryConditions();
+
+    // HFDIBRANS: create surface for omega
     HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
+    HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_);
+    omegaGSurface_.correctBoundaryConditions();
 
     const volScalarField::Internal divU
     (
@@ -712,101 +718,100 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     //~ HFDIBRANS.correctF1(F1);
     //~ HFDIBRANS.correctF23(F23);
 
-    {
-        const volScalarField::Internal gamma(this->gamma(F1));
-        const volScalarField::Internal beta(this->beta(F1));
+    const volScalarField::Internal gamma(this->gamma(F1));
+    const volScalarField::Internal beta(this->beta(F1));
 
-        GbyNu0 = GbyNu(GbyNu0, F23(), S2());
+    GbyNu0 = GbyNu(GbyNu0, F23(), S2());
 
-        // HFDIB: update uTau
-        HFDIBRANS.updateUTau(k_);
+    // HFDIB: update uTau
+    HFDIBRANS.updateUTau(k_);
 
-        // HFDIB: correct omega and G
-        HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
+    // HFDIB: correct omega and G
+    HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
+    omega_.correctBoundaryConditions();
+    //~ G.correctBoundaryConditions(); // G does not have this function
 
-        // Turbulent frequency equation
-        tmp<fvScalarMatrix> omegaEqn
+    // Turbulent frequency equation
+    tmp<fvScalarMatrix> omegaEqn
+    (
+        fvm::ddt(alpha, rho, omega_)
+      + fvm::div(alphaRhoPhi, omega_)
+      - fvm::laplacian(alpha*rho*DomegaEff(F1), omega_)
+     ==
+        alpha()*rho()*gamma*GbyNu0
+      - fvm::SuSp((2.0/3.0)*alpha()*rho()*gamma*divU, omega_)
+      - fvm::Sp(alpha()*rho()*beta*omega_(), omega_)
+      - fvm::SuSp
         (
-            fvm::ddt(alpha, rho, omega_)
-          + fvm::div(alphaRhoPhi, omega_)
-          - fvm::laplacian(alpha*rho*DomegaEff(F1), omega_)
-         ==
-            alpha()*rho()*gamma*GbyNu0
-          - fvm::SuSp((2.0/3.0)*alpha()*rho()*gamma*divU, omega_)
-          - fvm::Sp(alpha()*rho()*beta*omega_(), omega_)
-          - fvm::SuSp
-            (
-                alpha()*rho()*(F1() - scalar(1))*CDkOmega()/omega_(),
-                omega_
-            )
-          + alpha()*rho()*beta*sqr(omegaInf_)
-          + Qsas(S2(), gamma, beta)
-          + omegaSource()
-          + fvOptions(alpha, rho, omega_)
-        );
+            alpha()*rho()*(F1() - scalar(1))*CDkOmega()/omega_(),
+            omega_
+        )
+      + alpha()*rho()*beta*sqr(omegaInf_)
+      + Qsas(S2(), gamma, beta)
+      + omegaSource()
+      + fvOptions(alpha, rho, omega_)
+    );
 
-        omegaEqn.ref().relax();
-        fvOptions.constrain(omegaEqn.ref());
-        omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
+    omegaEqn.ref().relax();
+    fvOptions.constrain(omegaEqn.ref());
+    omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
-        // HFDIBRANS: matrix manipulate
-        matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
+    // HFDIBRANS: matrix manipulate
+    matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
 
-        solve(omegaEqn);
-        fvOptions.correct(omega_);
-        bound(omega_, this->omegaMin_);
-        //~ HFDIBRANS.bound(omega_, this->omegaMin_);
-    }
+    solve(omegaEqn);
+    fvOptions.correct(omega_);
+    bound(omega_, this->omegaMin_);
+    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
-            
+    ki_.correctBoundaryConditions();
+
+    // Turbulent kinetic energy equation
+    fvScalarMatrix kEqn
+    (
+        fvm::ddt(alpha, rho, k_)
+      + fvm::div(alphaRhoPhi, k_)
+      - fvm::laplacian(alpha*rho*DkEff(F1), k_)
+     ==
+        alpha()*rho()*Pk(G)
+      - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
+      - fvm::Sp(alpha()*rho()*epsilonByk(F1, tgradU()), k_)
+      + alpha()*rho()*betaStar_*omegaInf_*kInf_
+      + kSource()
+      + fvOptions(alpha, rho, k_)
+    );
+
+    tgradU.clear();
+
+    kEqn.relax();
+    fvOptions.constrain(kEqn);
+
+    if (useKQ_)
     {
-        // Turbulent kinetic energy equation
-        fvScalarMatrix kEqn
-        (
-            fvm::ddt(alpha, rho, k_)
-          + fvm::div(alphaRhoPhi, k_)
-          - fvm::laplacian(alpha*rho*DkEff(F1), k_)
-         ==
-            alpha()*rho()*Pk(G)
-          - fvm::SuSp((2.0/3.0)*alpha()*rho()*divU, k_)
-          - fvm::Sp(alpha()*rho()*epsilonByk(F1, tgradU()), k_)
-          + alpha()*rho()*betaStar_*omegaInf_*kInf_
-          + kSource()
-          + fvOptions(alpha, rho, k_)
-        );
-
-        tgradU.clear();
-
-        kEqn.relax();
-        fvOptions.constrain(kEqn);
-
-        if (useKQ_)
+        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
         {
-            for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
+            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+            kQ_.correctBoundaryConditions();
+            solve(kEqn == kQ_);
+
+            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+
+            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
             {
-                kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-                solve(kEqn == kQ_);
-
-                Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
-
-                if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
-                {
-                    Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-                    break;
-                }
-
-                // apply correction
-                k_ += 1.0*kSurface_*(ki_ - k_);
+                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
+                break;
             }
 
+            // apply correction
+            k_ += 1.0*kSurface_*(ki_ - k_);
         }
+    }
 
-        else
-        {
-            solve(kEqn);
-        }
+    else
+    {
+        solve(kEqn);
     }
 
     fvOptions.correct(k_);
@@ -814,7 +819,8 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut(S2);
-    HFDIBRANS.correctNut(k_, nu_);
+    HFDIBRANS.correctNut(this->nut_, k_, nu_);
+    this->nut_.correctBoundaryConditions();
 }
 
 template<class BasicTurbulenceModel>

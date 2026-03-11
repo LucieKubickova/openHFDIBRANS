@@ -88,9 +88,12 @@ class ibDirichletBCs
     const volScalarField& body_;
     scalar thrSurf_;
     bool useYEff_;
+    word uTauType_;
+    scalar uTauCoeff_;
 
     // fields
     List<List<scalar>> nutAtIB_;
+    List<List<scalar>> kAtIB_;
     List<List<scalar>> uTauAtIB_;
 
     // references to shared data
@@ -101,6 +104,7 @@ class ibDirichletBCs
     IOdictionary turbulenceProperties_;
     IOdictionary transportProperties_;
     IOdictionary HFDIBDEMDict_;
+    IOdictionary fvSchemes_;
     dictionary HFDIBBCsDict_;
 
     // simulation type
@@ -108,6 +112,12 @@ class ibDirichletBCs
 
     // saves
     volScalarField yPlusi_;
+    volScalarField uTaui_;
+    volVectorField tauwi_;
+    volScalarField nuti_;
+
+    // boundary conditions
+    word UBC_;
 
     // RAS wall function names
     word nutWF_;
@@ -176,7 +186,7 @@ class ibDirichletBCs
     void setSizeToLists();
 
     // velocity boundary condition
-    void UAtIB(List<vector>& UIB, word BCType);
+    void UAtIB(List<vector>& UIB, volVectorField& U);
 
     // scalar boundary condition
     void TAtIB(List<scalar>& TIB, scalar TIn);
@@ -185,7 +195,7 @@ class ibDirichletBCs
     void updateUTauAtIB(volScalarField& k);
 
     // correct nut at the immersed boundary
-    void correctNutAtIB(volScalarField& k, volScalarField& nu);
+    void nutAtIB(volScalarField& k, volScalarField& nu);
 
     // correct alphat at the immersed boundary
     void correctAlphatAtIB(List<scalar>& alphatIB, const volScalarField& nu);
@@ -236,8 +246,48 @@ class ibDirichletBCs
         return E_;
     }
 
+    // get nut at immersed boundary
+    List<List<scalar>>& getNutAtIB()
+    {
+        return nutAtIB_;
+    }
+
+    // get k at immersed boundary
+    List<List<scalar>>& getKAtIB()
+    {
+        return kAtIB_;
+    }
+
     // post processing of uTau
     void postProcessUTau();
+
+    // wall shear stress
+    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+
+    // get functions
+    volVectorField& getWallShearStress()
+    {
+        return tauwi_;
+    }
+
+    volScalarField& getNuti()
+    {
+        return nuti_;
+    }
+
+    volScalarField& getUTaui()
+    {
+        return uTaui_;
+    }
+
+    // save
+    void saveUTau();
+
+    // point in cell
+    bool pointInCell(point pToCheck, label cToCheck);
+
+    // surface gradient
+    void snGradUAtIB(const volVectorField& U, List<DynamicList<vector>>& snGradU);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

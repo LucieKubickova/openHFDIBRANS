@@ -967,6 +967,7 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/processorPolyPatch.H \
 ../../HFDIBRANS/lnInclude/boundaryCell.H \
 ../../HFDIBRANS/lnInclude/surfaceCell.H \
+$(WM_PROJECT_DIR)/src/meshTools/lnInclude/triangleFuncs.H \
 ../../HFDIBRANS/lnInclude/ibInterpolationTemplates.C \
 ../../HFDIBRANS/lnInclude/ibDirichletBCs.H \
 

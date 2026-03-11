@@ -86,6 +86,7 @@ fvSchemes_
     scaleCoeffG_ = HFDIBDEMDict_.lookupOrDefault<scalar>("scaleCoeffG", scaleCoeff_);
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", false);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+    assignNut_ = HFDIBDEMDict_.lookupOrDefault<bool>("assignNut", false);
 
     // read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
@@ -150,7 +151,7 @@ void openHFDIBRANS::computeUi
         UIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
     }
 
-    ibDirichletBCs_->UAtIB(UIB, "noSlip");
+    ibDirichletBCs_->UAtIB(UIB, U);
 
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
@@ -188,9 +189,9 @@ void openHFDIBRANS::computeUi
     word interpType = UIBScheme[0].wordToken();
 
     // interpolation
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
+        ibInterpolation_->outerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales);
     }
 
     else if (interpType == "lambdaBased")
@@ -267,9 +268,9 @@ void openHFDIBRANS::computeKi
     word interpType = kIBScheme[0].wordToken();
 
     // interpolation
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales);
+        ibInterpolation_->outerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales);
     }
 
     else if (interpType == "switched")
@@ -372,9 +373,9 @@ void openHFDIBRANS::computeTi
     word interpType = TIBScheme[0].wordToken();
 
     // use boundary condition
-    if (interpType == "unifunctional")
+    if (interpType == "outer" or interpType == "unifunctional")
     {
-        ibInterpolation_->unifunctionalInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
+        ibInterpolation_->outerInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales);
     }
 
     else if (interpType == "lambdaBased")
@@ -415,11 +416,31 @@ void openHFDIBRANS::updateUTau
 //---------------------------------------------------------------------------//
 void openHFDIBRANS::correctNut
 (
+    volScalarField& nut,
     volScalarField& k,
     volScalarField& nu
 )
 {
-    ibDirichletBCs_->correctNutAtIB(k, nu);
+    ibDirichletBCs_->nutAtIB(k, nu);
+
+    if (assignNut_)
+    {
+        // get nut
+        List<List<scalar>>& nutAtIB = ibDirichletBCs_->getNutAtIB();
+
+        // assign nut
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // assign
+            nut[cellI] = nutAtIB[Pstream::myProcNo()][bCell];
+        }
+
+        // sync boundary conditions
+        nut.correctBoundaryConditions();
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -705,7 +726,12 @@ void openHFDIBRANS::createBaseSurface
     scalar boundaryVal
 )
 {
-    if (surfType == "setValue" or surfType == "switched")
+    if (surfType == "readOnly")
+    {
+        return;
+    }
+
+    else if (surfType == "setValue" or surfType == "switched")
     {
         ibInterpolation_->setUpSurface(surface, boundaryVal);
     }
@@ -737,6 +763,27 @@ void openHFDIBRANS::updateSurface
     {
         ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), ibDirichletBCs_->getYPlusLam());
     }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctSurfaceByNormal
+(
+    volSymmTensorField& normSurface,
+    volScalarField& surface,
+    scalar bodyOnLimit
+)
+{
+    ibInterpolation_->correctSurfaceByNormal(normSurface, surface, bodyOnLimit);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateWallShearStress
+(
+    const volVectorField& U,
+    const volScalarField& nu
+)
+{
+    ibDirichletBCs_->calculateWallShearStress(U, nu);
 }
 
 //---------------------------------------------------------------------------//

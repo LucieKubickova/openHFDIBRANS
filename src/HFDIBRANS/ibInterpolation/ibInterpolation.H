@@ -49,6 +49,9 @@ Contributors
 #include "boundaryCell.H"
 #include "surfaceCell.H"
 
+#include "triSurfaceMesh.H"
+#include "triangleFuncs.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -72,6 +75,7 @@ class ibInterpolation
 
     // options
     word boundarySearch_;
+    word stlName_;
     bool excludeWalls_;
     bool readSurfNorm_;
     bool aveYOrtho_;
@@ -81,6 +85,15 @@ class ibInterpolation
     bool averageV_;
     bool readL_;
     scalar valueL_;
+    scalar innerThres_; // LK: experimental
+    bool sdBasedLambda_;
+    bool correctIntPoints_;
+
+    // stl things
+    word stlPath_;
+    autoPtr<triSurfaceMesh> bodySurfMesh_;
+    autoPtr<triSurface> triSurf_;
+    autoPtr<triSurfaceSearch> triSurfSearch_;
 
     // saves
     volScalarField iProci_;
@@ -125,11 +138,11 @@ class ibInterpolation
 
     // Public methods --------------------------------------------------
     // -- interpolation approaches
-    // unifunctional interpolation
+    // outer interpolation
     template <typename Type, typename volTypeField>
-    void unifunctionalInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
+    void outerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
-    // lambda based interpolation (unifuncional)
+    // lambda based interpolation
     template <typename Type, typename volTypeField>
     void lambdaBasedInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales);
 
@@ -141,7 +154,7 @@ class ibInterpolation
     template <typename Type, typename volTypeField>
     void outerInnerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
-    // inner unifunctional interpolation
+    // inner interpolation
     template <typename Type, typename volTypeField>
     void innerInterp(ITstream& ibSchemeName, volTypeField& phi, volTypeField& phii, List<Type>& dirichletVals, List<scalar>& scales, volScalarField& yPlusi, scalar yPlusLam);
 
@@ -158,7 +171,11 @@ class ibInterpolation
     // auxiliar functions
     void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
     bool isWallCell(label& cellI);
-    label getFaceInDir(label cellI, vector dir); // Note (LK): copy of a function from lineIntInfo
+
+    // best instance in direction
+    label getFaceInDir(label cellI, vector dir);
+    label getEdgeInDir(label faceI, label cellI, vector dir);
+    label getVertInDir(label edgeI, label cellI, vector dir);
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
@@ -166,6 +183,9 @@ class ibInterpolation
     void setOnlyInnerSurface(volScalarField& surface, scalar boundaryVal);
     void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
     // TODO: blended surface
+
+    // surface correction
+    void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
 
     // surface distance calculation
     void calculateBoundaryDist();
@@ -180,6 +200,9 @@ class ibInterpolation
 
     // surface normals
     void calculateSurfNorm();
+
+    // get closest point and normal from stl file
+    void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);

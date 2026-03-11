@@ -62,11 +62,26 @@ volScalarField surface
         "SIMPLE::surface",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
     dimensionedScalar("zero",dimless,0)
+);
+
+Info << "Creating field normSurface\n" << endl;
+volSymmTensorField normSurface
+(
+    IOobject
+    (
+        "SIMPLE::normSurface",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedSymmTensor("zero",dimless,symmTensor::zero)
 );
 
 Info << "Reading field f\n" << endl;

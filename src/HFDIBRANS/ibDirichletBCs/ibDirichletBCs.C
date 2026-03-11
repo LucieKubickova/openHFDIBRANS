@@ -84,6 +84,17 @@ HFDIBDEMDict_
         IOobject::NO_WRITE
     )
 ),
+fvSchemes_
+(
+    IOobject
+    (
+        "fvSchemes",
+        "system",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+),
 yPlusi_
 (
     IOobject
@@ -97,6 +108,45 @@ yPlusi_
     mesh_,
     dimensionedScalar("zero", dimless, -1.0)
 ),
+uTaui_
+(
+    IOobject
+    (
+        "uTaui",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, 0.0)
+),
+tauwi_
+(
+    IOobject
+    (
+        "tauwi",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedVector("zero", dimless, vector::zero)
+),
+nuti_
+(
+    IOobject
+    (
+        "nuti",
+        mesh_.time().timeName(),
+        mesh_,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh_,
+    dimensionedScalar("zero", dimless, 0.0)
+),
 kappa_(0.41),
 E_(9.8),
 Prt_(0.85),
@@ -106,6 +156,7 @@ beta1_(0.075)
 {
     // initiate lists
     nutAtIB_.setSize(Pstream::nProcs());
+    kAtIB_.setSize(Pstream::nProcs());
     uTauAtIB_.setSize(Pstream::nProcs());
 
     // read turbulence properties
@@ -114,11 +165,16 @@ beta1_(0.075)
     // read HFDIBDEMDict
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", true);
+    uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
+    uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
+
+    // read boundary condition for velocity
+    HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
+    UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
 
     // read simulation type
     if (simulationType_ != "laminar")
     {
-        HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
         nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "undefined");
         alphatWF_ = HFDIBBCsDict_.lookupOrDefault<word>("alphat", "undefined");
         kWF_ = HFDIBBCsDict_.lookupOrDefault<word>("k", "undefined");
@@ -194,10 +250,12 @@ void ibDirichletBCs::setSizeToLists
     {
         // set size
         nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+        kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
         uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
 
         // reset
         nutAtIB_[Pstream::myProcNo()] = 0.0;
+        kAtIB_[Pstream::myProcNo()] = 0.0;
         uTauAtIB_[Pstream::myProcNo()] = 0.0;
     }
 }
@@ -206,10 +264,10 @@ void ibDirichletBCs::setSizeToLists
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
-    word BCType
+    volVectorField& U
 )
 {
-    if (simulationType_ == "laminar" or BCType == "noSlip")
+    if (simulationType_ == "laminar" or UBC_ == "noSlip")
     {
         forAll(UIB, uCell)
         {
@@ -218,9 +276,31 @@ void ibDirichletBCs::UAtIB
         }
     }
 
+    else if (UBC_ == "partialSlip")
+    {
+        // read partial clip coefficient
+        scalar alpha = HFDIBBCsDict_.lookupOrDefault<scalar>("UCoeff", 0.0);
+
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // reset field
+            UIB[bCell] = vector::zero;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // get surface normal
+            vector normal = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+            // calculate value at boundary
+            UIB[bCell] += (1 - alpha)*transform(I - sqr(normal), U[cellI]);
+        }
+    }
+
     else
     {
-        FatalError << BCType << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
+        FatalError << UBC_ << " condition for U in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -233,7 +313,7 @@ void ibDirichletBCs::TAtIB
 {
     forAll(TIB, bCell)
     {
-        // assign zero
+        // assign value
         TIB[bCell] = TIn;
     }
 }
@@ -244,43 +324,188 @@ void ibDirichletBCs::updateUTauAtIB
     volScalarField& k
 )
 {
+    // prepare interpolation scheme
+    dictionary HFDIBInnerSchemes = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
+    autoPtr<interpolation<scalar>> interpK = interpolation<scalar>::New(HFDIBInnerSchemes, k);
+
     // prepare sync
     List<DynamicList<label>> fCellsToSync(Pstream::nProcs());
+    List<DynamicList<point>> fPointsToSync(Pstream::nProcs());
+    List<DynamicList<label>> bLabelsToRecv(Pstream::nProcs());
 
-    // loop over boundary cells
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    // if uTau from boundary cell
+    if (uTauType_ == "boundaryCell")
     {
-        // reset field
-        uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
-
-        // get cell label
-        //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-        label fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell_;
-        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
-
-        // compute uTau based on values from the free stream
-        if (Pstream::myProcNo() == fProc)
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // compute uTau
+            uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[cellI]);
         }
-        else
+    }
+
+    else if (uTauType_ == "effectiveDistance" or uTauType_ == "cellDistance" or uTauType_ == "coeffDistance")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            fCellsToSync[fProc].append(fCell);
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+            label fCell1 = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+            label fCell2 = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
+            label fProc1 = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+            label fProc2 = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
+
+            // get surface point and normal
+            point sPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+            vector sNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+            // get distance
+            scalar dist(0.0);
+            if (uTauType_ == "effectiveDistance")
+            {
+                dist = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+            }
+            else if (uTauType_ == "cellDistance")
+            {
+                dist = Foam::pow(mesh_.V()[cellI],0.333);
+            }
+            else if (uTauType_ == "coeffDistance")
+            {
+                dist = 1.0; // Note (LK): value set by uTauCoeff
+            }
+
+            // fictional point in effective distance
+            point distPoint = sPoint + uTauCoeff_*dist*sNorm;
+
+            // check in which cell the point is
+            label kCell;
+            label kProc;
+            if (pointInCell(distPoint, cellI))
+            {
+                kCell = cellI;
+                kProc = Pstream::myProcNo();
+            }
+            else //~ if (pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
+            {
+                kCell = fCell1;
+                kProc = fProc1;
+            }
+            //~ else
+            //~ {
+                //~ kCell = fCell2;
+                //~ kProc = fProc2;
+            //~ }
+
+            if (kProc == Pstream::myProcNo())
+            {
+                // interpolate k
+                scalar kPoint = interpK->interpolate(distPoint, kCell);
+
+                // compute friction velocity
+                uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(kPoint);
+            }
+
+            else
+            {
+                fCellsToSync[kProc].append(kCell);
+                fPointsToSync[kProc].append(distPoint);
+                bLabelsToRecv[kProc].append(bCell);
+            }
         }
+    }
+
+    else if (uTauType_ == "freeStreamCell" or uTauType_ == "interpPoint")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // reset field
+            uTauAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // prepare
+            label fCell(0);
+            label fProc(-1);
+            point fPoint(vector::zero);
+
+            // use the first interpolation point
+            fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+            fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+            fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+
+            // check body -- Note (LK): not really working for pipe or anything, but idea to smooth out
+            //~ if (body_[cellI] < thrSurf_)
+            //~ {
+                //~ fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
+                //~ fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
+                //~ fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_;
+            //~ }
+            //~ else
+            //~ {
+                //~ fCell = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
+                //~ fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
+                //~ fPoint = boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_;
+            //~ }
+
+            // compute uTau based on values from the free stream
+            if (Pstream::myProcNo() == fProc)
+            {
+                if (uTauType_ == "interpPoint")
+                {
+                    // interpolate k
+                    scalar kPoint = interpK->interpolate(fPoint, fCell);
+
+                    // compute friction velocity
+                    uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(kPoint);
+                }
+
+                else
+                {
+                    // compute friction velocity
+                    uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
+                }
+            }
+            else
+            {
+                fCellsToSync[fProc].append(fCell);
+                fPointsToSync[fProc].append(fPoint);
+                bLabelsToRecv[fProc].append(bCell);
+            }
+        }
+    }
+
+    else
+    {
+        FatalError << "uTau calculation type " << uTauType_ << " not implemented" << exit(FatalError);
     }
 
     // sync with other processors
     PstreamBuffers pBufsFCells(Pstream::commsTypes::nonBlocking);
+    PstreamBuffers pBufsFPoints(Pstream::commsTypes::nonBlocking);
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
         if(proci != Pstream::myProcNo())
         {
             UOPstream sendFCells(proci, pBufsFCells);
+            UOPstream sendFPoints(proci, pBufsFPoints);
             sendFCells << fCellsToSync[proci];
+            sendFPoints << fPointsToSync[proci];
         }
     }
 
     pBufsFCells.finishedSends();
+    pBufsFPoints.finishedSends();
 
     // recieve
     List<DynamicList<scalar>> uTausToRetr(Pstream::nProcs());
@@ -289,15 +514,32 @@ void ibDirichletBCs::updateUTauAtIB
         if (proci != Pstream::myProcNo())
         {
             UIPstream recvFCells(proci, pBufsFCells);
+            UIPstream recvFPoints(proci, pBufsFPoints);
             DynamicList<label> recFCells (recvFCells);
+            DynamicList<point> recFPoints (recvFPoints);
 
             forAll(recFCells, rCell)
             {
                 // get the cell label
-                label cellI = recFCells[rCell];
+                label recCell = recFCells[rCell];
+                point recPoint = recFPoints[rCell];
 
-                // compute utau
-                scalar uTau = Cmu25_*Foam::sqrt(k[cellI]);
+                scalar uTau;
+                if (uTauType_ == "firstInterpPoint" or uTauType_ == "effectiveDistance")
+                {
+                    // interpolate k
+                    scalar kPoint = interpK->interpolate(recPoint, recCell);
+
+                    // compute friction velocity
+                    uTau = Cmu25_*Foam::sqrt(kPoint);
+                }
+
+                else
+                {
+                    // compute friction velocity
+                    uTau = Cmu25_*Foam::sqrt(k[recCell]);
+                }
+
                 uTausToRetr[proci].append(uTau);
             }
         }
@@ -328,33 +570,30 @@ void ibDirichletBCs::updateUTauAtIB
 
     pBufsFCells.clear();
 
-    // prepare counter
-    List<label> counter(Pstream::nProcs());
+    // complete uTau
     for (label proci = 0; proci < Pstream::nProcs(); proci++)
     {
-        counter[proci] = 0;
-    }
-
-    // complete uTau
-    forAll(uTauAtIB_[Pstream::myProcNo()], bCell)
-    {
-        label fProc = boundaryCells_[Pstream::myProcNo()][bCell].fProc_;
-        if (fProc != Pstream::myProcNo())
+        if (proci != Pstream::myProcNo())
         {
-            // get the returned uTau
-            scalar uTau = uTausCmpl[fProc][counter[fProc]];
-            ++counter[fProc];
+            forAll(uTausCmpl[proci], rCell)
+            {
+                scalar uTau = uTausCmpl[proci][rCell];
+                label bLabel = bLabelsToRecv[proci][rCell];
 
-            // save
-            uTauAtIB_[Pstream::myProcNo()][bCell] = uTau;
+                uTauAtIB_[Pstream::myProcNo()][bLabel] = uTau;
+            }
         }
     }
 
     // post processing
     postProcessUTau();
+
+    // save
+    saveUTau();
 }
+
 //---------------------------------------------------------------------------//
-void ibDirichletBCs::correctNutAtIB
+void ibDirichletBCs::nutAtIB
 (
     volScalarField& k,
     volScalarField& nu
@@ -396,7 +635,15 @@ void ibDirichletBCs::correctNutAtIB
             {
                 nutAtIB_[Pstream::myProcNo()][bCell] = nu[cellI]*(yPlus*kappa_/Foam::log(E_*yPlus) - 1.0);
             }
+
+            // save
+            nuti_[cellI] = nutAtIB_[Pstream::myProcNo()][bCell];
         }
+    }
+
+    else
+    {
+        FatalError << nutWF_ << " condition for nut not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -529,6 +776,12 @@ void ibDirichletBCs::kAtIB
             kIB[bCell] = max(kIB[bCell], SMALL);
         }
 
+        // save
+        forAll(kIB, bCell)
+        {
+            kAtIB_[Pstream::myProcNo()][bCell] = kIB[bCell];
+        }
+
         // save kIB
         //~ word fileName = "k.dat";
         //~ word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
@@ -608,8 +861,10 @@ void ibDirichletBCs::omegaGAtIB
         // load near wall dist
         //~ nearWallDist yWall(mesh_); // not used now
 
-        // prepare
-        vector zeroU = vector::zero;
+        // get surface normal gradient
+        List<DynamicList<vector>> snGradU;
+        snGradU.setSize(Pstream::nProcs());
+        snGradUAtIB(U, snGradU);
 
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -633,8 +888,7 @@ void ibDirichletBCs::omegaGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            vector snGradU = (zeroU - U[cellI])/yOrtho; // Note (LK): should this be ever done from yEff?
-            scalar magGradUWall = mag(snGradU);
+            scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -709,8 +963,10 @@ void ibDirichletBCs::epsilonGAtIB
         // load near wall dist
         //~ nearWallDist yWall(mesh_); // not used now
 
-        // prepare
-        vector zeroU = vector::zero;
+        // get surface normal gradient
+        List<DynamicList<vector>> snGradU;
+        snGradU.setSize(Pstream::nProcs());
+        snGradUAtIB(U, snGradU);
 
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -734,8 +990,7 @@ void ibDirichletBCs::epsilonGAtIB
             }
 
             // compute magnitude of snGrad of U at the surface
-            vector snGradU = (zeroU - U[cellI])/yOrtho;
-            scalar magGradUWall = mag(snGradU);
+            scalar magGradUWall = mag(snGradU[Pstream::myProcNo()][bCell]);
 
             // get the friction velocity
             scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
@@ -877,6 +1132,125 @@ void ibDirichletBCs::postProcessUTau
 
     //~ // divide by total area
     //~ uTauAtIB_[Pstream::myProcNo()][bCell] /= totA;
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateWallShearStress
+(
+    const volVectorField& U,
+    const volScalarField& nu
+)
+{
+    // reset
+    tauwi_ *= 0.0;
+
+    // prepare list
+    List<vector> tauwIB;
+    tauwIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
+
+    // prepare grad fields
+    volTensorField gradU = fvc::grad(U);
+    List<DynamicList<vector>> snGradU;
+    snGradU.setSize(Pstream::nProcs());
+    snGradUAtIB(U, snGradU);
+
+    // loop over boundar cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // calculate effective nu
+        scalar nuEff = nu[cellI] + nutAtIB_[Pstream::myProcNo()][bCell];
+
+        // correct gradient
+        vector normal = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+        tensor correction = normal * (snGradU[Pstream::myProcNo()][bCell] - (normal & gradU[cellI]));
+
+        // calculate dev tau
+        symmTensor devTau = -nuEff * dev(twoSymm(gradU[cellI] + correction));
+
+        // calculate wall shear stress
+        tauwIB[bCell] = -normal & devTau;
+
+        // save
+        tauwi_[cellI] = tauwIB[bCell];
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::saveUTau
+(
+)
+{
+    // reset saved data
+    uTaui_ *= 0.0;
+
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // save
+        uTaui_[cellI] = uTauAtIB_[Pstream::myProcNo()][bCell];
+    }
+}
+
+//---------------------------------------------------------------------------//
+bool ibDirichletBCs::pointInCell // copy from lineIntInfo
+(
+    point pToCheck,
+    label cToCheck
+)
+{
+    const labelList& cellFaces(mesh_.cells()[cToCheck]);
+    forAll(cellFaces, faceI)
+    {
+        label fI = cellFaces[faceI];
+        vector outNorm = mesh_.Sf()[fI];
+        outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
+
+        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::snGradUAtIB
+(
+    const volVectorField& U,
+    List<DynamicList<vector>>& snGradU
+)
+{
+    // Note (LK): possibility to add new sn grad schemes here
+
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // get distance to the surface
+        scalar yOrtho;
+        if (useYEff_)
+        {
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+        }
+        else
+        {
+            yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        }
+
+        // calculate surface normal gradient
+        vector snGrad = (vector::zero - U[cellI])/yOrtho; // Note (LK): not moving solid considered, should be changed
+
+        // assign
+        snGradU[Pstream::myProcNo()].append(snGrad);
+    }
 }
 
 // ************************************************************************* //

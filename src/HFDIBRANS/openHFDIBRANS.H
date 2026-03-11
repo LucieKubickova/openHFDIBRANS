@@ -83,6 +83,7 @@ class openHFDIBRANS
     scalar scaleCoeff_;
     scalar scaleCoeffG_;
     bool useYEff_;
+    bool assignNut_;
 
     // save
     word outDir_;
@@ -106,7 +107,7 @@ class openHFDIBRANS
     void updateUTau(volScalarField& k);
     
     // correct values
-    void correctNut(volScalarField& k, volScalarField& nu);
+    void correctNut(volScalarField& nut, volScalarField& k, volScalarField& nu);
     void correctAlphat(volScalarField& alphat, const volScalarField& nu, volScalarField& surface);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
@@ -114,6 +115,10 @@ class openHFDIBRANS
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
+    void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
+
+    // calculations
+    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
 
     // correct y for blending functions in kOmegaSST
     void correctY(volScalarField& y);
@@ -128,6 +133,22 @@ class openHFDIBRANS
 
     // bound fields
     void bound(volScalarField& phi, dimensionedScalar& phiMin);
+
+    // get functions
+    volVectorField& getWallShearStress()
+    {
+        return ibDirichletBCs_->getWallShearStress();
+    }
+
+    volScalarField& getNuti()
+    {
+        return ibDirichletBCs_->getNuti();
+    }
+
+    volScalarField& getUTaui()
+    {
+        return ibDirichletBCs_->getUTaui();
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
