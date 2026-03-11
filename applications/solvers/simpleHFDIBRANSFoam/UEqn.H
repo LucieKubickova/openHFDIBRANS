@@ -1,4 +1,7 @@
 // Momentum predictor
+
+MRF.correctBoundaryVelocity(U);
+
 fvVectorMatrix UEqn
 (
     fvm::div(phi, U)
@@ -20,6 +23,7 @@ surface.correctBoundaryConditions();
 HFDIBRANS.correctSurfaceByNormal(normSurface, surface, normCorrLimit);
 normSurface.correctBoundaryConditions();
 
+
 if (simple.momentumPredictor())
 {
     for (label nCorr = 0; nCorr < maxEqnIters; nCorr++)
@@ -28,7 +32,7 @@ if (simple.momentumPredictor())
         {
             f = normSurface & (UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
         }
-
+        
         else
         {
             f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
@@ -72,3 +76,6 @@ if (simple.momentumPredictor())
 
     fvOptions.correct(U);
 }
+
+// Asign the current f as RHS for momentum equation
+UEqn -= f;

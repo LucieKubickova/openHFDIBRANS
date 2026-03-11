@@ -143,6 +143,11 @@ class openHFDIBRANS
     {
         return ibDirichletBCs_->getNuti();
     }
+
+    volScalarField& getUTaui()
+    {
+        return ibDirichletBCs_->getUTaui();
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

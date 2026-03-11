@@ -261,6 +261,11 @@ class ibDirichletBCs
         return nuti_;
     }
 
+    volScalarField& getUTaui()
+    {
+        return uTaui_;
+    }
+
     // save
     void saveUTau();
 

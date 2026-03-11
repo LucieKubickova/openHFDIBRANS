@@ -146,8 +146,10 @@ int main(int argc, char *argv[])
     // write fields
     volVectorField& tauwi = HFDIBRANS.getWallShearStress();
     volScalarField& nuti = HFDIBRANS.getNuti();
+    volScalarField& uTaui = HFDIBRANS.getUTaui();
     tauwi.write();
     nuti.write();
+    uTaui.write();
 
     Info << "End\n" << endl;
 

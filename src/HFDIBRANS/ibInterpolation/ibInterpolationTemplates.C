@@ -508,6 +508,12 @@ void ibInterpolation::interpolateToIntPoints
                 iPointsToSync[iProc].append(cPoint.iPoint_);
                 iCellsToSync[iProc].append(cPoint.iCell_);
             }
+
+            // if it was the last point skip the rest
+            if (cPoint.last_)
+            {
+                break;
+            }
         }
     }
 

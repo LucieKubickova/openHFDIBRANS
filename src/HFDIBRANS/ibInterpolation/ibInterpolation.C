@@ -324,12 +324,19 @@ void ibInterpolation::calculateInterpolationPoints
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
         boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = intPoints[0].iPoint_;
-        boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_ = intPoints[1].iPoint_;
-        boundaryCells_[Pstream::myProcNo()][bCell].fCell1_ = intPoints[1].iCell_; 
-        boundaryCells_[Pstream::myProcNo()][bCell].fProc1_ = intPoints[1].iProc_;
-        boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_ = intPoints[2].iPoint_;
-        boundaryCells_[Pstream::myProcNo()][bCell].fCell2_ = intPoints[2].iCell_; 
-        boundaryCells_[Pstream::myProcNo()][bCell].fProc2_ = intPoints[2].iProc_;
+        if (!intPoints[0].last_)
+        {
+            boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_ = intPoints[1].iPoint_;
+            boundaryCells_[Pstream::myProcNo()][bCell].fCell1_ = intPoints[1].iCell_; 
+            boundaryCells_[Pstream::myProcNo()][bCell].fProc1_ = intPoints[1].iProc_;
+        }
+
+        if (!intPoints[1].last_)
+        {
+            boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_ = intPoints[2].iPoint_;
+            boundaryCells_[Pstream::myProcNo()][bCell].fCell2_ = intPoints[2].iCell_; 
+            boundaryCells_[Pstream::myProcNo()][bCell].fProc2_ = intPoints[2].iProc_;
+        }
     }
 
     // Note (LK): parallelization of this was not fixed nor checked

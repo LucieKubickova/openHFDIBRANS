@@ -144,8 +144,6 @@ class lineIntInfo
         List<DynamicList<intPoint>>& intPointsSolved
     );
 
-    void syncIntPoints();
-
     public:
 
     // Constructors ------------------------------------------------
