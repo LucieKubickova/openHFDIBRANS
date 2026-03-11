@@ -20,7 +20,7 @@ solvers
     p
     {
         solver          GAMG;
-        tolerance       1e-10;
+        tolerance       1e-8;
         relTol          0.0;
         smoother        symGaussSeidel;
         nPreSweeps      0;
@@ -35,7 +35,7 @@ solvers
     pFinal
     {
         $p;
-        tolerance       1e-12;
+        tolerance       1e-10;
         relTol          0;
     }
 
@@ -43,8 +43,8 @@ solvers
     {
         solver          PBiCG;
         preconditioner   DILU;
-        tolerance       1e-12;
-        relTol          0.05;
+        tolerance       1e-10;
+        relTol          0.0;
     }
     "(U|k|epsilon|omega|R|nuTilda)Final"
     {
@@ -104,9 +104,9 @@ SIMPLE
     {
         U
         {
-            surfaceType     setValue;
-            boundaryValue   0.0;
-            tolEqn          1e-6;
+            surfaceType     switched;
+            boundaryValue   1.0;
+            tolEqn          1e-8;
             maxEqnIters     10;
         }
     }
@@ -126,6 +126,7 @@ relaxationFactors
         k           0.8;
         omega       0.8;
     }
+
     equations
     {
         ".*" 0.85;
