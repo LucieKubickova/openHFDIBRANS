@@ -105,6 +105,15 @@ class ibScheme
         List<intPoint>& intInfo
     ) = 0;
 
+    virtual symmTensor interpolate
+    (
+        List<symmTensor>& phiPs,
+        symmTensor& dirichletVal,
+        scalar& scale,
+        scalar& ds,
+        List<intPoint>& intInfo
+    ) = 0;
+
     virtual tensor interpolate
     (
         List<tensor>& phiPs,

@@ -80,6 +80,18 @@ class logarithmicScheme
         return interpolateT(phiPs, dirichletVal, scale, ds, intInfo);
     }
 
+    symmTensor interpolate
+    (
+        List<symmTensor>& phiPs,
+        symmTensor& dirichletVal,
+        scalar& scale,
+        scalar& ds,
+        List<intPoint>& intInfo
+    )
+    {
+        return interpolateT(phiPs, dirichletVal, scale, ds, intInfo);
+    }
+
     tensor interpolate
     (
         List<tensor>& phiPs,
