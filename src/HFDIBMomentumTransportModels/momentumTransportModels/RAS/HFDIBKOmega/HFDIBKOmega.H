@@ -90,8 +90,6 @@ protected:
             word omegaGSurfaceType_;
             scalar kBoundaryValue_;
             scalar omegaGBoundaryValue_;
-            scalar tolKEqn_;
-            label maxKEqnIters_;
 
         // Options
             bool useKQ_;

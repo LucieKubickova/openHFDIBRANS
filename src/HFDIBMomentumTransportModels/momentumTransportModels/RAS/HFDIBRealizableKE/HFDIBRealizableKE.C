@@ -327,8 +327,6 @@ HFDIBRealizableKE<BasicMomentumTransportModel>::HFDIBRealizableKE
     HFDIBRASDict.lookup("disGSurfaceType") >> epsilonGSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
     epsilonGBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
-    tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
-    maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
     useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound

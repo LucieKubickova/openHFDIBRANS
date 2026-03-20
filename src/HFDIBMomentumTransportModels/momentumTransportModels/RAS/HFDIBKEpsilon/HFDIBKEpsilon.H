@@ -90,8 +90,6 @@ protected:
             word epsilonGSurfaceType_;
             scalar kBoundaryValue_;
             scalar epsilonGBoundaryValue_;
-            scalar tolKEqn_;
-            label maxKEqnIters_;
 
         // Options
             bool useKQ_;

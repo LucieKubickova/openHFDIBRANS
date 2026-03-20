@@ -529,8 +529,6 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
     HFDIBRASDict.lookup("disGSurfaceType") >> omegaGSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
     omegaGBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
-    tolKEqn_ = readScalar(HFDIBRASDict.lookup("tolKEqn"));
-    maxKEqnIters_ = readLabel(HFDIBRASDict.lookup("maxKEqnIters"));
     useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
     correctFs_ = HFDIBRASDict.lookupOrDefault<bool>("correctFs", true);
 
