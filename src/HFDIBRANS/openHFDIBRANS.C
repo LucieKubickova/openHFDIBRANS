@@ -421,6 +421,16 @@ void openHFDIBRANS::correctNut
     volScalarField& nu
 )
 {
+    // put zero inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            nut[cellI] = small;
+        }
+    }
+
+    // correct nut at immersed boundary
     ibDirichletBCs_->nutAtIB(k, nu);
 
     if (assignNut_)
@@ -543,7 +553,7 @@ void openHFDIBRANS::correctOmegaG
             if (body_[cellI] >= 0.5)
             {
                 omega[cellI] = inOmega;
-                G[cellI] = 0.0;
+                G[cellI] = small;
             }
         }
     }
