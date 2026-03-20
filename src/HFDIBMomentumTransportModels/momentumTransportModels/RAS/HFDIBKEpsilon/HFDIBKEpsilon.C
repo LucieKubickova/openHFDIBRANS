@@ -310,6 +310,7 @@ HFDIBKEpsilon<BasicMomentumTransportModel>::HFDIBKEpsilon
     }
 }
 
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicMomentumTransportModel>
@@ -383,7 +384,6 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     // HFDIB: correct epsilon and G
     HFDIBRANS.correctEpsilonG(epsilon_, G, U, k_, nu_, epsilonGSurface_);
     epsilon_.correctBoundaryConditions();
-    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn
@@ -409,7 +409,6 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     solve(epsEqn);
     fvOptions.correct(epsilon_);
     bound(epsilon_, this->epsilonMin_);
-    //~ HFDIBRANS.bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -434,37 +433,36 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     if (useKQ_)
     {
-        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
-        {
-            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-            kQ_.correctBoundaryConditions();
-            solve(kEqn == kQ_);
+        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+        kQ_.correctBoundaryConditions();
 
-            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
-
-            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
-            {
-                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-                break;
-            }
-
-            // apply correction
-            k_ += 1.0*kSurface_*(ki_ - k_);
-        }
+        // HFDIBRANS: add to k equation
+        kEqn -= kQ_;
     }
 
-    else
+    // HFDIBRANS: matrix manipulate
+    if (!useKQ_)
     {
-        solve(kEqn);
+        matrixManipulate(kEqn, ki_, kSurface_);
+    }
+
+    // solve
+    solve(kEqn);
+
+    // HFDIBRANS: correction
+    if (useKQ_)
+    {
+        Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+        k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut();
     HFDIBRANS.correctNut(this->nut_, k_, nu_);
     this->nut_.correctBoundaryConditions();
+    HFDIBRANS.calculateWallShearStress(U, nu_);
 }
 
 template<class BasicMomentumTransportModel>

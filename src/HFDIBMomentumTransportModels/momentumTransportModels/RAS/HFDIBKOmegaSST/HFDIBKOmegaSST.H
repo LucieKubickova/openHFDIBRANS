@@ -94,12 +94,12 @@ protected:
 
             volScalarField k_;
             volScalarField omega_;
-	        volScalarField lambda_;
+            volScalarField lambda_;
             volScalarField kSurface_;
             volScalarField omegaGSurface_;
-	        volScalarField ki_;
+            volScalarField ki_;
             volScalarField kQ_;
-	        volScalarField nu_;
+            volScalarField nu_;
 
         // Dictionaries
 
@@ -203,6 +203,7 @@ protected:
         ) const;
 
         virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, volScalarField& surface);
+
 
 public:
 

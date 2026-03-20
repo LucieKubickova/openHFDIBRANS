@@ -206,15 +206,15 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     ),
     lambda_
     (
-    	IOobject
-	    (
-	        "lambda",
+        IOobject
+        (
+            "lambda",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::MUST_READ,
             IOobject::NO_WRITE
-	    ),
-	    this->mesh_
+        ),
+        this->mesh_
     ),
     kSurface_
     (
@@ -246,7 +246,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     (
         IOobject
         (
-	        "ki",
+            "ki",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -259,7 +259,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     (
         IOobject
         (
-	        "kQ",
+            "kQ",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::READ_IF_PRESENT,
@@ -299,6 +299,7 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         this->printCoeffs(type);
     }
 }
+
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -372,7 +373,6 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     // HFDIB: correct omega and G
     HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
     omega_.correctBoundaryConditions();
-    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // Turbulence specific dissipation rate equation
     tmp<fvScalarMatrix> omegaEqn
@@ -398,7 +398,6 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     solve(omegaEqn);
     fvOptions.correct(omega_);
     bound(omega_, this->omegaMin_);
-    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
     HFDIBRANS.computeKi(k_, ki_, nu_);
@@ -423,33 +422,31 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
 
     if (useKQ_)
     {
-        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
-        {
-            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-            kQ_.correctBoundaryConditions();
-            solve(kEqn == kQ_);
+        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+        kQ_.correctBoundaryConditions();
 
-            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
-
-            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
-            {
-                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-                break;
-            }
-
-            // apply correction
-            k_ += 1.0*kSurface_*(ki_ - k_);
-        }
+        // HFDIBRANS: add to k equation
+        kEqn -= kQ_;
     }
 
-    else
+    // HFDIBRANS: matrix manipulate
+    if (!useKQ_)
     {
-        solve(kEqn);
+        matrixManipulate(kEqn, ki_, kSurface_);
+    }
+
+    // solve
+    solve(kEqn);
+
+    // HFDIBRANS: correction
+    if (useKQ_)
+    {
+        Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+        k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut();
     HFDIBRANS.correctNut(this->nut_, k_, nu_);
