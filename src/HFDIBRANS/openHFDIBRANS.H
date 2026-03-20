@@ -127,9 +127,6 @@ class openHFDIBRANS
     void cutUInBoundaryCells(volVectorField& U);
     void cutPhiInBoundaryCells(surfaceScalarField& phi);
 
-    // enforcing Ui
-    void enforceUiInBody(volVectorField& U, volVectorField& Ui);
-
     // bound fields
     void bound(volScalarField& phi, dimensionedScalar& phiMin);
 

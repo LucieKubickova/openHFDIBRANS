@@ -31,20 +31,12 @@ surfaceScalarField phiLambda
     phi*fvc::interpolate(lambda)
 );
 
-//~ volVectorField FbyA(rAU*f);
-//~ surfaceScalarField phiFbyA
-//~ (
-    //~ "phiFbyA",
-    //~ fvc::flux(FbyA)
-//~ );
-
 // Non-orthogonal pressure corrector loop
 while (simple.correctNonOrthogonal())
 {
     fvScalarMatrix pEqn
     (
         fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
-                                   //~ + fvc::div(phiFbyA)
                                     - fvc::div(phiLambda)
     );
 
@@ -54,7 +46,7 @@ while (simple.correctNonOrthogonal())
 
     if (simple.finalNonOrthogonalIter())
     {
-        phi = phiHbyA - pEqn.flux() - phiLambda; //~ + phiFbyA;
+        phi = phiHbyA - pEqn.flux() - phiLambda;
     }
 }
 
@@ -69,7 +61,7 @@ if (cutPhi)
 p.relax();
 
 // Momentum corrector
-U = HbyA - rAtU()*fvc::grad(p); //~ + rAU*f;
+U = HbyA - rAtU()*fvc::grad(p);
 U.correctBoundaryConditions();
 fvOptions.correct(U);
 
@@ -77,9 +69,4 @@ fvOptions.correct(U);
 if (cutVelocity)
 {
     HFDIBRANS.cutUInBoundaryCells(U);
-}
-
-if (enforceVelocity)
-{
-    HFDIBRANS.enforceUiInBody(U, Ui);
 }

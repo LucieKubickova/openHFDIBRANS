@@ -805,44 +805,6 @@ void openHFDIBRANS::cutPhiInBoundaryCells
 }
 
 //---------------------------------------------------------------------------//
-void openHFDIBRANS::enforceUiInBody
-(
-    volVectorField& U,
-    volVectorField& Ui
-)
-{
-    // loop over cells
-    forAll(mesh_.C(), cellI)
-    {
-        if (body_[cellI] < 1.0)
-        {
-            continue;
-        }
-
-        // check if cellI is an inner boundary cell
-        // Note (LK): needs fixing in parallel, but not used now
-        bool toCont = false;
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            // get the cell label
-            label cellB = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
-
-            // check
-            if (cellB == cellI)
-            {
-                toCont = true;
-                break;
-            }
-        }
-
-        if (not toCont)
-        {
-            U[cellI] = Ui[cellI];
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
 void openHFDIBRANS::bound
 (
     volScalarField& phi,
