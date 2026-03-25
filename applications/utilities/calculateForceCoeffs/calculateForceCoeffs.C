@@ -61,6 +61,21 @@ int main(int argc, char *argv[])
         mesh
     );
 
+    // read the p field
+    Info << "Reading field p\n" << endl;
+    volScalarField p
+    (
+        IOobject
+        (
+            "p",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh
+    );
+
     // read the phi field
     Info<< "Reading field phi\n" << endl;
     surfaceScalarField phi
@@ -121,6 +136,21 @@ int main(int argc, char *argv[])
         mesh
     );
 
+    // prepare fN field
+    volVectorField fN
+    (
+        IOobject
+        (
+            "fN",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
     // prepare tauw field
     volVectorField tauw
     (
@@ -134,6 +164,34 @@ int main(int argc, char *argv[])
         ),
         mesh,
         dimensionedVector("zero", dimless, vector::zero)
+    );
+
+    // prepare fT field
+    volVectorField fT
+    (
+        IOobject
+        (
+            "fT",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
+    // load HFDIBDEM dictionary
+    IOdictionary HFDIBDEMDict
+    (
+        IOobject
+        (
+            "HFDIBDEMDict",
+            "constant",
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
+        )
     );
 
     // prepare turbulence model
@@ -158,15 +216,26 @@ int main(int argc, char *argv[])
     // calculate wall shear stress
     HFDIBRANS.calculateWallShearStress(tauw, U, nu);
 
-    // write fields
-    tauw.write();
-    
-    volScalarField& nuti = HFDIBRANS.getNuti();
-    volScalarField& uTaui = HFDIBRANS.getUTaui();
-    nuti.write();
-    uTaui.write();
+    // calculate surface area
+    HFDIBRANS.calculateSurfaceArea();
 
-    Info << "End\n" << endl;
+    // prepare dictionary
+    dictionary forceDict = HFDIBDEMDict.subDict("forceCoeffs");
+
+    // calculate forces
+    HFDIBRANS.calculateForces(fN, fT, tauw, p, forceDict);
+
+    // calculate lift and drag
+    scalar Cl(0.0);
+    scalar Cd(0.0);
+    HFDIBRANS.calculateForceCoeffs(Cl, Cd, fN, fT, forceDict);
+
+    // write
+    Info << "Force coeffs are:" << endl;
+    Info << "    Cl = " << Cl << endl;
+    Info << "    Cd = " << Cd << endl;
+
+    Info << endl << "End\n" << endl;
 
     return 0;
 }

@@ -64,6 +64,9 @@ namespace Foam
         scalar yOrtho_ = 0.0; // orthogonal distance
         scalar yEff_ = 0.0; // effective distance
 
+        // areas
+        scalar sArea_ = 0.0; // area of solid surface
+
         // Constructor
         boundaryCell():
         bCell_(0),
@@ -80,7 +83,8 @@ namespace Foam
         fPoint2_(vector::zero),
         sigma_(0.0),
         yOrtho_(0.0),
-        yEff_(0.0)
+        yEff_(0.0),
+        sArea_(0.0)
         {};
 
         // Copy constructor
@@ -100,7 +104,8 @@ namespace Foam
             point fPoint2,
             scalar sigma,
             scalar yOrtho,
-            scalar yEff
+            scalar yEff,
+            scalar sArea
         ):
         bCell_(bCell),
         iCell_(iCell),
@@ -115,7 +120,8 @@ namespace Foam
         fPoint2_(fPoint2),
         sigma_(sigma),
         yOrtho_(yOrtho),
-        yEff_(yEff)
+        yEff_(yEff),
+        sArea_(sArea)
         {};
 
         // Destructor

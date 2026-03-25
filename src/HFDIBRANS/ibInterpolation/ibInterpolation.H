@@ -48,6 +48,7 @@ Contributors
 #include "lineIntInfo.H"
 #include "boundaryCell.H"
 #include "surfaceCell.H"
+#include "ibCutCell.H"
 
 #include "triSurfaceMesh.H"
 #include "triangleFuncs.H"
@@ -198,8 +199,9 @@ class ibInterpolation
     // calculate interpolation points
     void calculateInterpolationPoints();
 
-    // surface normals
+    // surface calculations
     void calculateSurfNorm();
+    void calculateSurfArea();
 
     // get closest point and normal from stl file
     void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);

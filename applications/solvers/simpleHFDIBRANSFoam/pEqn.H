@@ -37,7 +37,7 @@ while (simple.correctNonOrthogonal())
     fvScalarMatrix pEqn
     (
         fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
-                                    - fvc::div(phiLambda)
+                                   - fvc::div(phiLambda)
     );
 
     pEqn.setReference(pRefCell, pRefValue);

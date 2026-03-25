@@ -502,7 +502,6 @@ void HFDIBRealizableKE<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDI
     correctNut(tgradU(), S2, magS);
     HFDIBRANS.correctNut(this->nut_, k_, nu_);
     this->nut_.correctBoundaryConditions();
-    HFDIBRANS.calculateWallShearStress(U, nu_);
 }
 
 template<class BasicMomentumTransportModel>

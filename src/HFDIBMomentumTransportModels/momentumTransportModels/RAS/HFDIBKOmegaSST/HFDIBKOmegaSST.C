@@ -741,7 +741,6 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     correctNut(S2, F23);
     HFDIBRANS.correctNut(this->nut_, k_, nu_);
     this->nut_.correctBoundaryConditions();
-    HFDIBRANS.calculateWallShearStress(U, nu_);
 }
 
 template<class BasicMomentumTransportModel>

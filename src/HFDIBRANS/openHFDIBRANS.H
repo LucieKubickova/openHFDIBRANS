@@ -115,9 +115,12 @@ class openHFDIBRANS
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void updateSurface(volScalarField& surface, word surfType);
     void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
+    void calculateSurfaceArea();
 
     // calculations
-    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+    void calculateWallShearStress(volVectorField& tauw, const volVectorField& U, const volScalarField& nu);
+    void calculateForces(volVectorField& fN, volVectorField& fT, volVectorField& tauw, const volScalarField& p, dictionary forceDict);
+    void calculateForceCoeffs(scalar& Cl, scalar& Cd, volVectorField& fN, volVectorField& fT, dictionary forceDict);
 
     // correct y for blending functions in kOmegaSST
     void correctY(volScalarField& y);
@@ -131,11 +134,6 @@ class openHFDIBRANS
     void bound(volScalarField& phi, dimensionedScalar& phiMin);
 
     // get functions
-    volVectorField& getWallShearStress()
-    {
-        return ibDirichletBCs_->getWallShearStress();
-    }
-
     volScalarField& getNuti()
     {
         return ibDirichletBCs_->getNuti();

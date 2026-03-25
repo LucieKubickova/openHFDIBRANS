@@ -8,6 +8,7 @@ ibInterpolation/ibScheme/quadraticScheme/quadraticScheme.C
 ibInterpolation/ibScheme/logarithmicScheme/logarithmicScheme.C
 ibInterpolation/ibScheme/fixedGradientScheme/fixedGradientScheme.C
 ibInterpolation/ibScheme/zeroGradientScheme/zeroGradientScheme.C
+ibInterpolation/ibCutCell.C
 ibInterpolation/ibInterpolation.C
 openHFDIBRANS.C
 

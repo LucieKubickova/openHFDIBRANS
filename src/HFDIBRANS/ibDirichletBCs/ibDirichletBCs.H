@@ -112,7 +112,6 @@ class ibDirichletBCs
     // saves
     volScalarField yPlusi_;
     volScalarField uTaui_;
-    volVectorField tauwi_;
     volScalarField nuti_;
 
     // boundary conditions
@@ -250,14 +249,13 @@ class ibDirichletBCs
     void postProcessUTau();
 
     // wall shear stress
-    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+    void calculateWallShearStress(volVectorField& tauw, const volVectorField& U, const volScalarField& nu);
+
+    // forces
+    void calculateForces(volVectorField& fN, volVectorField& fT, volVectorField& tauw, const volScalarField& p, dictionary forceDict);
+    void calculateForceCoeffs(scalar& Cl, scalar& Cd, volVectorField& fN, volVectorField& fT, dictionary forceDict);
 
     // get functions
-    volVectorField& getWallShearStress()
-    {
-        return tauwi_;
-    }
-
     volScalarField& getNuti()
     {
         return nuti_;

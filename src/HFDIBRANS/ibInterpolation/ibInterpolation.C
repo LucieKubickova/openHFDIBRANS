@@ -1182,6 +1182,93 @@ void ibInterpolation::calculateSurfNorm
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::calculateSurfArea
+(
+)
+{
+    // Note (LK): not prepared for parallel
+    if (Pstream::nProcs() != 1)
+    {
+        FatalError << "Surface area calculation not implemented in parallel" << exit(FatalError);
+    }
+
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell labels
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // get surface data
+        vector surfNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+        point surfPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+
+        // prepare
+        scalar sArea(0.0);
+
+        // check body
+        if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_)
+        {
+            // create cut cell
+            const cell& bCellOut(mesh_.cells()[outCellI]);
+            ibCutCell cCellOut(mesh_, surfNorm, surfPoint, bCellOut);
+            scalar yOrtho = cCellOut.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+            // if the cell is uncut cut the inner cell
+            if (cCellOut.faces().size() == 0)
+            {
+                const cell& bCellIn(mesh_.cells()[inCellI]);
+                ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+                scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+                // get area of cut face
+                sArea = mag(cCellIn.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+            }
+
+            else
+            {
+                // get area of cut face
+                sArea = mag(cCellOut.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+            }
+        }
+
+        else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
+        {
+            // create cut cell
+            const cell& bCellIn(mesh_.cells()[inCellI]);
+            ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+            scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+            // get area of cut face
+            sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+        }
+
+        else
+        {
+            // find the shared face
+            forAll(mesh_.cells()[outCellI], fI)
+            {
+                // get face label
+                label faceI = mesh_.cells()[outCellI][fI];
+                
+                // get owner and neighbor
+                label owner(mesh_.owner()[faceI]);
+                label neighbor(mesh_.neighbour()[faceI]);
+
+                // check if shared
+                if ((outCellI == owner and inCellI == neighbor) or (outCellI == neighbor and inCellI == owner))
+                {
+                    sArea = mag(mesh_.Sf()[faceI]);
+                    break;
+                }
+            }
+        }
+        // assign
+        boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibInterpolation::calculateBoundaryDist
 (
 )
@@ -1264,7 +1351,7 @@ void ibInterpolation::calculateBoundaryDist
         {
             if (sdBasedLambda_)
             {
-                if (body_[inCellI] < 1.0)
+                if (body_[inCellI] < 1.0 - thrSurf_)
                 {
                     if (sdBasedLambda_)
                     {

@@ -745,13 +745,48 @@ void openHFDIBRANS::correctSurfaceByNormal
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateSurfaceArea
+(
+)
+{
+    ibInterpolation_->calculateSurfArea();
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::calculateWallShearStress
 (
+    volVectorField& tauw,
     const volVectorField& U,
     const volScalarField& nu
 )
 {
-    ibDirichletBCs_->calculateWallShearStress(U, nu);
+    ibDirichletBCs_->calculateWallShearStress(tauw, U, nu);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateForces
+(
+    volVectorField& fN,
+    volVectorField& fT,
+    volVectorField& tauw,
+    const volScalarField& p,
+    dictionary forceDict
+)
+{
+    ibDirichletBCs_->calculateForces(fN, fT, tauw, p, forceDict);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateForceCoeffs
+(
+    scalar& Cl,
+    scalar& Cd,
+    volVectorField& fN,
+    volVectorField& fT,
+    dictionary forceDict
+)
+{
+    ibDirichletBCs_->calculateForceCoeffs(Cl, Cd, fN, fT, forceDict);
 }
 
 //---------------------------------------------------------------------------//

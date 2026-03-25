@@ -110,19 +110,6 @@ uTaui_
     mesh_,
     dimensionedScalar("zero", dimless, 0.0)
 ),
-tauwi_
-(
-    IOobject
-    (
-        "tauwi",
-        mesh_.time().timeName(),
-        mesh_,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh_,
-    dimensionedVector("zero", dimless, vector::zero)
-),
 nuti_
 (
     IOobject
@@ -1018,12 +1005,13 @@ void ibDirichletBCs::postProcessUTau
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::calculateWallShearStress
 (
+    volVectorField& tauw,
     const volVectorField& U,
     const volScalarField& nu
 )
 {
     // reset
-    tauwi_ *= 0.0;
+    tauw *= 0.0;
 
     // prepare list
     List<vector> tauwIB;
@@ -1055,8 +1043,78 @@ void ibDirichletBCs::calculateWallShearStress
         tauwIB[bCell] = -normal & devTau;
 
         // save
-        tauwi_[cellI] = tauwIB[bCell];
+        tauw[cellI] = tauwIB[bCell];
     }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateForces
+(
+    volVectorField& fN,
+    volVectorField& fT,
+    volVectorField& tauw,
+    const volScalarField& p,
+    dictionary forceDict
+)
+{
+    // reset fields
+    fN *= 0.0;
+    fT *= 0.0;
+
+    // read dict
+    scalar rhoInf = forceDict.lookupOrDefault<scalar>("rhoInf", 1000.0);
+    scalar pRef = forceDict.lookupOrDefault<scalar>("pRef", 0.0);
+
+    // calculate forces
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // get surface normal
+        vector normal = -1*boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+        // get surface area
+        scalar sA = boundaryCells_[Pstream::myProcNo()][bCell].sArea_;
+
+        // calculate normal force
+        fN[cellI] = rhoInf*normal*sA*(p[cellI] - pRef/rhoInf);
+
+        // calculate tangential force
+        fT[cellI] = -1*sA*rhoInf*tauw[cellI]; // Note (LK): minus in calculation of tauw
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateForceCoeffs
+(
+    scalar& Cl,
+    scalar& Cd,
+    volVectorField& fN,
+    volVectorField& fT,
+    dictionary forceDict
+)
+{
+    // read dict
+    scalar rhoInf = forceDict.lookupOrDefault<scalar>("rhoInf", 1000.0);
+    scalar magUInf = forceDict.lookupOrDefault<scalar>("magUInf", 1.0);
+    scalar ARef = forceDict.lookupOrDefault<scalar>("ARef", 1.0);
+    vector liftDir = forceDict.lookupOrDefault<vector>("liftDir", vector(0,1,0));
+    vector dragDir = forceDict.lookupOrDefault<vector>("dragDir", vector(1,0,0));
+
+    // calculate dynamic pressure
+    scalar pDyn = 0.5*rhoInf*magUInf*magUInf;
+
+    // calculate total force
+    Field<vector> totForce = fN + fT;
+
+    // calculate coeffs fields
+    Field<scalar> fieldCl = (totForce & liftDir)/(ARef*pDyn);
+    Field<scalar> fieldCd = (totForce & dragDir)/(ARef*pDyn);
+    
+    // calculate coefficients
+    Cl = sum(fieldCl);
+    Cd = sum(fieldCd);
 }
 
 //---------------------------------------------------------------------------//

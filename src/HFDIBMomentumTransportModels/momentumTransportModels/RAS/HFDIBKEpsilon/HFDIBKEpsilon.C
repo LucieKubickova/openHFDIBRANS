@@ -460,7 +460,6 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     correctNut();
     HFDIBRANS.correctNut(this->nut_, k_, nu_);
     this->nut_.correctBoundaryConditions();
-    HFDIBRANS.calculateWallShearStress(U, nu_);
 }
 
 template<class BasicMomentumTransportModel>
