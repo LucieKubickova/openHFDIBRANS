@@ -1,9 +1,9 @@
 # openHFDIBRANS
 Hybrid fictitious domain-immersed boundary (HFDIB) method extended for Reynolds-averaged simulation (RAS) with wall functions at the immersed boundaries. The initial HFDIB implementation spans from the work of Federico Municchi (https://github.com/fmuni/openHFDIB), but the code was heavily modified.
 
-## Initial verification result on a bent pipe
+## Solver results on the backward facing step benchmark
 <p align="center">
-  <img src="https://github.com/LucieKubickova/openHFDIBRANS/assets/114754867/a76d5efd-734c-4487-ba38-6e41232f7ddd.png">
+  <img src="https://github.com/LucieKubickova/openHFDIBRANS/blob/main/Images/backwardFacingStepBenchmark.png">
 </p>
 
 ## Cite this work as
