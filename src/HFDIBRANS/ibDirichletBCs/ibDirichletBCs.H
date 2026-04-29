@@ -71,6 +71,7 @@ Contributors
 #include "nearWallDist.H"
 
 #include "boundaryCell.H"
+#include "surfaceCell.H"
 
 using namespace Foam;
 
@@ -98,6 +99,7 @@ class ibDirichletBCs
 
     // references to shared data
     List<DynamicList<boundaryCell>>& boundaryCells_;
+    List<DynamicList<surfaceCell>>& surfaceCells_;
     labelField& isBoundaryCell_;
 
     // dictionaries
@@ -164,6 +166,7 @@ class ibDirichletBCs
         const fvMesh& mesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
+        List<DynamicList<surfaceCell>>& surfaceCells,
         labelField& isBoundaryCell
     );
 

@@ -44,12 +44,14 @@ ibDirichletBCs::ibDirichletBCs
     const fvMesh& mesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
+    List<DynamicList<surfaceCell>>& surfaceCells,
     labelField& isBoundaryCell
 )
 :
 mesh_(mesh),
 body_(body),
 boundaryCells_(boundaryCells),
+surfaceCells_(surfaceCells),
 isBoundaryCell_(isBoundaryCell),
 turbulenceProperties_
 (
@@ -186,18 +188,15 @@ void ibDirichletBCs::setSizeToLists
 (
 )
 {
-    if (simulationType_ != "laminar")
-    {
-        // set size
-        nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
-        kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
-        uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    // set size
+    nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
 
-        // reset
-        nutAtIB_[Pstream::myProcNo()] = 0.0;
-        kAtIB_[Pstream::myProcNo()] = 0.0;
-        uTauAtIB_[Pstream::myProcNo()] = 0.0;
-    }
+    // reset
+    nutAtIB_[Pstream::myProcNo()] = 0.0;
+    kAtIB_[Pstream::myProcNo()] = 0.0;
+    uTauAtIB_[Pstream::myProcNo()] = 0.0;
 }
 
 //---------------------------------------------------------------------------//
@@ -465,7 +464,7 @@ void ibDirichletBCs::updateUTauAtIB
                 point recPoint = recFPoints[rCell];
 
                 scalar uTau;
-                if (uTauType_ == "firstInterpPoint" or uTauType_ == "effectiveDistance")
+                if (uTauType_ == "interpPoint" or uTauType_ == "effectiveDistance")
                 {
                     // interpolate k
                     scalar kPoint = interpK->interpolate(recPoint, recCell);
@@ -539,7 +538,16 @@ void ibDirichletBCs::nutAtIB
     volScalarField& nu
 )
 {
-    if (nutWF_ == "nutkWallFunction")
+    if (simulationType_ == "laminar")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            nutAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+        }
+    }
+
+    else if (nutWF_ == "nutkWallFunction")
     {
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -1061,15 +1069,81 @@ void ibDirichletBCs::calculateForces
     fN *= 0.0;
     fT *= 0.0;
 
+    // save for check
+    volScalarField surfAdded
+    (
+        IOobject
+        (
+            "surfAdded",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("zero", dimless, 0.0)
+    );
+
+    volVectorField surfPoints
+    (
+        IOobject
+        (
+            "surfPoints",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
+    volVectorField tauws
+    (
+        IOobject
+        (
+            "tauws",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
     // read dict
     scalar rhoInf = forceDict.lookupOrDefault<scalar>("rhoInf", 1000.0);
     scalar pRef = forceDict.lookupOrDefault<scalar>("pRef", 0.0);
 
-    // calculate forces
+    // go through boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // decide where to put
+        label whereI(outCellI);
+
+        // save to added
+        if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_)
+        {
+            surfAdded[outCellI] += 1.0;
+        }
+        else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
+        {
+            surfAdded[inCellI] += 1.0;
+            whereI = inCellI;
+        }
+        else
+        {
+            surfAdded[outCellI] += 1.0;
+        }
+
+        // get and save surf point
+        surfPoints[whereI] = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+        tauws[whereI] += tauw[outCellI];
 
         // get surface normal
         vector normal = -1*boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
@@ -1078,11 +1152,78 @@ void ibDirichletBCs::calculateForces
         scalar sA = boundaryCells_[Pstream::myProcNo()][bCell].sArea_;
 
         // calculate normal force
-        fN[cellI] = rhoInf*normal*sA*(p[cellI] - pRef/rhoInf);
+        fN[whereI] += rhoInf*normal*sA*(p[outCellI] - pRef/rhoInf); // Note (LK): zero gradient considered
 
         // calculate tangential force
-        fT[cellI] = -1*sA*rhoInf*tauw[cellI]; // Note (LK): minus in calculation of tauw
+        fT[whereI] += -1*sA*rhoInf*tauw[outCellI]; // Note (LK): minus in calculation of tauw
     }
+
+    // check if some surface cells were skipped
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+
+        // cell already added
+        if (surfAdded[cellI] > 0.1)
+        {
+            continue;
+        }
+
+        // prepare surf point and normal
+        vector normal = -1*surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
+        point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+
+        // get surface area
+        scalar sA = surfaceCells_[Pstream::myProcNo()][sCell].sArea_;
+
+        // prepare total weight and value
+        scalar totWeight(0.0);
+        vector totTauws(vector::zero);
+
+        // get values from neighbors
+        forAll(mesh_.cells()[cellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[cellI][fI];
+            
+            // get owner and neighbor
+            label owner(mesh_.owner()[faceI]);
+            label neighbor(mesh_.neighbour()[faceI]);
+
+            // get cell neighbor
+            label nI(neighbor);
+            if (neighbor == cellI)
+            {
+                nI = owner;
+            }
+
+            // check if added from boundary cells
+            if (surfAdded[nI] > 0.1)
+            {
+                point nSurfPoint = surfPoints[nI];
+                scalar dist = mag(nSurfPoint - surfPoint);
+                scalar weight = 1.0/dist;
+
+                // add
+                totWeight += weight;
+                totTauws += weight*tauws[nI]/surfAdded[nI]; // Note (LK): surfAdded should be one, but can be more
+            }
+        }
+
+        // divide by total weight
+        totTauws /= totWeight;
+
+        // calculate forces
+        fN[cellI] += rhoInf*normal*sA*(p[cellI] - pRef/rhoInf);
+        fT[cellI] += -1*sA*rhoInf*totTauws;
+
+        // check as added
+        surfAdded[cellI] += 1.0;
+    }
+
+    // Note (LK): check what was added
+    surfAdded.write();
 }
 
 //---------------------------------------------------------------------------//
