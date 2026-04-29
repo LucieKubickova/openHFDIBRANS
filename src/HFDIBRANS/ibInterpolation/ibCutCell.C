@@ -376,7 +376,7 @@ scalar ibCutCell::yOrtho()
                     }
                     nCutEdges++;
                 }
-                
+
                 if (nCutEdges == 2 and cutEdge > 0)                     //found two cut edges on the current face, finish with the current face
                 {
                     // get the last found cutEdge faces
@@ -408,7 +408,6 @@ scalar ibCutCell::yOrtho()
             }
             
             if (cutFaces == nCutFaces_) {break;}                        //I examined all the cutFaces
-            
         }
         
         v_.append(fV);

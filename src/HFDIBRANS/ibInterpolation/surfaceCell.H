@@ -47,20 +47,36 @@ namespace Foam
         // distances
         scalar sigma_ = 0.0; // signed distance 
 
+        // surface point and normal
+        vector sNorm_ = vector::zero; // surface normal vector
+        point sPoint_ = vector::zero; // surface point
+
+        // surface area
+        scalar sArea_ = 0.0;
+
         // Constructor
         surfaceCell():
         sCell_(0),
-        sigma_(0.0)
+        sigma_(0.0),
+        sNorm_(vector::zero),
+        sPoint_(vector::zero),
+        sArea_(0.0)
         {};
 
         // Copy constructor
         surfaceCell
         (
             label sCell,
-            scalar sigma
+            scalar sigma,
+            vector sNorm,
+            point sPoint,
+            scalar sArea
         ):
         sCell_(sCell),
-        sigma_(sigma)
+        sigma_(sigma),
+        sNorm_(sNorm),
+        sPoint_(sPoint),
+        sArea_(sArea)
         {};
 
         // Destructor

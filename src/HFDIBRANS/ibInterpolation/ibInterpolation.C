@@ -253,58 +253,71 @@ void ibInterpolation::calculateInterpolationPoints
         label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
 
         // find surface point
-        point surfPoint;
-        vector surfNormToSend;
-        scalar sigma;
+        point surfPoint(vector::zero);
+        vector surfNormToSend(vector::zero);
+        scalar sigma(0.0);
 
         // separate for different kinds of boundary cells
-        if (body_[outCellI] < thrSurf_)
+        if (sdBasedLambda_)
         {
-            if (Pstream::myProcNo() != iProc)
+            if (body_[outCellI] < thrSurf_)
             {
-                forAll(mesh_.boundaryMesh(), patchI)
+                if (Pstream::myProcNo() != iProc)
                 {
-                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    forAll(mesh_.boundaryMesh(), patchI)
                     {
-                        const processorPolyPatch& procPatch
-                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
-
-                        // get the neighboring processor id
-                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
-                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
-
-                        if (sProc == iProc)
+                        if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
                         {
-                            // access neighbor processor patch
-                            const tmp<vectorField> tsurfNormN(surfNorm_.boundaryField()[patchI].patchNeighbourField());
-                            const tmp<vectorField> tcellCenterN(cellCenters.boundaryField()[patchI].patchNeighbourField());
-                            const vectorField& surfNormN = tsurfNormN();
-                            const vectorField& cellCenterN = tcellCenterN();
+                            const processorPolyPatch& procPatch
+                                = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
 
-                            // calc data
-                            surfPoint = cellCenterN[iFace];
-                            sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
-                            surfNormToSend = surfNormN[iFace];
-                            surfPoint += surfNormN[iFace]*sigma;
+                            // get the neighboring processor id
+                            label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                                ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                            if (sProc == iProc)
+                            {
+                                // access neighbor processor patch
+                                const tmp<vectorField> tsurfNormN(surfNorm_.boundaryField()[patchI].patchNeighbourField());
+                                const tmp<vectorField> tcellCenterN(cellCenters.boundaryField()[patchI].patchNeighbourField());
+                                const vectorField& surfNormN = tsurfNormN();
+                                const vectorField& cellCenterN = tcellCenterN();
+
+                                // calc data
+                                surfPoint = cellCenterN[iFace];
+                                sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
+                                surfNormToSend = surfNormN[iFace];
+                                surfPoint += surfNormN[iFace]*sigma;
+                            }
                         }
                     }
                 }
-            }
 
+                else
+                {
+                    surfPoint = mesh_.C()[inCellI];
+                    sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
+                    surfNormToSend = surfNorm_[inCellI];
+                    surfPoint += surfNormToSend*sigma;
+                }
+            }
             else
             {
-                surfPoint = mesh_.C()[inCellI];
+                surfPoint = mesh_.C()[outCellI];
                 sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
-                surfNormToSend = surfNorm_[inCellI];
+                surfNormToSend = surfNorm_[outCellI];
                 surfPoint += surfNormToSend*sigma;
             }
+
+            // save for later
+            boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
         }
+
         else
         {
-            surfPoint = mesh_.C()[outCellI];
-            sigma = boundaryCells_[Pstream::myProcNo()][bCell].sigma_;
-            surfNormToSend = surfNorm_[outCellI];
-            surfPoint += surfNormToSend*sigma;
+            // Note (LK): data calculated in boundary dist calculation from stl file
+            surfPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+            surfNormToSend = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
         }
 
         // assign
@@ -323,7 +336,6 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
-        boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = intPoints[0].iPoint_;
         if (!intPoints[0].last_)
         {
             boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_ = intPoints[1].iPoint_;
@@ -722,6 +734,7 @@ void ibInterpolation::findNeighborInBody
     else if (boundarySearch_ == "face")
     {
         // get labels
+        // Note (LK): surf norm should be from STL file if stated
         label faceI = getFaceInDir(cellI, -1*surfNorm_[cellI]);
         label nI(-1);
     
@@ -1167,18 +1180,15 @@ void ibInterpolation::calculateSurfNorm
         // pass
     }
 
-    else if (sdBasedLambda_)
-    {
-        // calculate body gradient
-        volVectorField gradBody = fvc::grad(body_);
+    // calculate body gradient
+    volVectorField gradBody = fvc::grad(body_);
 
-        // convert to dimmless
-        gradBody *= dimensionedScalar("one", dimLength, 1.0);
+    // convert to dimmless
+    gradBody *= dimensionedScalar("one", dimLength, 1.0);
 
-        // calculate surface normal
-        surfNorm_ = -gradBody;
-        surfNorm_ /= (mag(surfNorm_) + SMALL);
-    }
+    // calculate surface normal
+    surfNorm_ = -gradBody;
+    surfNorm_ /= (mag(surfNorm_) + SMALL);
 }
 
 //---------------------------------------------------------------------------//
@@ -1191,6 +1201,22 @@ void ibInterpolation::calculateSurfArea
     {
         FatalError << "Surface area calculation not implemented in parallel" << exit(FatalError);
     }
+
+    // Note (LK): check total area
+    volScalarField surfArea
+    (
+        IOobject
+        (
+            "surfArea",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("zero", dimless, 0.0)
+    );
+    scalar totalArea(0.0);
 
     // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -1223,12 +1249,14 @@ void ibInterpolation::calculateSurfArea
 
                 // get area of cut face
                 sArea = mag(cCellIn.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+                surfArea[inCellI] = sArea;
             }
 
             else
             {
                 // get area of cut face
                 sArea = mag(cCellOut.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+                surfArea[outCellI] = sArea;
             }
         }
 
@@ -1241,6 +1269,7 @@ void ibInterpolation::calculateSurfArea
 
             // get area of cut face
             sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+            surfArea[inCellI] = sArea;
         }
 
         else
@@ -1262,10 +1291,66 @@ void ibInterpolation::calculateSurfArea
                     break;
                 }
             }
+
+            surfArea[outCellI] = sArea;
         }
+
+        // Note (LK): check surface areas
+        totalArea += sArea;
+
         // assign
         boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
     }
+
+    // check surf cells
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+
+        // check if already added
+        if (surfArea[cellI] > 0.0)
+        {
+            surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = surfArea[cellI];
+            continue;
+        }
+
+        // prepare surf point and normal
+        vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
+        point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+        if (sdBasedLambda_)
+        {
+            normal = surfNorm_[cellI];
+            scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
+            surfPoint = mesh_.C()[cellI] + sigma*normal;
+
+            // Note (LK): emergency assign
+            surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = normal;
+            surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
+        }
+
+        // construct cut cell
+        const cell& bCellSurf(mesh_.cells()[cellI]);
+        ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
+        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+        // get area of cut face
+        scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+
+        // Note (LK): check surface areas
+        surfArea[cellI] = sArea;
+        totalArea += sArea;
+
+        // assign
+        surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = sArea;
+    }
+
+    // Note (LK): check write
+    surfArea.write();
+
+    Info << "Total area is:" << endl;
+    Info << "    S = " << totalArea << endl;
+    Info << endl;
 }
 
 //---------------------------------------------------------------------------//
@@ -1339,6 +1424,10 @@ void ibInterpolation::calculateBoundaryDist
 
                 sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
+
+                // Note (LK): save to boundary cell, has to be done somewhere centraly
+                boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
+                boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
             }
 
             // compute distances
@@ -1411,6 +1500,10 @@ void ibInterpolation::calculateBoundaryDist
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
+
+                // Note (LK): save to boundary cell, has to be done somewhere centraly
+                boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
+                boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
                 l = getCellSize(outCellI);
                 yEff = 0.5*(yOrtho + l*0.5);
@@ -1503,6 +1596,10 @@ void ibInterpolation::calculateBoundaryDist
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
+
+                // Note (LK): save to boundary cell, has to be done somewhere centraly
+                boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
+                boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
                 l = getCellSize(outCellI);
                 yEff = 0.5*(yOrtho + l*0.5);
@@ -1705,6 +1802,10 @@ void ibInterpolation::calculateSurfaceDist
                 sigma *= -1;
             }
             surfNorm_[cellI] = surfNorm/mag(surfNorm);
+
+            // Note (LK): data calculated in boundary dist calculation from stl file
+            surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = surfNorm_[cellI];
+            surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
         }
 
         // assign
