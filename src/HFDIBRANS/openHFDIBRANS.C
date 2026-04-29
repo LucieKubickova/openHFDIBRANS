@@ -75,7 +75,7 @@ fvSchemes_
 
     // initialize classes
     ibInterpolation_.set(new ibInterpolation(mesh_, body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
-    ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, isBoundaryCell_));
+    ibDirichletBCs_.set(new ibDirichletBCs(mesh_, body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
 
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
