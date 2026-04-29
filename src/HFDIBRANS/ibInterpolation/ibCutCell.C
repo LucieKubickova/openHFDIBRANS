@@ -206,7 +206,7 @@ scalar ibCutCell::yOrtho()
     label nVertsOut(0);
     forAll (isIn,bi)
     {
-        if (((inPts[bi]-surfPoint_) & surfNorm_) > SMALL)
+        if (not (((inPts[bi]-surfPoint_) & surfNorm_) < -SMALL))
         {
             isIn[bi] = false;
             nVertsOut+= 1;
@@ -229,8 +229,9 @@ scalar ibCutCell::yOrtho()
         V_ = VIn_;
         C_ = CIn_;
     };
-    
+
     bool isCut((nVertsOut > 0) and (nVertsOut < nPoints));
+
     // Note (MI): if all is inside, I should just reconstruct the
     //            current cell
     if (isCut)
@@ -245,7 +246,7 @@ scalar ibCutCell::yOrtho()
             const List<point>& fPoints(f.points(mesh_.points()));
             label nFPoints(fPoints.size());
             label nVertsOut(0);
-                
+             
             DynamicList<point> fV;
             
             forAll(fPoints,fpi)
@@ -256,14 +257,14 @@ scalar ibCutCell::yOrtho()
                 scalar sdS((sP-surfPoint_) & surfNorm_);
                 scalar sdE((eP-surfPoint_) & surfNorm_);
 
-                if (sign(sdS/mag(sP-surfPoint_)) > SMALL)
+                if (sign(sdS/mag(sP-surfPoint_)) > 0.0)
                 {
                     nVertsOut+= 1;
                     fV.append(sP);
                 }
-                else if (sign(sdS/mag(sP-surfPoint_) * sdE/mag(eP-surfPoint_)) < 0.0)
+                //~ else if (sign(sdS/mag(sP-surfPoint_) * sdE/mag(eP-surfPoint_)) < 0.0)
+                if (sign(sdS/mag(sP-surfPoint_) * sdE/mag(eP-surfPoint_)) <= 0.0)
                 {
-                    
                     vector eVec((eP - sP));
                     eVec /= mag(eVec);
                     
@@ -277,6 +278,7 @@ scalar ibCutCell::yOrtho()
                     }
                     else
                     {
+                        //~ Info << "cut point out of cell" << endl;
                         fV.append(sP);
                     }
                 }
@@ -299,7 +301,7 @@ scalar ibCutCell::yOrtho()
                 }
             }
         }
-                
+
         // construct the cutFace
         DynamicList<point> fV;                                          //list to contain cutPoints forming cutFace
         label cutFaces(0);                                              //cutFaces counter
@@ -335,8 +337,8 @@ scalar ibCutCell::yOrtho()
                 
                 scalar sdS((sP-surfPoint_) & surfNorm_);
                 scalar sdE((eP-surfPoint_) & surfNorm_);
-                
-                if (sign(sdS * sdE) < 0.0)                              //found a cut edge
+
+                if (sign(sdS * sdE) < 0.0 or sdS == 0.0)                              //found a cut edge
                 {                    
                     bool toInclude(true);                               //I want to include this
                                         
@@ -351,9 +353,17 @@ scalar ibCutCell::yOrtho()
                     
                     vector eVec((eP - sP));
                     eVec /= mag(eVec);
-                    
-                    point cP = sP + ((surfPoint_ - sP) & surfNorm_) / (eVec & surfNorm_)*eVec;
-                    
+    
+                    point cP(vector::zero);
+                    if (sdS == 0.0)
+                    {
+                        cP = sP;
+                    }
+                    else
+                    {
+                        cP = sP + ((surfPoint_ - sP) & surfNorm_) / (eVec & surfNorm_)*eVec;
+                    }
+
                     // cutCell will have cP instead of sP
                     
                     if (toInclude)                                      //yet not included cutEdge
@@ -409,7 +419,6 @@ scalar ibCutCell::yOrtho()
             
             if (cutFaces == nCutFaces_) {break;}                        //I examined all the cutFaces
         }
-        
         v_.append(fV);
     }
     faces_ = v_;                                                        //ugly, ugly, ugly
@@ -417,12 +426,16 @@ scalar ibCutCell::yOrtho()
     //            my face structure does not contain labels to individual
     //            vertices. Instead, it contains the complete data
     
-    makeFaceCentresAndAreas();
+    // Note (LK): do not bother with uncut cells
+    if (isCut)
+    {
+        makeFaceCentresAndAreas();
+            
+        makeCellCentreAndVol();
         
-    makeCellCentreAndVol();
-    
-    syncNormals();
-        
+        syncNormals();
+    }
+
     return ((C_-surfPoint_) & surfNorm_);
 }
 

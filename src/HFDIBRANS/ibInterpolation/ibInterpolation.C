@@ -1248,7 +1248,7 @@ void ibInterpolation::calculateSurfArea
                 scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
 
                 // get area of cut face
-                sArea = mag(cCellIn.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+                sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
                 surfArea[inCellI] = sArea;
             }
 
@@ -1318,6 +1318,7 @@ void ibInterpolation::calculateSurfArea
         // prepare surf point and normal
         vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
         point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+
         if (sdBasedLambda_)
         {
             normal = surfNorm_[cellI];
@@ -1333,6 +1334,12 @@ void ibInterpolation::calculateSurfArea
         const cell& bCellSurf(mesh_.cells()[cellI]);
         ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
         scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+        // if the cell is uncut skip
+        if (cCellSurf.faces().size() == 0)
+        {
+            continue;
+        }
 
         // get area of cut face
         scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
@@ -2092,8 +2099,10 @@ void ibInterpolation::getClosestPointAndNormal
 
     if(ibPointIndexHit.hit())
     {
-        normal = normalVectorField[0];
+        //~ normal = normalVectorField[0];
         closestPoint = ibPointIndexHit.hitPoint();
+        normal = startPoint - closestPoint;
+        normal /= mag(normal);
     }
     else
     {
