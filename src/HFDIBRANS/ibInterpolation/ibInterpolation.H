@@ -78,6 +78,7 @@ class ibInterpolation
     word boundarySearch_;
     word stlName_;
     bool excludeWalls_;
+    word excludePatch_;
     bool readSurfNorm_;
     bool aveYOrtho_;
     bool totalYOrthoAve_;
@@ -172,6 +173,7 @@ class ibInterpolation
     // auxiliar functions
     void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
     bool isWallCell(label& cellI);
+    bool isOnPatch(label& cellI);
 
     // best instance in direction
     label getFaceInDir(label cellI, vector dir);

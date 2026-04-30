@@ -147,6 +147,7 @@ fvSchemes_
     boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
+    excludePatch_ = HFDIBDEMDict_.lookupOrDefault<word>("excludePatch", "none");
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
     aveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageYOrtho", false);
     totalYOrthoAve_ = HFDIBDEMDict_.lookupOrDefault<bool>("totalYOrthoAverage", false);
@@ -415,6 +416,11 @@ void ibInterpolation::findBoundaryCells
         if (isBoundary and excludeWalls_)
         {
             isBoundary = !(isWallCell(cellI));
+        }
+
+        else if (isBoundary and excludePatch_ != "none")
+        {
+            isBoundary = !(isOnPatch(cellI));
         }
 
         // add the cell
@@ -960,6 +966,39 @@ bool ibInterpolation::isWallCell
     }
 
     return isWallCell;
+}
+
+//---------------------------------------------------------------------------//
+bool ibInterpolation::isOnPatch
+(
+    label& cellI
+)
+{
+    bool isOnPatch(false);
+
+    // get patch id
+    const label patchI = mesh_.boundaryMesh().findPatchID(excludePatch_);
+
+    // loop over cell faces
+    forAll(mesh_.cells()[cellI], f)
+    {
+        // get face label
+        label faceI = mesh_.cells()[cellI][f];
+    
+        if (faceI >= mesh_.owner().size())
+        {
+            // get start and end face index
+            label startI = mesh_.boundary()[patchI].start();
+            label endI = startI + mesh_.boundary()[patchI].Cf().size();
+    
+            if (faceI >= startI and faceI < endI)
+            {
+                isOnPatch = true;
+            }
+        }
+    }
+
+    return isOnPatch;
 }
 
 //---------------------------------------------------------------------------//
