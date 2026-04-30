@@ -26,6 +26,8 @@
 **excludeWalls** - *optional* > If to exclude cells adjacent to walls from boundary cells. Default false
 > Possible values: {*true*, *false*}
 
+**excludePatch** - *optional* > Selection of a patch name the cells of which are excluded from boundary cells. Default none
+
 **readSurfaceNormal** - *optional* > If to read surface normal field from file. Default false
 > Possible values: {*true*, *false*}
 
