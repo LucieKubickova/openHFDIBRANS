@@ -785,7 +785,7 @@ void ibInterpolation::findNeighborInBody
             label owner(mesh_.owner()[faceI]);
             label neighbor(mesh_.neighbour()[faceI]);
             nI = (cellI == owner) ? neighbor : owner;
-    
+
             // check lambda field
             if (body_[nI] >= threshold)
             {
