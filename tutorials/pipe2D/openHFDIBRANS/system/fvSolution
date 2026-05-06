@@ -75,19 +75,19 @@ PIMPLE
     //~ consistent         yes;
     consistent         no;
     
-	outerCorrectorResidualControl
-	{
-		U
-		{
-			tolerance	1e-5;
-			relTol		0;
-		}
-		p
-		{
-			tolerance	5e-4;
-			relTol		0;
-		}
-	}
+    outerCorrectorResidualControl
+    {
+        U
+        {
+            tolerance	1e-5;
+            relTol	0;
+        }
+        p
+        {
+            tolerance	5e-4;
+            relTol	0;
+        }
+    }
 }
 
 SIMPLE
@@ -106,8 +106,6 @@ SIMPLE
         {
             surfaceType     switched;
             boundaryValue   1.0;
-            tolEqn          1e-8;
-            maxEqnIters     10;
         }
     }
 }
@@ -137,4 +135,5 @@ cache
 {
     grad(U);
 }
+
 // ************************************************************************* //

@@ -106,8 +106,6 @@ SIMPLE
         {
             surfaceType     switched;
             boundaryValue   1.0;
-            tolEqn          1e-8;
-            maxEqnIters     10;
         }
     }
 }
@@ -137,4 +135,5 @@ cache
 {
     grad(U);
 }
+
 // ************************************************************************* //
