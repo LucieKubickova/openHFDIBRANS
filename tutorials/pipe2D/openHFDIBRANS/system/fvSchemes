@@ -24,7 +24,7 @@ gradSchemes
 {
     default         Gauss linear;
     grad(U)         cellLimited Gauss linear 1;
-    grad(body)       linear;
+    grad(lambda)    pointCellsLeastSquares;
 }
 
 divSchemes
