@@ -1651,27 +1651,53 @@ scalar ibInterpolation::createCutCellAndSurface
             }
         }
 
+        // filter duplicate points
+        DynamicList<point> uniquePoints;
+        forAll(cutPoints, pI)
+        {
+            bool toAdd(true);
+
+            forAll(uniquePoints, uI)
+            {
+                scalar dist = mag(cutPoints[pI] - uniquePoints[uI]);
+                if (dist < SMALL)
+                {
+                    toAdd = false;
+                }
+            }
+
+            if (toAdd)
+            {
+                uniquePoints.append(cutPoints[pI]);
+            }
+        }
+
         // calculate area
-        if (cutPoints.size() == 3)
+        if (uniquePoints.size() < 3)
+        {
+            sArea *= 0.0;
+        }
+
+        else if (uniquePoints.size() == 3)
         {
             sArea *= 0.0;
 
-            point p0 = cutPoints[0];
-            point p1 = cutPoints[1];
-            point p2 = cutPoints[2];
+            point p0 = uniquePoints[0];
+            point p1 = uniquePoints[1];
+            point p2 = uniquePoints[2];
 
             sArea = calculateTriangleArea(p0, p1, p2);
         }
 
-        else if (cutPoints.size() == 4)
+        else if (uniquePoints.size() == 4)
         {
             sArea *= 0.0;
 
-            forAll(cutPoints, pI)
+            forAll(uniquePoints, pI)
             {
-                point p0 = cutPoints[pI % 4];
-                point p1 = cutPoints[(pI+1) % 4];
-                point p2 = cutPoints[(pI+2) % 4];
+                point p0 = uniquePoints[pI % 4];
+                point p1 = uniquePoints[(pI+1) % 4];
+                point p2 = uniquePoints[(pI+2) % 4];
                 sArea += calculateTriangleArea(p0, p1, p2);
             }
 
@@ -1680,7 +1706,7 @@ scalar ibInterpolation::createCutCellAndSurface
 
         else
         {
-            Info << "Warning: cell cut at more than 4 points" << endl;
+            Info << "Warning: cell cut with " << uniquePoints.size() << " points near " << mesh_.C()[cellI] << endl;
         }
     }
 
