@@ -90,6 +90,7 @@ class ibInterpolation
     scalar innerThres_; // LK: experimental
     bool sdBasedLambda_;
     bool correctIntPoints_;
+    word surfAreaType_;
 
     // stl things
     word stlPath_;
@@ -205,8 +206,10 @@ class ibInterpolation
     void calculateSurfNorm();
     void calculateSurfArea();
 
-    // get closest point and normal from stl file
+    // work with stl file
     void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
+    scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
+    scalar calculateTriangleArea(point p0, point p1, point p2);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);

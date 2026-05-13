@@ -161,6 +161,7 @@ fvSchemes_
     innerThres_ = HFDIBDEMDict_.lookupOrDefault<scalar>("innerThreshold", 0.5); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
     correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", false);
+    surfAreaType_ = HFDIBDEMDict_.lookupOrDefault<word>("surfAreaType", "cutCell");
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -1257,7 +1258,55 @@ void ibInterpolation::calculateSurfArea
     );
     scalar totalArea(0.0);
 
-    // loop over boundary cells
+    // Note (LK): new version
+    // first surface cells
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+
+        // prepare surf point and normal
+        vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
+        point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+
+        if (sdBasedLambda_)
+        {
+            normal = surfNorm_[cellI];
+            scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
+            surfPoint = mesh_.C()[cellI] + sigma*normal;
+
+            // Note (LK): emergency assign
+            surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = normal;
+            surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
+        }
+
+        // construct cut cell
+        //~ const cell& bCellSurf(mesh_.cells()[cellI]);
+        //~ ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
+        //~ scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+        // if the cell is uncut skip
+        //~ if (cCellSurf.faces().size() == 0)
+        //~ {
+            //~ Info << "Warning: Uncut surface cell" << endl;
+            //~ continue;
+        //~ }
+
+        // get area of cut face
+        //~ scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+
+        scalar sArea(0.0);
+        sArea = createCutCellAndSurface(cellI, normal, surfPoint);
+
+        // Note (LK): check surface areas
+        surfArea[cellI] = sArea;
+        totalArea += sArea;
+
+        // assign
+        surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = sArea;
+    }
+
+    // now boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         // get cell labels
@@ -1274,41 +1323,55 @@ void ibInterpolation::calculateSurfArea
         // check body
         if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_)
         {
-            // create cut cell
-            const cell& bCellOut(mesh_.cells()[outCellI]);
-            ibCutCell cCellOut(mesh_, surfNorm, surfPoint, bCellOut);
-            scalar yOrtho = cCellOut.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-            // if the cell is uncut cut the inner cell
-            if (cCellOut.faces().size() == 0)
+            // check if done in surface cells, else do cut
+            if (surfArea[outCellI] > 0.0)
             {
-                const cell& bCellIn(mesh_.cells()[inCellI]);
-                ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-                scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+                sArea = surfArea[outCellI];
+            }
 
-                // get area of cut face
-                sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-                surfArea[inCellI] = sArea;
+            else if (surfArea[inCellI] > 0.0)
+            {
+                sArea = surfArea[inCellI];
             }
 
             else
             {
-                // get area of cut face
-                sArea = mag(cCellOut.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
-                surfArea[outCellI] = sArea;
+                // create cut cell
+                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
+                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+                //~ // get area of cut face
+                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+
+                sArea = createCutCellAndSurface(inCellI, surfNorm, surfPoint);
+                surfArea[inCellI] = sArea;
+                totalArea += sArea;
             }
         }
 
         else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
         {
-            // create cut cell
-            const cell& bCellIn(mesh_.cells()[inCellI]);
-            ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-            scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+            // check if done in surface cells, else do cut
+            if (surfArea[inCellI] > 0.0)
+            {
+                sArea = surfArea[inCellI];
+            }
 
-            // get area of cut face
-            sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-            surfArea[inCellI] = sArea;
+            else
+            {
+                // create cut cell
+                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
+                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+                //~ // get area of cut face
+                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+                
+                sArea = createCutCellAndSurface(inCellI, surfNorm, surfPoint);
+                surfArea[inCellI] = sArea;
+                totalArea += sArea;
+            }
         }
 
         else
@@ -1332,64 +1395,147 @@ void ibInterpolation::calculateSurfArea
             }
 
             surfArea[outCellI] = sArea;
+            totalArea += sArea;
         }
-
-        // Note (LK): check surface areas
-        totalArea += sArea;
 
         // assign
         boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
     }
 
-    // check surf cells
-    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
-    {
-        // get cell label
-        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+    // Note (LK): original version
+    // loop over boundary cells
+    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    //~ {
+        //~ // get cell labels
+        //~ label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        //~ label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
-        // check if already added
-        if (surfArea[cellI] > 0.0)
-        {
-            surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = surfArea[cellI];
-            continue;
-        }
+        //~ // get surface data
+        //~ vector surfNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+        //~ point surfPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
 
-        // prepare surf point and normal
-        vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
-        point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+        //~ // prepare
+        //~ scalar sArea(0.0);
 
-        if (sdBasedLambda_)
-        {
-            normal = surfNorm_[cellI];
-            scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
-            surfPoint = mesh_.C()[cellI] + sigma*normal;
+        //~ // check body
+        //~ if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_)
+        //~ {
+            //~ // create cut cell
+            //~ const cell& bCellOut(mesh_.cells()[outCellI]);
+            //~ ibCutCell cCellOut(mesh_, surfNorm, surfPoint, bCellOut);
+            //~ scalar yOrtho = cCellOut.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
 
-            // Note (LK): emergency assign
-            surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = normal;
-            surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
-        }
+            //~ // if the cell is uncut cut the inner cell
+            //~ if (cCellOut.faces().size() == 0)
+            //~ {
+                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
+                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
 
-        // construct cut cell
-        const cell& bCellSurf(mesh_.cells()[cellI]);
-        ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+                //~ // get area of cut face
+                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+                //~ surfArea[inCellI] = sArea;
+            //~ }
 
-        // if the cell is uncut skip
-        if (cCellSurf.faces().size() == 0)
-        {
-            continue;
-        }
+            //~ else
+            //~ {
+                //~ // get area of cut face
+                //~ sArea = mag(cCellOut.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
+                //~ surfArea[outCellI] = sArea;
+            //~ }
+        //~ }
 
-        // get area of cut face
-        scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+        //~ else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
+        //~ {
+            //~ // create cut cell
+            //~ const cell& bCellIn(mesh_.cells()[inCellI]);
+            //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
+            //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
 
-        // Note (LK): check surface areas
-        surfArea[cellI] = sArea;
-        totalArea += sArea;
+            //~ // get area of cut face
+            //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
+            //~ surfArea[inCellI] = sArea;
+        //~ }
 
-        // assign
-        surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = sArea;
-    }
+        //~ else
+        //~ {
+            //~ // find the shared face
+            //~ forAll(mesh_.cells()[outCellI], fI)
+            //~ {
+                //~ // get face label
+                //~ label faceI = mesh_.cells()[outCellI][fI];
+                
+                //~ // get owner and neighbor
+                //~ label owner(mesh_.owner()[faceI]);
+                //~ label neighbor(mesh_.neighbour()[faceI]);
+
+                //~ // check if shared
+                //~ if ((outCellI == owner and inCellI == neighbor) or (outCellI == neighbor and inCellI == owner))
+                //~ {
+                    //~ sArea = mag(mesh_.Sf()[faceI]);
+                    //~ break;
+                //~ }
+            //~ }
+
+            //~ surfArea[outCellI] = sArea;
+        //~ }
+
+        //~ // Note (LK): check surface areas
+        //~ totalArea += sArea;
+
+        //~ // assign
+        //~ boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
+    //~ }
+
+    //~ // check surf cells
+    //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    //~ {
+        //~ // get cell label
+        //~ label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+
+        //~ // check if already added
+        //~ if (surfArea[cellI] > 0.0)
+        //~ {
+            //~ surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = surfArea[cellI];
+            //~ continue;
+        //~ }
+
+        //~ // prepare surf point and normal
+        //~ vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
+        //~ point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+
+        //~ if (sdBasedLambda_)
+        //~ {
+            //~ normal = surfNorm_[cellI];
+            //~ scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
+            //~ surfPoint = mesh_.C()[cellI] + sigma*normal;
+
+            //~ // Note (LK): emergency assign
+            //~ surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = normal;
+            //~ surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
+        //~ }
+
+        //~ // construct cut cell
+        //~ const cell& bCellSurf(mesh_.cells()[cellI]);
+        //~ ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
+        //~ scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+
+        //~ // if the cell is uncut skip
+        //~ if (cCellSurf.faces().size() == 0)
+        //~ {
+            //~ continue;
+        //~ }
+
+        //~ // get area of cut face
+        //~ scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+
+        //~ // Note (LK): check surface areas
+        //~ surfArea[cellI] = sArea;
+        //~ totalArea += sArea;
+
+        //~ // assign
+        //~ surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = sArea;
+    //~ }
 
     // Note (LK): check write
     surfArea.write();
@@ -1397,6 +1543,164 @@ void ibInterpolation::calculateSurfArea
     Info << "Total area is:" << endl;
     Info << "    S = " << totalArea << endl;
     Info << endl;
+}
+
+//---------------------------------------------------------------------------//
+scalar ibInterpolation::createCutCellAndSurface
+(
+    label cellI,
+    vector& normal,
+    point& surfPoint
+)
+{
+    scalar sArea(0.0);
+
+    if (surfAreaType_ == "cutCell")
+    {
+        // Note (LK): original cut cell
+        const cell& bCellSurf(mesh_.cells()[cellI]);
+        ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
+        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+        
+        // if the cell is uncut skip
+        if (cCellSurf.faces().size() == 0)
+        {
+            Info << "Warning: Uncut surface cell" << endl;
+            return 0.0;
+        }
+        
+        // get area of cut face
+        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+    }
+
+    // Note (LK): new cut cell, cutting edges by stl
+    else if (surfAreaType_ == "cutEdges")
+    {
+        // prepare list of checked edges
+        DynamicList<label> checkedEdges;
+        
+        // get cell faces
+        const labelList& cellFaces(mesh_.cells()[cellI]);
+
+        // save points
+        DynamicList<point> startPs;
+        DynamicList<point> endPs;
+
+        // loop over cell faces
+        forAll(cellFaces, fI)
+        {
+            // get face label
+            label faceI = cellFaces[fI];
+
+            // get face edges
+            const labelList& faceEdges = mesh_.faceEdges()[faceI];
+
+            // loop over face edges
+            forAll(faceEdges, eI)
+            {
+                // look if already checked
+                bool toInclude(true);
+                forAll(checkedEdges, ceI)
+                {
+                    if (checkedEdges[ceI] == faceEdges[eI])
+                    {
+                        toInclude = false;
+                        break;
+                    }
+                }
+
+                // break if already don
+                if (not toInclude)
+                {
+                    continue;
+                }
+                else
+                {
+                    checkedEdges.append(faceEdges[eI]);
+                }
+
+                // get edge
+                const edge& e = mesh_.edges()[faceEdges[eI]];
+
+                // get points
+                point sP(mesh_.points()[e.start()]);
+                point eP(mesh_.points()[e.end()]);
+
+                // append
+                startPs.append(sP);
+                endPs.append(eP);
+            }
+        }
+
+        // prepare point fields
+        pointField startPoints(startPs);
+        pointField endPoints(endPs);
+
+        // try to find hit point with stl
+        List<pointIndexHit> hitInfo;
+        triSurfSearch_().findLine(startPoints, endPoints, hitInfo);
+
+        // get hit points
+        DynamicList<point> cutPoints;
+        forAll(hitInfo, hI)
+        {
+            if (hitInfo[hI].hit())
+            {
+                point cutPoint = hitInfo[hI].hitPoint();
+                cutPoints.append(cutPoint);
+            }
+        }
+
+        // calculate area
+        if (cutPoints.size() == 3)
+        {
+            sArea *= 0.0;
+
+            point p0 = cutPoints[0];
+            point p1 = cutPoints[1];
+            point p2 = cutPoints[2];
+
+            sArea = calculateTriangleArea(p0, p1, p2);
+        }
+
+        else if (cutPoints.size() == 4)
+        {
+            sArea *= 0.0;
+
+            forAll(cutPoints, pI)
+            {
+                point p0 = cutPoints[pI % 4];
+                point p1 = cutPoints[(pI+1) % 4];
+                point p2 = cutPoints[(pI+2) % 4];
+                sArea += calculateTriangleArea(p0, p1, p2);
+            }
+
+            sArea *= 0.5;
+        }
+
+        else
+        {
+            Info << "Warning: cell cut at more than 4 points" << endl;
+        }
+    }
+
+    else
+    {
+        FatalError << "Surface area calculation type " << surfAreaType_ << " not implemented" << exit(FatalError);
+    }
+
+    return sArea;
+}
+
+//---------------------------------------------------------------------------//
+scalar ibInterpolation::calculateTriangleArea
+(
+    point p0,
+    point p1,
+    point p2
+)
+{
+    return mag(0.5*((p1 - p0)^(p2 - p1)));
 }
 
 //---------------------------------------------------------------------------//
