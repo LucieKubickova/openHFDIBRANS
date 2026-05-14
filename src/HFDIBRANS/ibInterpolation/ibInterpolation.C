@@ -42,6 +42,7 @@ using namespace Foam;
 ibInterpolation::ibInterpolation
 (
     const fvMesh& mesh,
+    autoPtr<ibMesh> ibMesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
     List<DynamicList<surfaceCell>>& surfaceCells,
@@ -50,6 +51,7 @@ ibInterpolation::ibInterpolation
 )
 :
 mesh_(mesh),
+ibMesh_(ibMesh),
 body_(body),
 surfNorm_
 (
@@ -162,6 +164,7 @@ fvSchemes_
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
     correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", false);
     surfAreaType_ = HFDIBDEMDict_.lookupOrDefault<word>("surfAreaType", "cutCell");
+    yFromCutEdges_ = HFDIBDEMDict_.lookupOrDefault<bool>("yFromCutEdges", false); // LK: experimental
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
@@ -394,7 +397,6 @@ void ibInterpolation::findBoundaryCells
     // loop over cells
     forAll(mesh_.cellCells(), cellI)
     {
-        
         bool isBoundary(false);
         label iCell(-1);
         label iFace(-1);
@@ -438,7 +440,7 @@ void ibInterpolation::findBoundaryCells
     }
 
     // Note (LK): save for testing
-    iProci_.write();
+    //~ iProci_.write();
 
     // sync with other processors
     List<DynamicList<label>> iFacesToSync(Pstream::nProcs());
@@ -1730,6 +1732,144 @@ scalar ibInterpolation::calculateTriangleArea
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::createCutCellAndCenter
+(
+    label cellI,
+    vector& surfNorm,
+    point& surfPoint
+)
+{
+    // prepare list of checked edges
+    DynamicList<label> checkedEdges;
+    
+    // get cell faces
+    const labelList& cellFaces(mesh_.cells()[cellI]);
+
+    // save points
+    DynamicList<point> startPs;
+    DynamicList<point> endPs;
+
+    // loop over cell faces
+    forAll(cellFaces, fI)
+    {
+        // get face label
+        label faceI = cellFaces[fI];
+
+        // get face edges
+        const labelList& faceEdges = mesh_.faceEdges()[faceI];
+
+        // loop over face edges
+        forAll(faceEdges, eI)
+        {
+            // look if already checked
+            bool toInclude(true);
+            forAll(checkedEdges, ceI)
+            {
+                if (checkedEdges[ceI] == faceEdges[eI])
+                {
+                    toInclude = false;
+                    break;
+                }
+            }
+
+            // break if already done
+            if (not toInclude)
+            {
+                continue;
+            }
+            else
+            {
+                checkedEdges.append(faceEdges[eI]);
+            }
+
+            // get edge
+            const edge& e = mesh_.edges()[faceEdges[eI]];
+
+            // get points
+            point sP(mesh_.points()[e.start()]);
+            point eP(mesh_.points()[e.end()]);
+
+            // append
+            startPs.append(sP);
+            endPs.append(eP);
+        }
+    }
+
+    // prepare point fields
+    pointField startPoints(startPs);
+    pointField endPoints(endPs);
+
+    // try to find hit point with stl
+    List<pointIndexHit> hitInfo;
+    triSurfSearch_().findLine(startPoints, endPoints, hitInfo);
+
+    // get hit points
+    DynamicList<point> cutPoints;
+    forAll(hitInfo, hI)
+    {
+        if (hitInfo[hI].hit())
+        {
+            point cutPoint = hitInfo[hI].hitPoint();
+            cutPoints.append(cutPoint);
+        }
+    }
+
+    // filter duplicate points
+    DynamicList<point> uniquePoints;
+    DynamicList<pointIndexHit> uniqueHitPoints;
+    forAll(cutPoints, pI)
+    {
+        bool toAdd(true);
+
+        forAll(uniquePoints, uI)
+        {
+            scalar dist = mag(cutPoints[pI] - uniquePoints[uI]);
+            if (dist < SMALL)
+            {
+                toAdd = false;
+            }
+        }
+
+        if (toAdd)
+        {
+            uniquePoints.append(cutPoints[pI]);
+            uniqueHitPoints.append(hitInfo[pI]);
+        }
+    }
+
+    // get normals
+    List<pointIndexHit> uniqueHitPointList(uniqueHitPoints);
+    vectorField normalVectorField;
+
+    // get contact normal direction
+    const triSurfaceMesh& ibTempMesh(bodySurfMesh_());
+    ibTempMesh.getNormal(uniqueHitPointList,normalVectorField);
+
+    // calculate center and normal
+    surfPoint *= 0.0;
+    surfNorm *= 0.0;
+    forAll(uniquePoints, uI)
+    {
+        surfPoint += uniquePoints[uI];
+        //~ surfNorm += normalVectorField[uI];
+    }
+    surfPoint /= uniquePoints.size();
+
+    point closestPoint(vector::zero);
+    scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+    getClosestPointAndNormal(
+        surfPoint,
+        intDist*2*vector::one,
+        closestPoint,
+        surfNorm 
+    );
+
+    //~ surfNorm /= uniquePoints.size();
+
+    return;
+}
+
+//---------------------------------------------------------------------------//
 void ibInterpolation::calculateBoundaryDist
 (
 )
@@ -1762,7 +1902,7 @@ void ibInterpolation::calculateBoundaryDist
     // loop over boundary cells
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
-        // get the outer and innter cell label
+        // get the outer and inner cell label
         label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
         label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
@@ -1783,6 +1923,19 @@ void ibInterpolation::calculateBoundaryDist
             if (sdBasedLambda_)
             {
                 sigma = -1*Foam::atanh(1-2*body_[outCellI])*l/intSpan_; // y < 0 for lambda < 0.5
+            }
+
+            else if (yFromCutEdges_)
+            {
+                vector surfNorm(vector::zero);
+                createCutCellAndCenter(outCellI, surfNorm, surfPoint);
+
+                sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
+                surfNorm_[outCellI] = surfNorm/mag(surfNorm);
+
+                // Note (LK): save to boundary cell, has to be done somewhere centraly
+                boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
+                boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
             }
 
             else
@@ -1814,50 +1967,62 @@ void ibInterpolation::calculateBoundaryDist
         // if inner cell is intersected
         else if (Pstream::myProcNo() == iProc)
         {
-            if (sdBasedLambda_)
+            if (body_[inCellI] < 1.0 - thrSurf_ and sdBasedLambda_)
             {
-                if (body_[inCellI] < 1.0 - thrSurf_)
-                {
-                    if (sdBasedLambda_)
-                    {
-                        l = getCellSize(inCellI);
-                        surfPoint = mesh_.C()[inCellI];
-                        sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 0 for lambda > 0.5
-                        surfPoint += surfNorm_[inCellI]*sigma;
-                        yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
-                        yEff = 0.5*(yOrtho + l*0.5);
-                    }
-                }
+                l = getCellSize(inCellI);
+                surfPoint = mesh_.C()[inCellI];
+                sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 0 for lambda > 0.5
+                surfPoint += surfNorm_[inCellI]*sigma;
+                yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+                yEff = 0.5*(yOrtho + l*0.5);
+            }
 
-                // not intersected outer cells
-                else
+            else if (body_[inCellI] < 1.0 - thrSurf_ and yFromCutEdges_)
+            {
+                vector surfNorm(vector::zero);
+                createCutCellAndCenter(inCellI, surfNorm, surfPoint);
+
+                surfNorm *= -1; // Note (LK): for inward cells it finds the inward normal, needs check with grad lambda?
+
+                sigma = mag(surfPoint - mesh_.C()[inCellI]);
+                surfNorm_[inCellI] = surfNorm/mag(surfNorm);
+                yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
+                l = getCellSize(outCellI);
+                yEff = 0.5*(yOrtho + l*0.5);
+
+                // Note (LK): save to boundary cell, has to be done somewhere centraly
+                boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[inCellI];
+                boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
+            }
+
+            // not intersected outer cells
+            else if (sdBasedLambda_)
+            {
+                // find the shared vertices
+                DynamicList<label> sharedVers;
+                forAll(mesh_.cellPoints()[inCellI], iI)
                 {
-                    // find the shared vertices
-                    DynamicList<label> sharedVers;
-                    forAll(mesh_.cellPoints()[inCellI], iI)
+                    forAll(mesh_.cellPoints()[outCellI], oI)
                     {
-                        forAll(mesh_.cellPoints()[outCellI], oI)
+                        if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
                         {
-                            if (mesh_.cellPoints()[inCellI][iI] == mesh_.cellPoints()[outCellI][oI])
-                            {
-                                sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
-                            }
+                            sharedVers.append(mesh_.cellPoints()[inCellI][iI]);
                         }
                     }
-
-                    // average vertices
-                    vector center(vector::zero);
-                    forAll(sharedVers, vI)
-                    {
-                        center += mesh_.points()[sharedVers[vI]];
-                    }
-                    center /= sharedVers.size();
-
-                    // compute ds as a distance from the cell center to the averaged vertex
-                    sigma = mag(mesh_.C()[inCellI] - center);
-                    yOrtho = mag(mesh_.C()[outCellI] - center);
-                    yEff = yOrtho;
                 }
+
+                // average vertices
+                vector center(vector::zero);
+                forAll(sharedVers, vI)
+                {
+                    center += mesh_.points()[sharedVers[vI]];
+                }
+                center /= sharedVers.size();
+
+                // compute ds as a distance from the cell center to the averaged vertex
+                sigma = mag(mesh_.C()[inCellI] - center);
+                yOrtho = mag(mesh_.C()[outCellI] - center);
+                yEff = yOrtho;
             }
 
             else
@@ -2000,6 +2165,12 @@ void ibInterpolation::calculateBoundaryDist
         yOrthoi_[outCellI] = yOrtho;
         yEffi_[outCellI] = yEff;
     }
+
+    // Note (LK): write check, remove
+    surfNorm_.write();
+    sigmai_.write();
+    yOrthoi_.write();
+    yEffi_.write();
 
     // post processing (now only possible averaging)
     postProcessYOrtho();

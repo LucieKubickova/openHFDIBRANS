@@ -69,6 +69,9 @@ class openHFDIBRANS
     List<DynamicList<label>> internalCells_;
     labelField isBoundaryCell_;
 
+    // mesh class with auxiliar functions
+    autoPtr<ibMesh> ibMesh_;
+
     // interpolation class
     autoPtr<ibInterpolation> ibInterpolation_;
 

@@ -50,9 +50,6 @@ Contributors
 #include "surfaceCell.H"
 #include "ibCutCell.H"
 
-#include "triSurfaceMesh.H"
-#include "triangleFuncs.H"
-
 #define ORDER 2
 
 using namespace Foam;
@@ -66,6 +63,7 @@ class ibInterpolation
 
     // mesh related parameters
     const fvMesh& mesh_;
+    autoPtr<ibMesh> ibMesh_;
     scalar VAve_;
 
     // lambda related things
@@ -91,6 +89,7 @@ class ibInterpolation
     bool sdBasedLambda_;
     bool correctIntPoints_;
     word surfAreaType_;
+    bool yFromCutEdges_; // LK: experimental
 
     // stl things
     word stlPath_;
@@ -129,6 +128,7 @@ class ibInterpolation
     ibInterpolation
     (
         const fvMesh& mesh,
+        autoPtr<ibMesh> ibMesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
         List<DynamicList<surfaceCell>>& surfaceCells,
@@ -210,6 +210,7 @@ class ibInterpolation
     void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
     scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
     scalar calculateTriangleArea(point p0, point p1, point p2);
+    void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);

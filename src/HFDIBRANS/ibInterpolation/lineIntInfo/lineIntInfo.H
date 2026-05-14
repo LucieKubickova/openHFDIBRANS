@@ -37,39 +37,7 @@ Contributors
 #ifndef lineIntInfo_H
 #define lineIntInfo_H
 
-#include "polyMesh.H"
-#include "fvCFD.H"
-#include "fvMatrices.H"
-#include "geometricOneField.H"
-
-#include "interpolationCellPoint.H"
-#include "interpolationCell.H"
-#include "SVD.H"
-#include "scalarMatrices.H"
-#include "OFstream.H"
-#include "Pstream.H"
-
-#include "dictionary.H"
-#include "coordinateSystem.H"
-#include "coordinateSystems.H"
-#include "wordList.H"
-#include "labelList.H"
-#include "dimensionedScalar.H"
-#include "dimensionedTensor.H"
-#include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
-#include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
-
-#include "meshSearch.H"
-#include "List.H"
-#include "ListOps.H"
-
-#include "cellSet.H"
-#include "addToRunTimeSelectionTable.H"
-#include "PstreamReduceOps.H"
-#include "addToRunTimeSelectionTable.H"
-
+#include "ibMesh.H"
 #include "intPoint.H"
 
 using namespace Foam;

@@ -37,39 +37,9 @@ Contributors
 #ifndef ibDirichletBCs_H
 #define ibDirichletBCs_H
 
-#include "polyMesh.H"
-#include "fvCFD.H"
-#include "fvMatrices.H"
-#include "geometricOneField.H"
-
-#include "interpolationCellPoint.H"
-#include "interpolationCell.H"
-#include "SVD.H"
-#include "scalarMatrices.H"
-#include "OFstream.H"
-#include "Pstream.H"
-
-#include "dictionary.H"
-#include "coordinateSystem.H"
-#include "coordinateSystems.H"
-#include "wordList.H"
-#include "labelList.H"
-#include "dimensionedScalar.H"
-#include "dimensionedTensor.H"
-#include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
-#include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
-
-#include "meshSearch.H"
-#include "List.H"
-#include "ListOps.H"
-
-#include "cellSet.H"
-#include "addToRunTimeSelectionTable.H"
-#include "PstreamReduceOps.H"
 #include "nearWallDist.H"
 
+#include "ibMesh.H"
 #include "boundaryCell.H"
 #include "surfaceCell.H"
 
@@ -84,6 +54,7 @@ class ibDirichletBCs
 
     // mesh related parameters
     const fvMesh& mesh_;
+    autoPtr<ibMesh> ibMesh_;
 
     // lambda related things
     const volScalarField& body_;
@@ -164,6 +135,7 @@ class ibDirichletBCs
     ibDirichletBCs
     (
         const fvMesh& mesh,
+        autoPtr<ibMesh> ibMesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
         List<DynamicList<surfaceCell>>& surfaceCells,
@@ -248,9 +220,6 @@ class ibDirichletBCs
         return kAtIB_;
     }
 
-    // post processing of uTau
-    void postProcessUTau();
-
     // wall shear stress
     void calculateWallShearStress(volVectorField& tauw, const volVectorField& U, const volScalarField& nu);
 
@@ -271,9 +240,6 @@ class ibDirichletBCs
 
     // save
     void saveUTau();
-
-    // point in cell
-    bool pointInCell(point pToCheck, label cToCheck);
 
     // surface gradient
     void snGradUAtIB(const volVectorField& U, List<DynamicList<vector>>& snGradU);
