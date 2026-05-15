@@ -89,22 +89,16 @@ class ibMesh
 
     // mesh related parameters
     const fvMesh& mesh_;
-    scalar VAve_;
 
     // lambda related things
     const volScalarField& body_;
-    //~ scalar thrSurf_;
-    //~ scalar intSpan_;
 
     // options
     word stlName_;
-    //~ bool readSurfNorm_;
-    bool averageV_;
     bool readL_;
     scalar valueL_;
     bool sdBasedLambda_;
     word cutCellType_;
-    //~ bool yFromCutEdges_; // LK: experimental
 
     // stl things
     word stlPath_;
@@ -112,16 +106,8 @@ class ibMesh
     autoPtr<triSurface> triSurf_;
     autoPtr<triSurfaceSearch> triSurfSearch_;
 
-    // saves
-
-    // references to shared data
-
-    // interpolation info lists
-
     // dictionaries
     IOdictionary HFDIBDEMDict_;
-    //~ IOdictionary fvSchemes_;
-    //~ dictionary HFDIBInnerSchemes_;
 
     public:
 
@@ -163,11 +149,6 @@ class ibMesh
     // post processing of distance
     scalar getCellSize(label cellI);
 };
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-#ifdef NoRepository
-    #include "ibMeshTemplates.C"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

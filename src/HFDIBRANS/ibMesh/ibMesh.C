@@ -61,15 +61,10 @@ HFDIBDEMDict_
 {
 	// read HFDIBDEM dictionary
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
-    //~ readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
-    //~ intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
-    //~ thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
-    averageV_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageVolume", false);
     readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
     cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
-    //~ yFromCutEdges_ = HFDIBDEMDict_.lookupOrDefault<bool>("yFromCutEdges", false); // LK: experimental
 
     if (!sdBasedLambda_)
     {
@@ -90,17 +85,6 @@ HFDIBDEMDict_
         // tri surface search
         triSurf_.reset(new triSurface(bodySurfMesh_()));
         triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
-    }
-
-    // compute average cell volume
-    VAve_ = 0.0;
-    if (averageV_)
-    {
-        forAll(mesh_.V(), i)
-        {
-            VAve_ += mesh_.V()[i];
-        }
-        VAve_ /= mesh_.V().size();
     }
 }
 
@@ -707,11 +691,7 @@ scalar ibMesh::getCellSize
 {
     scalar cellSize(0.0);
 
-    if (averageV_)
-    {
-        cellSize = Foam::pow(VAve_, 0.333);
-    }
-    else if (readL_)
+    if (readL_)
     {
         cellSize = valueL_;
     }
