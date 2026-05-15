@@ -42,7 +42,7 @@ using namespace Foam;
 ibInterpolation::ibInterpolation
 (
     const fvMesh& mesh,
-    autoPtr<ibMesh> ibMesh,
+    ibMesh& ibMesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
     List<DynamicList<surfaceCell>>& surfaceCells,
@@ -147,7 +147,6 @@ fvSchemes_
 {
 	// read HFDIBDEM dictionary
     boundarySearch_ = HFDIBDEMDict_.lookupOrDefault<word>("boundarySearch", "face");
-    stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
     excludeWalls_ = HFDIBDEMDict_.lookupOrDefault<bool>("excludeWalls", false);
     excludePatch_ = HFDIBDEMDict_.lookupOrDefault<word>("excludePatch", "none");
     readSurfNorm_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSurfaceNormal", false);
@@ -157,49 +156,13 @@ fvSchemes_
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     aveCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("averagingCoeff", 1.0);
     nAveYOrtho_ = HFDIBDEMDict_.lookupOrDefault<label>("nAveragingYOrtho", 1.0);
-    averageV_ = HFDIBDEMDict_.lookupOrDefault<bool>("averageVolume", false);
-    readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
-    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
     innerThres_ = HFDIBDEMDict_.lookupOrDefault<scalar>("innerThreshold", 0.5); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
     correctIntPoints_ = HFDIBDEMDict_.lookupOrDefault<bool>("correctIntPoints", false);
-    surfAreaType_ = HFDIBDEMDict_.lookupOrDefault<word>("surfAreaType", "cutCell");
     yFromCutEdges_ = HFDIBDEMDict_.lookupOrDefault<bool>("yFromCutEdges", false); // LK: experimental
 
     // read fvSchemes
     HFDIBInnerSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("innerSchemes");
-
-    if (!sdBasedLambda_)
-    {
-        stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
-
-        // read stl
-        bodySurfMesh_.reset(new triSurfaceMesh
-        (
-            IOobject
-            (
-                stlPath_,
-                mesh_,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE
-            )
-        ));
-
-        // tri surface search
-        triSurf_.reset(new triSurface(bodySurfMesh_()));
-        triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
-    }
-
-    // compute average cell volume
-    VAve_ = 0.0;
-    if (averageV_)
-    {
-        forAll(mesh_.V(), i)
-        {
-            VAve_ += mesh_.V()[i];
-        }
-        VAve_ /= mesh_.V().size();
-    }
 
     // calculate surface normals
     calculateSurfNorm();
@@ -332,7 +295,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, bCells, bPoints, bNormals, correctIntPoints_));
+    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, ibMesh_, bCells, bPoints, bNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoBoundary_->setIntpInfo();
@@ -380,7 +343,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoSurface_.set(new lineIntInfo(mesh_, sCells, sPoints, sNormals, correctIntPoints_));
+    lineIntInfoSurface_.set(new lineIntInfo(mesh_, ibMesh_, sCells, sPoints, sNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoSurface_->setIntpInfo();
@@ -418,12 +381,12 @@ void ibInterpolation::findBoundaryCells
         // check whether the cell is adjecent to a regular wall
         if (isBoundary and excludeWalls_)
         {
-            isBoundary = !(isWallCell(cellI));
+            isBoundary = !(ibMesh_.isWallCell(cellI));
         }
 
         else if (isBoundary and excludePatch_ != "none")
         {
-            isBoundary = !(isOnPatch(cellI));
+            isBoundary = !(ibMesh_.isOnPatch(cellI, excludePatch_));
         }
 
         // add the cell
@@ -641,9 +604,10 @@ void ibInterpolation::findNeighborInBody
     else if (boundarySearch_ == "edge")
     {
         // get the best face, edge and vertex
-        label faceI = getFaceInDir(cellI, -1*surfNorm_[cellI]);
-        label edgeI = getEdgeInDir(faceI, cellI, -1*surfNorm_[cellI]);
-        //~ label vertI = getVertInDir(edgeI, cellI, -1*surfNorm_[cellI]);
+        vector dir = -1*surfNorm_[cellI];
+        label faceI = ibMesh_.getFaceInDir(cellI, dir);
+        label edgeI = ibMesh_.getEdgeInDir(faceI, cellI, dir);
+        //~ label vertI = ibMesh_.getVertInDir(edgeI, cellI, dir);
 
         label faceNI(-1);
         label edgeNI(-1);
@@ -744,7 +708,8 @@ void ibInterpolation::findNeighborInBody
     {
         // get labels
         // Note (LK): surf norm should be from STL file if stated
-        label faceI = getFaceInDir(cellI, -1*surfNorm_[cellI]);
+        vector dir = -1*surfNorm_[cellI];
+        label faceI = ibMesh_.getFaceInDir(cellI, dir);
         label nI(-1);
     
         // check for non-internal cells
@@ -803,205 +768,6 @@ void ibInterpolation::findNeighborInBody
     {
         FatalError << "Boundary cell search " << boundarySearch_ << " not implemented" << exit(FatalError);
     }
-}
-
-//---------------------------------------------------------------------------//
-label ibInterpolation::getFaceInDir
-(
-    label cellI,
-    vector dir
-)
-{
-    // prepare data
-    label faceToReturn = -1;
-    const labelList& cellFaces(mesh_.cells()[cellI]);
-
-    // auxiliar scalar
-    scalar dotProd(-GREAT);
-
-    // loop over cell faces
-    forAll(cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
-        outNorm /= mag(outNorm);
-
-        //~ vector outNorm = (mesh_.faceOwner()[fI] == cellI)
-            //~ ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
-        //~ outNorm /= mag(outNorm); // LK: this should be there, no?
-
-        scalar auxDotProd(outNorm & dir);
-        if (auxDotProd > dotProd)
-        {
-            dotProd = auxDotProd;
-            faceToReturn = fI;
-        }
-    }
-
-    return faceToReturn;
-}
-
-//---------------------------------------------------------------------------//
-label ibInterpolation::getEdgeInDir
-(
-    label faceI,
-    label cellI,
-    vector dir
-)
-{
-    // prepare data
-    label edgeToReturn = -1;
-    const labelList& faceEdges(mesh_.faceEdges()[faceI]);
-
-    // auxiliar scalar
-    scalar dotProd(-GREAT);
-
-    // loop over face edges
-    forAll(faceEdges, edgeI)
-    {
-        // get edge label
-        label eI = faceEdges[edgeI];
-
-        // get edge nodes
-        const label& own = mesh_.edges()[eI][0];
-        const label& nei = mesh_.edges()[eI][1];
-
-        vector Ce = 0.5*(mesh_.points()[own] + mesh_.points()[nei]);
-
-        // get direction to edge center
-        vector outNorm = Ce - mesh_.C()[cellI];
-        outNorm /= mag(outNorm);
-
-        scalar auxDotProd(outNorm & dir);
-        if (auxDotProd > dotProd)
-        {
-            dotProd = auxDotProd;
-            edgeToReturn = eI;
-        }
-    }
-
-    return edgeToReturn;
-}
-
-//---------------------------------------------------------------------------//
-label ibInterpolation::getVertInDir
-(
-    label edgeI,
-    label cellI,
-    vector dir
-)
-{
-    // prepare data
-    label vertexToReturn = -1;
-    const edge& edgeVertices(mesh_.edges()[edgeI]);
-
-    // auxiliar scalar
-    scalar dotProd(-GREAT);
-
-    // loop over edge vertices
-    forAll(edgeVertices, verI)
-    {
-        label vI = edgeVertices[verI];
-        vector outNorm = mesh_.points()[vI] - mesh_.C()[cellI];
-        outNorm /= mag(outNorm);
-
-        scalar auxDotProd(outNorm & dir);
-        if (auxDotProd > dotProd)
-        {
-            dotProd = auxDotProd;
-            vertexToReturn = vI;
-        }
-    }
-
-    return vertexToReturn;
-}
-
-//---------------------------------------------------------------------------//
-bool ibInterpolation::isWallCell
-(
-    label& cellI
-)
-{
-    bool isWallCell(true);
-
-    // get wall patches
-    DynamicList<label> wPatchIs;
-    forAll(mesh_.boundary(), pI)
-    {
-        if (mesh_.boundary()[pI].type() == "wall")
-        {
-            wPatchIs.append(pI);
-        }
-    }
-
-    // loop over cell faces
-    forAll(mesh_.cells()[cellI], f)
-    {
-        // get face label
-        label faceI = mesh_.cells()[cellI][f];
-    
-        if (faceI >= mesh_.owner().size())
-        {
-            bool wallFace(false);
-    
-            // loop over patches of type wall
-            forAll(wPatchIs, pI)
-            {
-                // get patch label
-                label patchI = wPatchIs[pI];
-    
-                // get start and end face index
-                label startI = mesh_.boundary()[patchI].start();
-                label endI = startI + mesh_.boundary()[patchI].Cf().size();
-    
-                if (faceI >= startI and faceI < endI)
-                {
-                    wallFace = true;
-                }
-            }
-    
-            // exclude wall faces
-            if (wallFace)
-            {
-                isWallCell = false;
-            }
-        }
-    }
-
-    return isWallCell;
-}
-
-//---------------------------------------------------------------------------//
-bool ibInterpolation::isOnPatch
-(
-    label& cellI
-)
-{
-    bool isOnPatch(false);
-
-    // get patch id
-    const label patchI = mesh_.boundaryMesh().findPatchID(excludePatch_);
-
-    // loop over cell faces
-    forAll(mesh_.cells()[cellI], f)
-    {
-        // get face label
-        label faceI = mesh_.cells()[cellI][f];
-    
-        if (faceI >= mesh_.owner().size())
-        {
-            // get start and end face index
-            label startI = mesh_.boundary()[patchI].start();
-            label endI = startI + mesh_.boundary()[patchI].Cf().size();
-    
-            if (faceI >= startI and faceI < endI)
-            {
-                isOnPatch = true;
-            }
-        }
-    }
-
-    return isOnPatch;
 }
 
 //---------------------------------------------------------------------------//
@@ -1283,22 +1049,8 @@ void ibInterpolation::calculateSurfArea
         }
 
         // construct cut cell
-        //~ const cell& bCellSurf(mesh_.cells()[cellI]);
-        //~ ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        //~ scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-        // if the cell is uncut skip
-        //~ if (cCellSurf.faces().size() == 0)
-        //~ {
-            //~ Info << "Warning: Uncut surface cell" << endl;
-            //~ continue;
-        //~ }
-
-        // get area of cut face
-        //~ scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
-
         scalar sArea(0.0);
-        sArea = createCutCellAndSurface(cellI, normal, surfPoint);
+        sArea = ibMesh_.createCutCellAndSurface(cellI, normal, surfPoint);
 
         // Note (LK): check surface areas
         surfArea[cellI] = sArea;
@@ -1339,14 +1091,7 @@ void ibInterpolation::calculateSurfArea
             else
             {
                 // create cut cell
-                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
-                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-                //~ // get area of cut face
-                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-
-                sArea = createCutCellAndSurface(inCellI, surfNorm, surfPoint);
+                sArea = ibMesh_.createCutCellAndSurface(inCellI, surfNorm, surfPoint);
                 surfArea[inCellI] = sArea;
                 totalArea += sArea;
             }
@@ -1363,14 +1108,7 @@ void ibInterpolation::calculateSurfArea
             else
             {
                 // create cut cell
-                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
-                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-                //~ // get area of cut face
-                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-                
-                sArea = createCutCellAndSurface(inCellI, surfNorm, surfPoint);
+                sArea = ibMesh_.createCutCellAndSurface(inCellI, surfNorm, surfPoint);
                 surfArea[inCellI] = sArea;
                 totalArea += sArea;
             }
@@ -1404,469 +1142,12 @@ void ibInterpolation::calculateSurfArea
         boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
     }
 
-    // Note (LK): original version
-    // loop over boundary cells
-    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    //~ {
-        //~ // get cell labels
-        //~ label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-        //~ label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
-
-        //~ // get surface data
-        //~ vector surfNorm = boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
-        //~ point surfPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
-
-        //~ // prepare
-        //~ scalar sArea(0.0);
-
-        //~ // check body
-        //~ if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_)
-        //~ {
-            //~ // create cut cell
-            //~ const cell& bCellOut(mesh_.cells()[outCellI]);
-            //~ ibCutCell cCellOut(mesh_, surfNorm, surfPoint, bCellOut);
-            //~ scalar yOrtho = cCellOut.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-            //~ // if the cell is uncut cut the inner cell
-            //~ if (cCellOut.faces().size() == 0)
-            //~ {
-                //~ const cell& bCellIn(mesh_.cells()[inCellI]);
-                //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-                //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-                //~ // get area of cut face
-                //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-                //~ surfArea[inCellI] = sArea;
-            //~ }
-
-            //~ else
-            //~ {
-                //~ // get area of cut face
-                //~ sArea = mag(cCellOut.Sf()[cCellOut.Sf().size()-1]); // Note (LK): should be always the last one
-                //~ surfArea[outCellI] = sArea;
-            //~ }
-        //~ }
-
-        //~ else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
-        //~ {
-            //~ // create cut cell
-            //~ const cell& bCellIn(mesh_.cells()[inCellI]);
-            //~ ibCutCell cCellIn(mesh_, surfNorm, surfPoint, bCellIn);
-            //~ scalar yOrtho = cCellIn.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-            //~ // get area of cut face
-            //~ sArea = mag(cCellIn.Sf()[cCellIn.Sf().size()-1]); // Note (LK): should be always the last one
-            //~ surfArea[inCellI] = sArea;
-        //~ }
-
-        //~ else
-        //~ {
-            //~ // find the shared face
-            //~ forAll(mesh_.cells()[outCellI], fI)
-            //~ {
-                //~ // get face label
-                //~ label faceI = mesh_.cells()[outCellI][fI];
-                
-                //~ // get owner and neighbor
-                //~ label owner(mesh_.owner()[faceI]);
-                //~ label neighbor(mesh_.neighbour()[faceI]);
-
-                //~ // check if shared
-                //~ if ((outCellI == owner and inCellI == neighbor) or (outCellI == neighbor and inCellI == owner))
-                //~ {
-                    //~ sArea = mag(mesh_.Sf()[faceI]);
-                    //~ break;
-                //~ }
-            //~ }
-
-            //~ surfArea[outCellI] = sArea;
-        //~ }
-
-        //~ // Note (LK): check surface areas
-        //~ totalArea += sArea;
-
-        //~ // assign
-        //~ boundaryCells_[Pstream::myProcNo()][bCell].sArea_ = sArea;
-    //~ }
-
-    //~ // check surf cells
-    //~ forAll(surfaceCells_[Pstream::myProcNo()], sCell)
-    //~ {
-        //~ // get cell label
-        //~ label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
-
-        //~ // check if already added
-        //~ if (surfArea[cellI] > 0.0)
-        //~ {
-            //~ surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = surfArea[cellI];
-            //~ continue;
-        //~ }
-
-        //~ // prepare surf point and normal
-        //~ vector normal = surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
-        //~ point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
-
-        //~ if (sdBasedLambda_)
-        //~ {
-            //~ normal = surfNorm_[cellI];
-            //~ scalar sigma = surfaceCells_[Pstream::myProcNo()][sCell].sigma_;
-            //~ surfPoint = mesh_.C()[cellI] + sigma*normal;
-
-            //~ // Note (LK): emergency assign
-            //~ surfaceCells_[Pstream::myProcNo()][sCell].sNorm_ = normal;
-            //~ surfaceCells_[Pstream::myProcNo()][sCell].sPoint_ = surfPoint;
-        //~ }
-
-        //~ // construct cut cell
-        //~ const cell& bCellSurf(mesh_.cells()[cellI]);
-        //~ ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        //~ scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-
-        //~ // if the cell is uncut skip
-        //~ if (cCellSurf.faces().size() == 0)
-        //~ {
-            //~ continue;
-        //~ }
-
-        //~ // get area of cut face
-        //~ scalar sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
-
-        //~ // Note (LK): check surface areas
-        //~ surfArea[cellI] = sArea;
-        //~ totalArea += sArea;
-
-        //~ // assign
-        //~ surfaceCells_[Pstream::myProcNo()][sCell].sArea_ = sArea;
-    //~ }
-
     // Note (LK): check write
     surfArea.write();
 
     Info << "Total area is:" << endl;
     Info << "    S = " << totalArea << endl;
     Info << endl;
-}
-
-//---------------------------------------------------------------------------//
-scalar ibInterpolation::createCutCellAndSurface
-(
-    label cellI,
-    vector& normal,
-    point& surfPoint
-)
-{
-    scalar sArea(0.0);
-
-    if (surfAreaType_ == "cutCell")
-    {
-        // Note (LK): original cut cell
-        const cell& bCellSurf(mesh_.cells()[cellI]);
-        ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
-        
-        // if the cell is uncut skip
-        if (cCellSurf.faces().size() == 0)
-        {
-            Info << "Warning: Uncut surface cell" << endl;
-            return 0.0;
-        }
-        
-        // get area of cut face
-        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
-    }
-
-    // Note (LK): new cut cell, cutting edges by stl
-    else if (surfAreaType_ == "cutEdges")
-    {
-        // prepare list of checked edges
-        DynamicList<label> checkedEdges;
-        
-        // get cell faces
-        const labelList& cellFaces(mesh_.cells()[cellI]);
-
-        // save points
-        DynamicList<point> startPs;
-        DynamicList<point> endPs;
-
-        // loop over cell faces
-        forAll(cellFaces, fI)
-        {
-            // get face label
-            label faceI = cellFaces[fI];
-
-            // get face edges
-            const labelList& faceEdges = mesh_.faceEdges()[faceI];
-
-            // loop over face edges
-            forAll(faceEdges, eI)
-            {
-                // look if already checked
-                bool toInclude(true);
-                forAll(checkedEdges, ceI)
-                {
-                    if (checkedEdges[ceI] == faceEdges[eI])
-                    {
-                        toInclude = false;
-                        break;
-                    }
-                }
-
-                // break if already don
-                if (not toInclude)
-                {
-                    continue;
-                }
-                else
-                {
-                    checkedEdges.append(faceEdges[eI]);
-                }
-
-                // get edge
-                const edge& e = mesh_.edges()[faceEdges[eI]];
-
-                // get points
-                point sP(mesh_.points()[e.start()]);
-                point eP(mesh_.points()[e.end()]);
-
-                // append
-                startPs.append(sP);
-                endPs.append(eP);
-            }
-        }
-
-        // prepare point fields
-        pointField startPoints(startPs);
-        pointField endPoints(endPs);
-
-        // try to find hit point with stl
-        List<pointIndexHit> hitInfo;
-        triSurfSearch_().findLine(startPoints, endPoints, hitInfo);
-
-        // get hit points
-        DynamicList<point> cutPoints;
-        forAll(hitInfo, hI)
-        {
-            if (hitInfo[hI].hit())
-            {
-                point cutPoint = hitInfo[hI].hitPoint();
-                cutPoints.append(cutPoint);
-            }
-        }
-
-        // filter duplicate points
-        DynamicList<point> uniquePoints;
-        forAll(cutPoints, pI)
-        {
-            bool toAdd(true);
-
-            forAll(uniquePoints, uI)
-            {
-                scalar dist = mag(cutPoints[pI] - uniquePoints[uI]);
-                if (dist < SMALL)
-                {
-                    toAdd = false;
-                }
-            }
-
-            if (toAdd)
-            {
-                uniquePoints.append(cutPoints[pI]);
-            }
-        }
-
-        // calculate area
-        if (uniquePoints.size() < 3)
-        {
-            sArea *= 0.0;
-        }
-
-        else if (uniquePoints.size() == 3)
-        {
-            sArea *= 0.0;
-
-            point p0 = uniquePoints[0];
-            point p1 = uniquePoints[1];
-            point p2 = uniquePoints[2];
-
-            sArea = calculateTriangleArea(p0, p1, p2);
-        }
-
-        else if (uniquePoints.size() == 4)
-        {
-            sArea *= 0.0;
-
-            forAll(uniquePoints, pI)
-            {
-                point p0 = uniquePoints[pI % 4];
-                point p1 = uniquePoints[(pI+1) % 4];
-                point p2 = uniquePoints[(pI+2) % 4];
-                sArea += calculateTriangleArea(p0, p1, p2);
-            }
-
-            sArea *= 0.5;
-        }
-
-        else
-        {
-            Info << "Warning: cell cut with " << uniquePoints.size() << " points near " << mesh_.C()[cellI] << endl;
-        }
-    }
-
-    else
-    {
-        FatalError << "Surface area calculation type " << surfAreaType_ << " not implemented" << exit(FatalError);
-    }
-
-    return sArea;
-}
-
-//---------------------------------------------------------------------------//
-scalar ibInterpolation::calculateTriangleArea
-(
-    point p0,
-    point p1,
-    point p2
-)
-{
-    return mag(0.5*((p1 - p0)^(p2 - p1)));
-}
-
-//---------------------------------------------------------------------------//
-void ibInterpolation::createCutCellAndCenter
-(
-    label cellI,
-    vector& surfNorm,
-    point& surfPoint
-)
-{
-    // prepare list of checked edges
-    DynamicList<label> checkedEdges;
-    
-    // get cell faces
-    const labelList& cellFaces(mesh_.cells()[cellI]);
-
-    // save points
-    DynamicList<point> startPs;
-    DynamicList<point> endPs;
-
-    // loop over cell faces
-    forAll(cellFaces, fI)
-    {
-        // get face label
-        label faceI = cellFaces[fI];
-
-        // get face edges
-        const labelList& faceEdges = mesh_.faceEdges()[faceI];
-
-        // loop over face edges
-        forAll(faceEdges, eI)
-        {
-            // look if already checked
-            bool toInclude(true);
-            forAll(checkedEdges, ceI)
-            {
-                if (checkedEdges[ceI] == faceEdges[eI])
-                {
-                    toInclude = false;
-                    break;
-                }
-            }
-
-            // break if already done
-            if (not toInclude)
-            {
-                continue;
-            }
-            else
-            {
-                checkedEdges.append(faceEdges[eI]);
-            }
-
-            // get edge
-            const edge& e = mesh_.edges()[faceEdges[eI]];
-
-            // get points
-            point sP(mesh_.points()[e.start()]);
-            point eP(mesh_.points()[e.end()]);
-
-            // append
-            startPs.append(sP);
-            endPs.append(eP);
-        }
-    }
-
-    // prepare point fields
-    pointField startPoints(startPs);
-    pointField endPoints(endPs);
-
-    // try to find hit point with stl
-    List<pointIndexHit> hitInfo;
-    triSurfSearch_().findLine(startPoints, endPoints, hitInfo);
-
-    // get hit points
-    DynamicList<point> cutPoints;
-    forAll(hitInfo, hI)
-    {
-        if (hitInfo[hI].hit())
-        {
-            point cutPoint = hitInfo[hI].hitPoint();
-            cutPoints.append(cutPoint);
-        }
-    }
-
-    // filter duplicate points
-    DynamicList<point> uniquePoints;
-    DynamicList<pointIndexHit> uniqueHitPoints;
-    forAll(cutPoints, pI)
-    {
-        bool toAdd(true);
-
-        forAll(uniquePoints, uI)
-        {
-            scalar dist = mag(cutPoints[pI] - uniquePoints[uI]);
-            if (dist < SMALL)
-            {
-                toAdd = false;
-            }
-        }
-
-        if (toAdd)
-        {
-            uniquePoints.append(cutPoints[pI]);
-            uniqueHitPoints.append(hitInfo[pI]);
-        }
-    }
-
-    // get normals
-    List<pointIndexHit> uniqueHitPointList(uniqueHitPoints);
-    vectorField normalVectorField;
-
-    // get contact normal direction
-    const triSurfaceMesh& ibTempMesh(bodySurfMesh_());
-    ibTempMesh.getNormal(uniqueHitPointList,normalVectorField);
-
-    // calculate center and normal
-    surfPoint *= 0.0;
-    surfNorm *= 0.0;
-    forAll(uniquePoints, uI)
-    {
-        surfPoint += uniquePoints[uI];
-        //~ surfNorm += normalVectorField[uI];
-    }
-    surfPoint /= uniquePoints.size();
-
-    point closestPoint(vector::zero);
-    scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
-    getClosestPointAndNormal(
-        surfPoint,
-        intDist*2*vector::one,
-        closestPoint,
-        surfNorm 
-    );
-
-    //~ surfNorm /= uniquePoints.size();
-
-    return;
 }
 
 //---------------------------------------------------------------------------//
@@ -1918,7 +1199,7 @@ void ibInterpolation::calculateBoundaryDist
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            l = getCellSize(outCellI);
+            l = ibMesh_.getCellSize(outCellI);
 
             if (sdBasedLambda_)
             {
@@ -1928,7 +1209,7 @@ void ibInterpolation::calculateBoundaryDist
             else if (yFromCutEdges_)
             {
                 vector surfNorm(vector::zero);
-                createCutCellAndCenter(outCellI, surfNorm, surfPoint);
+                ibMesh_.createCutCellAndCenter(outCellI, surfNorm, surfPoint);
 
                 sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
@@ -1944,7 +1225,7 @@ void ibInterpolation::calculateBoundaryDist
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
                 
-                getClosestPointAndNormal(
+                ibMesh_.getClosestPointAndNormal(
                     mesh_.C()[outCellI],
                     intDist*2*vector::one,
                     surfPoint,
@@ -1969,7 +1250,7 @@ void ibInterpolation::calculateBoundaryDist
         {
             if (body_[inCellI] < 1.0 - thrSurf_ and sdBasedLambda_)
             {
-                l = getCellSize(inCellI);
+                l = ibMesh_.getCellSize(inCellI);
                 surfPoint = mesh_.C()[inCellI];
                 sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 0 for lambda > 0.5
                 surfPoint += surfNorm_[inCellI]*sigma;
@@ -1980,14 +1261,14 @@ void ibInterpolation::calculateBoundaryDist
             else if (body_[inCellI] < 1.0 - thrSurf_ and yFromCutEdges_)
             {
                 vector surfNorm(vector::zero);
-                createCutCellAndCenter(inCellI, surfNorm, surfPoint);
+                ibMesh_.createCutCellAndCenter(inCellI, surfNorm, surfPoint);
 
                 surfNorm *= -1; // Note (LK): for inward cells it finds the inward normal, needs check with grad lambda?
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]);
                 surfNorm_[inCellI] = surfNorm/mag(surfNorm);
                 yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
-                l = getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI);
                 yEff = 0.5*(yOrtho + l*0.5);
 
                 // Note (LK): save to boundary cell, has to be done somewhere centraly
@@ -2031,7 +1312,7 @@ void ibInterpolation::calculateBoundaryDist
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
-                getClosestPointAndNormal(
+                ibMesh_.getClosestPointAndNormal(
                     mesh_.C()[outCellI],
                     intDist*2*vector::one,
                     surfPoint,
@@ -2046,7 +1327,7 @@ void ibInterpolation::calculateBoundaryDist
                 boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
                 boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
-                l = getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI);
                 yEff = 0.5*(yOrtho + l*0.5);
             }
         }
@@ -2055,7 +1336,7 @@ void ibInterpolation::calculateBoundaryDist
         {
             if (sdBasedLambda_)
             {
-                l = getCellSize(outCellI); // Note (LK): should be the size of the inner cell, needs fixing
+                l = ibMesh_.getCellSize(outCellI); // Note (LK): should be the size of the inner cell, needs fixing
                 forAll(mesh_.boundaryMesh(), patchI)
                 {
                     const polyPatch& cPatch = mesh_.boundaryMesh()[patchI];
@@ -2127,7 +1408,7 @@ void ibInterpolation::calculateBoundaryDist
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
-                getClosestPointAndNormal(
+                ibMesh_.getClosestPointAndNormal(
                     mesh_.C()[outCellI],
                     intDist*2*vector::one,
                     surfPoint,
@@ -2142,7 +1423,7 @@ void ibInterpolation::calculateBoundaryDist
                 boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
                 boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
-                l = getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI);
                 yEff = 0.5*(yOrtho + l*0.5);
             }
         }
@@ -2174,30 +1455,6 @@ void ibInterpolation::calculateBoundaryDist
 
     // post processing (now only possible averaging)
     postProcessYOrtho();
-}
-
-//---------------------------------------------------------------------------//
-scalar ibInterpolation::getCellSize
-(
-    label cellI
-)
-{
-    scalar cellSize(0.0);
-
-    if (averageV_)
-    {
-        cellSize = Foam::pow(VAve_, 0.333);
-    }
-    else if (readL_)
-    {
-        cellSize = valueL_;
-    }
-    else
-    {
-        cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
-    }
-
-    return cellSize;
 }
 
 //---------------------------------------------------------------------------//
@@ -2322,7 +1579,7 @@ void ibInterpolation::calculateSurfaceDist
         label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
 
         // get cell dimension
-        scalar l = getCellSize(cellI);
+        scalar l = ibMesh_.getCellSize(cellI);
 
         // calculate signed distance
         if (sdBasedLambda_)
@@ -2336,7 +1593,7 @@ void ibInterpolation::calculateSurfaceDist
             vector surfPoint = vector::zero;
             vector surfNorm = vector::zero;
 
-            getClosestPointAndNormal(
+            ibMesh_.getClosestPointAndNormal(
                 mesh_.C()[cellI],
                 intDist*2*vector::one,
                 surfPoint,
@@ -2617,37 +1874,6 @@ void ibInterpolation::saveBoundaryCells
     saveCellSet(saveOutCells, "outerBoundaryCells");
     saveCellSet(saveInCells, "innerBoundaryCells");
     saveCellSet(saveFreeCells, "freeBoundaryCells");
-}
-
-//---------------------------------------------------------------------------//
-void ibInterpolation::getClosestPointAndNormal
-(
-    const point& startPoint,
-    const vector& span,
-    point& closestPoint,
-    vector& normal
-)
-{
-    // get nearest point on surface from contact center
-    pointIndexHit ibPointIndexHit = triSurfSearch_().nearest(startPoint, span);
-    List<pointIndexHit> ibPointIndexHitList(1,ibPointIndexHit);
-    vectorField normalVectorField;
-
-    // get contact normal direction
-    const triSurfaceMesh& ibTempMesh(bodySurfMesh_());
-    ibTempMesh.getNormal(ibPointIndexHitList,normalVectorField);
-
-    if(ibPointIndexHit.hit())
-    {
-        //~ normal = normalVectorField[0];
-        closestPoint = ibPointIndexHit.hitPoint();
-        normal = startPoint - closestPoint;
-        normal /= mag(normal);
-    }
-    else
-    {
-        FatalError << "Missing the closest point from " << startPoint << " to " << stlName_ << exit(FatalError);
-    }
 }
 
 //---------------------------------------------------------------------------//

@@ -42,7 +42,7 @@ using namespace Foam;
 ibDirichletBCs::ibDirichletBCs
 (
     const fvMesh& mesh,
-    autoPtr<ibMesh> ibMesh,
+    ibMesh& ibMesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
     List<DynamicList<surfaceCell>>& surfaceCells,
@@ -330,12 +330,12 @@ void ibDirichletBCs::updateUTauAtIB
             // check in which cell the point is
             label kCell;
             label kProc;
-            if (ibMesh_->pointInCell(distPoint, cellI))
+            if (ibMesh_.pointInCell(distPoint, cellI))
             {
                 kCell = cellI;
                 kProc = Pstream::myProcNo();
             }
-            else //~ if (ibMesh_->pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
+            else //~ if (ibMesh_.pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
             {
                 kCell = fCell1;
                 kProc = fProc1;
@@ -525,9 +525,6 @@ void ibDirichletBCs::updateUTauAtIB
             }
         }
     }
-
-    // post processing
-    postProcessUTau();
 
     // save
     saveUTau();

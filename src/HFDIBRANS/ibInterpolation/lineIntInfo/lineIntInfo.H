@@ -54,6 +54,7 @@ class lineIntInfo
 
     // mesh reference
     const Foam::fvMesh& mesh_;
+    ibMesh& ibMesh_;
 
     // lists
     List<label> ibCells_;
@@ -75,24 +76,6 @@ class lineIntInfo
     (
         point ibPoint,
         intPoint& cPoint
-    );
-
-    vector getClosestPoint
-    (
-        vector ibPoint,
-        intPoint& cPoint
-    );
-
-    label getFaceInDir
-    (
-        const intPoint& retPoint,
-        const label prevFace
-    );
-
-    bool pointInCell
-    (
-        point pToCheck,
-        label cToCheck
     );
 
     void sendAndRecvIntPoints
@@ -118,6 +101,7 @@ class lineIntInfo
     lineIntInfo
     (
         const fvMesh& mesh,
+        ibMesh& ibMesh,
         List<label> ibCells,
         List<point> ibPoints,
         List<vector> ibNormals,

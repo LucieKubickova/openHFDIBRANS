@@ -1,1 +1,1 @@
-../ibInterpolation/ibCells/ibCutCell.H
+../ibMesh/ibCutCell.H

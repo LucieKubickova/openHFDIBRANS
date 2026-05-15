@@ -54,7 +54,7 @@ class ibDirichletBCs
 
     // mesh related parameters
     const fvMesh& mesh_;
-    autoPtr<ibMesh> ibMesh_;
+    ibMesh& ibMesh_;
 
     // lambda related things
     const volScalarField& body_;
@@ -135,7 +135,7 @@ class ibDirichletBCs
     ibDirichletBCs
     (
         const fvMesh& mesh,
-        autoPtr<ibMesh> ibMesh,
+        ibMesh& ibMesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
         List<DynamicList<surfaceCell>>& surfaceCells,

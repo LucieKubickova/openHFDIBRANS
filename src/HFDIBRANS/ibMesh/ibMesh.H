@@ -73,6 +73,9 @@ Contributors
 #include "triSurfaceMesh.H"
 #include "triangleFuncs.H"
 
+#include "ibCutCell.H"
+#include "intPoint.H"
+
 #define ORDER 2
 
 using namespace Foam;
@@ -86,7 +89,7 @@ class ibMesh
 
     // mesh related parameters
     const fvMesh& mesh_;
-    //~ scalar VAve_;
+    scalar VAve_;
 
     // lambda related things
     const volScalarField& body_;
@@ -94,16 +97,13 @@ class ibMesh
     //~ scalar intSpan_;
 
     // options
-    //~ word boundarySearch_;
     word stlName_;
-    //~ bool excludeWalls_;
-    //~ word excludePatch_;
     //~ bool readSurfNorm_;
-    //~ bool averageV_;
-    //~ bool readL_;
-    //~ scalar valueL_;
+    bool averageV_;
+    bool readL_;
+    scalar valueL_;
     bool sdBasedLambda_;
-    //~ word surfAreaType_;
+    word cutCellType_;
     //~ bool yFromCutEdges_; // LK: experimental
 
     // stl things
@@ -123,10 +123,6 @@ class ibMesh
     //~ IOdictionary fvSchemes_;
     //~ dictionary HFDIBInnerSchemes_;
 
-    // private functions
-    // choose interpolation function
-    //~ autoPtr<ibScheme> chosenInterpFunc(word name);
-
     public:
 
     // Constructors ----------------------------------------------------
@@ -143,33 +139,29 @@ class ibMesh
     // is point in cell
     bool pointInCell(point pToCheck, label cToCheck);
 
-    //~ void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
-    //~ bool isWallCell(label& cellI);
-    //~ bool isOnPatch(label& cellI);
+    // patch checks
+    bool isWallCell(label& cellI);
+    bool isOnPatch(label& cellI, word& patchName);
 
     // best instance in direction
-    //~ label getFaceInDir(label cellI, vector dir);
-    //~ label getEdgeInDir(label faceI, label cellI, vector dir);
-    //~ label getVertInDir(label edgeI, label cellI, vector dir);
+    label getFaceInDir(label& cellI, vector& dir);
+    label getEdgeInDir(label& faceI, label& cellI, vector& dir);
+    label getVertInDir(label& edgeI, label& cellI, vector& dir);
 
-    // surface creation
-    //~ void setUpSurface(volScalarField& surface, scalar boundaryVal);
-    //~ void setLambdaBasedSurface(volScalarField& surface, scalar boundaryVal);
-    //~ void setOnlyInnerSurface(volScalarField& surface, scalar boundaryVal);
-    //~ void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
-    // TODO: blended surface
+    vector getClosestPoint
+    (
+        vector ibPoint,
+        intPoint& cPoint
+    );
 
-    // surface correction
-    //~ void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
+    // work with stl files
+    void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
+    scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
+    scalar calculateTriangleArea(point p0, point p1, point p2);
+    void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
 
     // post processing of distance
-    //~ scalar getCellSize(label cellI);
-    
-    // work with stl file
-    //~ void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
-    //~ scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
-    //~ scalar calculateTriangleArea(point p0, point p1, point p2);
-    //~ void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
+    scalar getCellSize(label cellI);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

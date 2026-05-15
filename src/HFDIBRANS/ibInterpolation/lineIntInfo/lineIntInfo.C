@@ -38,6 +38,7 @@ using namespace Foam;
 lineIntInfo::lineIntInfo
 (
     const fvMesh& mesh,
+    ibMesh& ibMesh,
     List<label> ibCells,
     List<point> ibPoints,
     List<vector> ibNormals,
@@ -45,6 +46,7 @@ lineIntInfo::lineIntInfo
 )
 :
 mesh_(mesh),
+ibMesh_(ibMesh),
 ibCells_(ibCells),
 ibPoints_(ibPoints),
 ibNormals_(ibNormals),
@@ -121,7 +123,7 @@ void lineIntInfo::setIntpInfo
 
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
-                } while(pointInCell(cPoint, cIntPoint.iCell_));
+                } while(ibMesh_.pointInCell(cPoint, cIntPoint.iCell_));
 
                 // new interpolation points
                 intPoint nIntPoint = findIntPoint(cIntPoint, cPoint);
@@ -297,9 +299,9 @@ void lineIntInfo::correctIntPoint
         return;
     }
 
-    vector closestPoint = getClosestPoint(ibPoint, cPoint);
+    vector closestPoint = ibMesh_.getClosestPoint(ibPoint, cPoint);
 
-    if(pointInCell(closestPoint, cPoint.iCell_))
+    if(ibMesh_.pointInCell(closestPoint, cPoint.iCell_))
     {
         cPoint.iPoint_ = closestPoint;
     }
@@ -323,7 +325,7 @@ void lineIntInfo::correctIntPoint
                 vector newP = 0.95*(pHit.hitPoint() - cPoint.iPoint_);
                 newP += cPoint.iPoint_;
 
-                if(pointInCell(newP, cPoint.iCell_))
+                if(ibMesh_.pointInCell(newP, cPoint.iCell_))
                 {
                     cPoint.iPoint_ = newP;
                     break;
@@ -331,21 +333,6 @@ void lineIntInfo::correctIntPoint
             }
         }
     }
-}
-
-//---------------------------------------------------------------------------//
-vector lineIntInfo::getClosestPoint
-(
-    vector ibPoint,
-    intPoint& cPoint
-)
-{
-    vector dir = cPoint.iPoint_ - ibPoint;
-    dir /= mag(dir);
-
-    vector dirToC = mesh_.C()[cPoint.iCell_] - ibPoint;
-
-    return ibPoint + dir*(dirToC&dir);
 }
 
 //---------------------------------------------------------------------------//
@@ -373,9 +360,11 @@ intPoint lineIntInfo::findIntPoint
     if(fromP.iProc_ == Pstream::myProcNo())
     {
         label faceInDir = -1;
-        while(!pointInCell(retP.iPoint_, retP.iCell_))
+        while(!ibMesh_.pointInCell(retP.iPoint_, retP.iCell_))
         {
-            faceInDir = getFaceInDir(retP, faceInDir);
+            //~ faceInDir = ibMesh_.getFaceInDir(retP, faceInDir);
+            vector dir = retP.iPoint_ - mesh_.C()[retP.iCell_];
+            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir);
             if (!mesh_.isInternalFace(faceInDir))
             {
                 label facePatchId(mesh_.boundaryMesh().whichPatch(faceInDir));
@@ -409,62 +398,6 @@ intPoint lineIntInfo::findIntPoint
     }
 
     return retP;
-}
-
-//---------------------------------------------------------------------------//
-label lineIntInfo::getFaceInDir
-(
-    const intPoint& retPoint,
-    const label prevFace
-)
-{
-    label faceToReturn = -1;
-    vector dir = retPoint.iPoint_ - mesh_.C()[retPoint.iCell_];
-
-    const labelList& cellFaces(mesh_.cells()[retPoint.iCell_]);
-    scalar dotProd(-GREAT);
-
-    forAll (cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        if(fI != prevFace)
-        {
-            vector outNorm = (mesh_.faceOwner()[fI] == retPoint.iCell_)
-                ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
-            outNorm /= mag(outNorm); // LK: this should be there, no?
-
-            scalar auxDotProd(outNorm & dir);
-            if (auxDotProd > dotProd)
-            {
-                dotProd = auxDotProd;
-                faceToReturn = fI;
-            }
-        }
-    }
-
-    return faceToReturn;
-}
-
-//---------------------------------------------------------------------------//
-bool lineIntInfo::pointInCell
-(
-    point pToCheck,
-    label cToCheck
-)
-{
-    const labelList& cellFaces(mesh_.cells()[cToCheck]);
-    forAll(cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Sf()[fI];
-        outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-
-        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 //---------------------------------------------------------------------------//
