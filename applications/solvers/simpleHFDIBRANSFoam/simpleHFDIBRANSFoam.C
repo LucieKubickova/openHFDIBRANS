@@ -74,8 +74,6 @@ int main(int argc, char *argv[])
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-    bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
-    bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
     bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>("useNormSurface", false);
     scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>("normalCorrectionLimit", 0.5);
 

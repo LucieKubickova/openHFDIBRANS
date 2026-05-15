@@ -128,11 +128,6 @@ class openHFDIBRANS
     // correct y for blending functions in kOmegaSST
     void correctY(volScalarField& y);
 
-    // cutting fields in normal direction 
-    void cutFInBoundaryCells(volVectorField& f);
-    void cutUInBoundaryCells(volVectorField& U);
-    void cutPhiInBoundaryCells(surfaceScalarField& phi);
-
     // bound fields
     void bound(volScalarField& phi, dimensionedScalar& phiMin);
 

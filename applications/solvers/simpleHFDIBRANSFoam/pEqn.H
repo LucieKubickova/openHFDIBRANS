@@ -50,11 +50,6 @@ while (simple.correctNonOrthogonal())
     }
 }
 
-if (cutPhi)
-{
-    HFDIBRANS.cutPhiInBoundaryCells(phi);
-}
-
 #include "continuityErrs.H"
 
 // Explicitly relax pressure for momentum corrector
@@ -64,9 +59,3 @@ p.relax();
 U = HbyA - rAtU()*fvc::grad(p);
 U.correctBoundaryConditions();
 fvOptions.correct(U);
-
-// HFDIBRANS
-if (cutVelocity)
-{
-    HFDIBRANS.cutUInBoundaryCells(U);
-}

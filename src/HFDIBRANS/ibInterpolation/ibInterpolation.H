@@ -209,11 +209,6 @@ class ibInterpolation
     void saveBoundaryCells();
     void saveSurfaceCells();
     void saveCellSet(List<label>& listToSave, word fileName);
-
-    // cutting fields in normal direction
-    void cutFInBoundaryCells(volVectorField& f);
-    void cutUInBoundaryCells(volVectorField& U);
-    void cutPhiInBoundaryCells(surfaceScalarField& phi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

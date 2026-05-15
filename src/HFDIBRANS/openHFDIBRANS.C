@@ -814,33 +814,6 @@ void openHFDIBRANS::correctY
 }
 
 //---------------------------------------------------------------------------//
-void openHFDIBRANS::cutFInBoundaryCells
-(
-    volVectorField& f
-)
-{
-    ibInterpolation_->cutFInBoundaryCells(f);
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::cutUInBoundaryCells
-(
-    volVectorField& U
-)
-{
-    ibInterpolation_->cutUInBoundaryCells(U);
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::cutPhiInBoundaryCells
-(
-    surfaceScalarField& phi
-)
-{
-    ibInterpolation_->cutPhiInBoundaryCells(phi);
-}
-
-//---------------------------------------------------------------------------//
 void openHFDIBRANS::bound
 (
     volScalarField& phi,
