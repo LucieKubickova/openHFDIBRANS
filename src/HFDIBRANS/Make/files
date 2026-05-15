@@ -1,4 +1,5 @@
 
+ibMesh/ibCutCell.C
 ibMesh/ibMesh.C
 ibDirichletBCs/ibDirichletBCs.C
 ibInterpolation/lineIntInfo/lineIntInfo.C
@@ -9,7 +10,6 @@ ibInterpolation/ibScheme/quadraticScheme/quadraticScheme.C
 ibInterpolation/ibScheme/logarithmicScheme/logarithmicScheme.C
 ibInterpolation/ibScheme/fixedGradientScheme/fixedGradientScheme.C
 ibInterpolation/ibScheme/zeroGradientScheme/zeroGradientScheme.C
-ibInterpolation/ibCells/ibCutCell.C
 ibInterpolation/ibInterpolation.C
 openHFDIBRANS.C
 
