@@ -1212,6 +1212,15 @@ void ibInterpolation::calculateBoundaryDist
                 ibMesh_.createCutCellAndCenter(outCellI, surfNorm, surfPoint);
 
                 sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
+
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
 
                 // Note (LK): save to boundary cell, has to be done somewhere centraly
@@ -1262,8 +1271,14 @@ void ibInterpolation::calculateBoundaryDist
             {
                 vector surfNorm(vector::zero);
                 ibMesh_.createCutCellAndCenter(inCellI, surfNorm, surfPoint);
+                surfNorm /= mag(surfNorm);
 
-                surfNorm *= -1; // Note (LK): for inward cells it finds the inward normal, needs check with grad lambda?
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]);
                 surfNorm_[inCellI] = surfNorm/mag(surfNorm);
