@@ -304,14 +304,14 @@ void ibInterpolation::calculateInterpolationPoints
     forAll(boundaryCells_[Pstream::myProcNo()], bCell)
     {
         List<intPoint>& intPoints = lineIntInfoBoundary_->getIntPoints()[bCell];
-        if (!intPoints[0].last_)
+        if (intPoints[1].iProc_ != -1)
         {
             boundaryCells_[Pstream::myProcNo()][bCell].fPoint1_ = intPoints[1].iPoint_;
             boundaryCells_[Pstream::myProcNo()][bCell].fCell1_ = intPoints[1].iCell_; 
             boundaryCells_[Pstream::myProcNo()][bCell].fProc1_ = intPoints[1].iProc_;
         }
 
-        if (!intPoints[1].last_)
+        if (intPoints[2].iProc_ != -1)
         {
             boundaryCells_[Pstream::myProcNo()][bCell].fPoint2_ = intPoints[2].iPoint_;
             boundaryCells_[Pstream::myProcNo()][bCell].fCell2_ = intPoints[2].iCell_; 

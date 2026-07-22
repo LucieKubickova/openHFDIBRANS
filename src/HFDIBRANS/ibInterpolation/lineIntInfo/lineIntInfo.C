@@ -136,7 +136,7 @@ void lineIntInfo::setIntpInfo
                 {
                     // pass to next interpolation point, keeping default iProc_ at -1
                     // iProc_ check by getIntOrder function
-                    continue
+                    continue;
                 }
 
                 // check if to send or keep

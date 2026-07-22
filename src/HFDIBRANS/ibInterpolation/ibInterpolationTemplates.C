@@ -489,7 +489,13 @@ void ibInterpolation::interpolateToIntPoints
             // read data
             label iProc = cPoint.iProc_;
 
-            if (Pstream::myProcNo() == iProc)
+            if (iProc == -1)
+            {
+                // if it is the last point skip the rest
+                break;
+            }
+
+            else if (Pstream::myProcNo() == iProc)
             {
                 // interpolate and save
                 Type phiP = interpPhi.interpolate(cPoint.iPoint_, cPoint.iCell_);
@@ -507,12 +513,6 @@ void ibInterpolation::interpolateToIntPoints
                 // save for sync
                 iPointsToSync[iProc].append(cPoint.iPoint_);
                 iCellsToSync[iProc].append(cPoint.iCell_);
-            }
-
-            // if it was the last point skip the rest
-            if (cPoint.last_)
-            {
-                break;
             }
         }
     }
