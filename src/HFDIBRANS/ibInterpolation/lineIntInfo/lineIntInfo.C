@@ -86,8 +86,7 @@ void lineIntInfo::setIntpInfo
             cellI,
             Pstream::myProcNo(), // current processor
             Pstream::myProcNo(), // processor of origin (same for the first int point)
-            sCell,               // label of the cell of origin
-            false                // if its the last int point
+            sCell                // label of the cell of origin
         );
         intPoints[sCell][0] = cIntPoint;
 
@@ -135,7 +134,9 @@ void lineIntInfo::setIntpInfo
                 // check for cells at domain boundary
                 if (nIntPoint.iProc_ == -1)
                 {
-                    intPoints[cIntPoint.oLabel_][i].last_ = true;
+                    // pass to next interpolation point, keeping default iProc_ at -1
+                    // iProc_ check by getIntOrder function
+                    continue
                 }
 
                 // check if to send or keep
@@ -215,8 +216,7 @@ void lineIntInfo::setIntpInfo
                     cellI,
                     Pstream::myProcNo(),
                     intPointsRecv[proci][iInfo].oProc_,
-                    intPointsRecv[proci][iInfo].oLabel_,
-                    intPointsRecv[proci][iInfo].last_
+                    intPointsRecv[proci][iInfo].oLabel_
                 );
 
                 //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
@@ -353,8 +353,7 @@ intPoint lineIntInfo::findIntPoint
         fromP.iCell_,
         fromP.iProc_,
         fromP.oProc_,
-        fromP.oLabel_,
-        fromP.last_
+        fromP.oLabel_
     );
 
     if(fromP.iProc_ == Pstream::myProcNo())

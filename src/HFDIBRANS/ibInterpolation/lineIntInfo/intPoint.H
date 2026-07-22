@@ -52,17 +52,13 @@ namespace Foam
         label oProc_ = -1;
         label oLabel_ = -1;
 
-        // info if its the last int point
-        bool last_ = true;
-
         // Constructor
         intPoint():
         iPoint_(vector::zero),
         iCell_(0),
         iProc_(-1),
         oProc_(-1),
-        oLabel_(-1),
-        last_(true)
+        oLabel_(-1)
         {};
 
         // Copy constructor
@@ -72,15 +68,13 @@ namespace Foam
             label iCell,
             label iProc,
             label oProc,
-            label oLabel,
-            bool last
+            label oLabel
         ):
         iPoint_(iPoint),
         iCell_(iCell),
         iProc_(iProc),
         oProc_(oProc),
-        oLabel_(oLabel),
-        last_(last)
+        oLabel_(oLabel)
         {};
 
         // Destructor
@@ -93,8 +87,7 @@ namespace Foam
                    aP.iCell_ == bP.iCell_ &&
                    aP.iProc_ == bP.iProc_ &&
                    aP.oProc_ == bP.oProc_ &&
-                   aP.oLabel_ == bP.oLabel_ &&
-                   aP.last_ == bP.last_;
+                   aP.oLabel_ == bP.oLabel_;
         }
 
         friend bool operator!=(const intPoint& aP, const intPoint& bP)
@@ -108,13 +101,12 @@ namespace Foam
                       << iP.iCell_ << token::SPACE
                       << iP.iProc_ << token::SPACE
                       << iP.oProc_ << token::SPACE
-                      << iP.oLabel_ << token::SPACE
-                      << iP.last_;
+                      << iP.oLabel_;
         }
         
         friend Foam::Istream& operator>>(Foam::Istream& is, intPoint& iP)
         {
-            return is >> iP.iPoint_ >> iP.iCell_ >> iP.iProc_ >> iP.oProc_ >> iP.oLabel_ >> iP.last_;
+            return is >> iP.iPoint_ >> iP.iCell_ >> iP.iProc_ >> iP.oProc_ >> iP.oLabel_;
         }
     };
 }
