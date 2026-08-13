@@ -23,4 +23,7 @@ cd $cwd/applications/utilities/calculateWallShearStress
 cd $cwd/applications/utilities/calculateForceCoeffs
 ./Allwmake
 
+cd $cwd/applications/utilities/generateLambda
+./Allwmake
+
 cd $cwd

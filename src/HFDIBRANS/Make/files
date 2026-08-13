@@ -1,6 +1,7 @@
 
 ibMesh/ibCutCell.C
 ibMesh/ibMesh.C
+ibMesh/stlModel/stlModel.C
 ibDirichletBCs/ibDirichletBCs.C
 ibInterpolation/lineIntInfo/lineIntInfo.C
 ibInterpolation/ibScheme/ibScheme.C
