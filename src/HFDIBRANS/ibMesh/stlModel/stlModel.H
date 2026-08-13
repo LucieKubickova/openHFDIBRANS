@@ -9,17 +9,19 @@
       |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-	openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
 Class
 	Foam::stlModel
