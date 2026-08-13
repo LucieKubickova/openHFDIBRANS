@@ -6,10 +6,10 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+	openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -21,17 +21,22 @@ openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
     You should have received a copy of the GNU Lesser General Public License
     along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+	Foam::ibMesh
 
 Description
     implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
     extended by connection with RAS turbulence modeling approach and
     wall functions (Kubickova and Isoz, 2023)
 
+SourceFiles
+	ibMesh.C
+
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef ibMesh_H
@@ -59,7 +64,6 @@ Contributors
 #include "primitiveFieldsFwd.H"
 #include "volFieldsFwd.H"
 #include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
 
 #include "meshSearch.H"
 #include "List.H"
@@ -78,9 +82,15 @@ Contributors
 
 #define ORDER 2
 
-using namespace Foam;
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//---------------------------------------------------------------------------//
+namespace Foam
+{
+
+/*---------------------------------------------------------------------------*\
+                         Class ibMesh Declaration
+\*---------------------------------------------------------------------------*/
+
 class ibMesh
 {
     private:
@@ -149,6 +159,11 @@ class ibMesh
     // post processing of distance
     scalar getCellSize(label cellI);
 };
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

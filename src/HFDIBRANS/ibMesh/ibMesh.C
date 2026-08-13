@@ -6,7 +6,7 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
     openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
@@ -21,24 +21,22 @@ License
     You should have received a copy of the GNU Lesser General Public License
     along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
-
-Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
-
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #include "ibMesh.H"
 
-using namespace Foam;
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-//---------------------------------------------------------------------------//
+namespace Foam
+{
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
 ibMesh::ibMesh
 (
     const fvMesh& mesh,
@@ -88,34 +86,39 @@ HFDIBDEMDict_
     }
 }
 
-//---------------------------------------------------------------------------//
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
 ibMesh::~ibMesh()
 {
 }
 
-//---------------------------------------------------------------------------//
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
 bool ibMesh::pointInCell
-(           
+(
     point pToCheck,
     label cToCheck
 )
-{           
+{
     const labelList& cellFaces(mesh_.cells()[cToCheck]);
     forAll(cellFaces, faceI)
     {
         label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Sf()[fI];
+        vector outNorm = mesh_.faceAreas()[fI];
         outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-                
-        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
+
+        if (((pToCheck - mesh_.faceCentres()[fI]) & outNorm) > 0)
         {
             return false;
         }
-    }       
+    }
     return true;
 }
 
 //---------------------------------------------------------------------------//
+
 bool ibMesh::isWallCell
 (
     label& cellI
@@ -171,6 +174,7 @@ bool ibMesh::isWallCell
 }
 
 //---------------------------------------------------------------------------//
+
 bool ibMesh::isOnPatch
 (
     label& cellI,
@@ -205,8 +209,9 @@ bool ibMesh::isOnPatch
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getFaceInDir
-(               
+(
     label& cellI,
     vector& dir
 )
@@ -220,18 +225,19 @@ label ibMesh::getFaceInDir
 
     // loop over cell faces
     forAll(cellFaces, faceI)
-    {    
+    {
         label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
+        //vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
+        vector outNorm = mesh_.faceCentres()[fI] - mesh_.cellCentres()[cellI];
         outNorm /= mag(outNorm);
-                    
+
         //~ vector outNorm = (mesh_.faceOwner()[fI] == cellI)
             //~ ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
         //~ outNorm /= mag(outNorm); // LK: this should be there, no?
 
         scalar auxDotProd(outNorm & dir);
         if (auxDotProd > dotProd)
-        {       
+        {
             dotProd = auxDotProd;
             faceToReturn = fI;
         }
@@ -241,6 +247,7 @@ label ibMesh::getFaceInDir
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getEdgeInDir
 (
     label& faceI,
@@ -283,6 +290,7 @@ label ibMesh::getEdgeInDir
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getVertInDir
 (
     label& edgeI,
@@ -316,6 +324,7 @@ label ibMesh::getVertInDir
 }
 
 //---------------------------------------------------------------------------//
+
 vector ibMesh::getClosestPoint
 (
     vector ibPoint,
@@ -331,6 +340,7 @@ vector ibMesh::getClosestPoint
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::createCutCellAndSurface
 (
     label cellI,
@@ -345,7 +355,8 @@ scalar ibMesh::createCutCellAndSurface
         // Note (LK): original cut cell
         const cell& bCellSurf(mesh_.cells()[cellI]);
         ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+        scalar yOrtho = cCellSurf.yOrtho();
+		// Note (LK): creates the cut cell itself, should be as constructor
 
         // if the cell is uncut skip
         if (cCellSurf.faces().size() == 0)
@@ -355,7 +366,8 @@ scalar ibMesh::createCutCellAndSurface
         }
 
         // get area of cut face
-        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]);
+		// Note (LK): should be always the last one
     }
 
     // Note (LK): new cut cell, cutting edges by stl
@@ -491,19 +503,22 @@ scalar ibMesh::createCutCellAndSurface
 
         else
         {
-            Info << "Warning: cell cut with " << uniquePoints.size() << " points near " << mesh_.C()[cellI] << endl;
+            Info << "Warning: cell cut with " << uniquePoints.size()
+				 << " points near " << mesh_.C()[cellI] << endl;
         }
     }
 
     else
     {
-        FatalError << "Surface area calculation type " << cutCellType_ << " not implemented" << exit(FatalError);
+        FatalError << "Surface area calculation type " << cutCellType_
+				   << " not implemented" << exit(FatalError);
     }
 
     return sArea;
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::calculateTriangleArea
 (
     point p0,
@@ -515,6 +530,7 @@ scalar ibMesh::calculateTriangleArea
 }
 
 //---------------------------------------------------------------------------//
+
 void ibMesh::createCutCellAndCenter
 (
     label cellI,
@@ -653,6 +669,7 @@ void ibMesh::createCutCellAndCenter
 }
 
 //---------------------------------------------------------------------------//
+
 void ibMesh::getClosestPointAndNormal
 (
     const point& startPoint,
@@ -684,6 +701,7 @@ void ibMesh::getClosestPointAndNormal
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::getCellSize
 (
     label cellI
@@ -702,5 +720,10 @@ scalar ibMesh::getCellSize
 
     return cellSize;
 }
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
 
 // ************************************************************************* //
