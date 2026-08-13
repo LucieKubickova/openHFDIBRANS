@@ -48,10 +48,11 @@ volScalarField lambda
         "lambda",
         runTime.timeName(),
         mesh,
-        IOobject::MUST_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
-    mesh
+    mesh,
+	dimensionedScalar("zero", dimless, 0.0)
 );
 
 Info << "Creating field surface\n" << endl;

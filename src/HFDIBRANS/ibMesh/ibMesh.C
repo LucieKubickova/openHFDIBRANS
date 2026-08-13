@@ -9,17 +9,19 @@
       |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
 Contributors
     Federico Municchi (2016),
@@ -40,57 +42,91 @@ namespace Foam
 ibMesh::ibMesh
 (
     const fvMesh& mesh,
-    const volScalarField& body
+    volScalarField& body
 )
 :
-mesh_(mesh),
-body_(body),
-HFDIBDEMDict_
-(
-    IOobject
-    (
-        "HFDIBDEMDict",
-        "constant",
-        mesh_,
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE
-    )
-)
+	mesh_(mesh),
+	body_(body),
+	HFDIBDEMDict_
+	(
+		IOobject
+		(
+			"HFDIBDEMDict",
+			"constant",
+			mesh_,
+			IOobject::MUST_READ,
+			IOobject::NO_WRITE
+		)
+	)
 {
 	// read HFDIBDEM dictionary
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
     readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
-    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
-    sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
-    cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
+	// LK: experimental
+    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0);
+    cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>
+	(
+		"cutCellType",
+		"cutCell"
+	);
+	bool genLambda = HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
-    if (!sdBasedLambda_)
-    {
-        stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
+	if (stlName_.empty())
+	{
+		return;
+	}
 
-        // read stl
-        bodySurfMesh_.reset(new triSurfaceMesh
-        (
-            IOobject
-            (
-                stlPath_,
-                mesh_,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE
-            )
-        ));
+    stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
 
-        // tri surface search
-        triSurf_.reset(new triSurface(bodySurfMesh_()));
-        triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
-    }
+	// read stl
+	bodySurfMesh_.reset(new triSurfaceMesh
+	(
+		IOobject
+		(
+			stlPath_,
+			mesh_,
+			IOobject::MUST_READ,
+			IOobject::NO_WRITE
+		)
+	));
+
+	// tri surface search
+	triSurf_.reset(new triSurface(bodySurfMesh_()));
+	triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
+
+	// Call to generate lambda
+	if (max(body_).value() < SMALL && genLambda)
+	{
+		Info << "No initial lambda field found. Generating based on "
+			 << stlName_ << nl << endl;
+		generateLambda();
+	}
+	else
+	{
+		Info << "Initial lambda field provided." << nl << endl;
+	}
 }
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
 ibMesh::~ibMesh()
+{}
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void ibMesh::generateLambda()
 {
+	stlModel model
+	(
+		mesh_,
+		thrSurf_,
+		intSpan_,
+		bodySurfMesh_,
+		triSurfSearch_
+	);
+	model.generateLambda(body_);
 }
 
 

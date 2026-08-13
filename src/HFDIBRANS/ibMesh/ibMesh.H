@@ -9,17 +9,19 @@
       |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-	openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
 Class
 	Foam::ibMesh
@@ -42,6 +44,7 @@ Contributors
 #ifndef ibMesh_H
 #define ibMesh_H
 
+#include "DynamicList.H"
 #include "polyMesh.H"
 #include "fvCFD.H"
 #include "fvMatrices.H"
@@ -79,6 +82,7 @@ Contributors
 
 #include "ibCutCell.H"
 #include "intPoint.H"
+#include "stlModel.H"
 
 #define ORDER 2
 
@@ -93,71 +97,98 @@ namespace Foam
 
 class ibMesh
 {
-    private:
 
-    // Private data types ------------------------------------------
+private:
 
-    // mesh related parameters
-    const fvMesh& mesh_;
+	typedef DynamicList<label> DynamicLabelList;
 
-    // lambda related things
-    const volScalarField& body_;
+    // Private Data
 
-    // options
-    word stlName_;
-    bool readL_;
-    scalar valueL_;
-    bool sdBasedLambda_;
-    word cutCellType_;
+		//- Mesh related parameters
+		const fvMesh& mesh_;
 
-    // stl things
-    word stlPath_;
-    autoPtr<triSurfaceMesh> bodySurfMesh_;
-    autoPtr<triSurface> triSurf_;
-    autoPtr<triSurfaceSearch> triSurfSearch_;
+		//- Lambda related things
+		volScalarField& body_;
 
-    // dictionaries
-    IOdictionary HFDIBDEMDict_;
+		//- Options
+		word stlName_;
+		bool readL_;
+		scalar valueL_;
+		word cutCellType_;
+		scalar thrSurf_;
+		scalar intSpan_;
 
-    public:
+		//- STL things
+		word stlPath_;
+		autoPtr<triSurfaceMesh> bodySurfMesh_;
+		autoPtr<triSurface> triSurf_;
+		autoPtr<triSurfaceSearch> triSurfSearch_;
 
-    // Constructors ----------------------------------------------------
-    ibMesh
-    (
-        const fvMesh& mesh,
-        const volScalarField& body
-    );
+		//- Dictionaries
+		IOdictionary HFDIBDEMDict_;
 
-    // Destructors -----------------------------------------------------
-    ~ibMesh();
+	// Private Member Functions
 
-    // Public methods --------------------------------------------------
-    // is point in cell
-    bool pointInCell(point pToCheck, label cToCheck);
+		//- Generate lambda field
+		void generateLambda();
 
-    // patch checks
-    bool isWallCell(label& cellI);
-    bool isOnPatch(label& cellI, word& patchName);
+public:
 
-    // best instance in direction
-    label getFaceInDir(label& cellI, vector& dir);
-    label getEdgeInDir(label& faceI, label& cellI, vector& dir);
-    label getVertInDir(label& edgeI, label& cellI, vector& dir);
+    // Constructors
 
-    vector getClosestPoint
-    (
-        vector ibPoint,
-        intPoint& cPoint
-    );
+		ibMesh
+		(
+			const fvMesh& mesh,
+			volScalarField& body
+		);
 
-    // work with stl files
-    void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
-    scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
-    scalar calculateTriangleArea(point p0, point p1, point p2);
-    void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
+    //- Destructor
+	~ibMesh();
 
-    // post processing of distance
-    scalar getCellSize(label cellI);
+    // Member Functions
+
+		//- Check if point is in cell
+		bool pointInCell(point pToCheck, label cToCheck);
+
+		//- Patch checks
+		bool isWallCell(label& cellI);
+		bool isOnPatch(label& cellI, word& patchName);
+
+		//- Find best instance in direction
+		label getFaceInDir(label& cellI, vector& dir);
+		label getEdgeInDir(label& faceI, label& cellI, vector& dir);
+		label getVertInDir(label& edgeI, label& cellI, vector& dir);
+
+		vector getClosestPoint
+		(
+			vector ibPoint,
+			intPoint& cPoint
+		);
+
+		//- Work with STL files
+		void getClosestPointAndNormal
+		(
+			const point& startPoint,
+			const vector& span,
+			point& closestPoint,
+			vector& normal
+		);
+		scalar createCutCellAndSurface
+		(
+			label cellI,
+			vector& normal,
+			point& surfPoint
+		);
+		scalar calculateTriangleArea(point p0, point p1, point p2);
+		void createCutCellAndCenter
+		(
+			label cellI,
+			vector& surfNorm,
+			point& surfPoint
+		);
+
+		//- Post processing of distance
+		scalar getCellSize(label cellI);
 };
 
 
