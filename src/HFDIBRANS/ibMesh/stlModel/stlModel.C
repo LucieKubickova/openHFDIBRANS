@@ -30,6 +30,7 @@ Contributors
 
 #include "HashTable.H"
 #include "Pstream.H"
+#include "error.H"
 #include "labelList.H"
 #include "pointIndexHit.H"
 #include "vector.H"
@@ -221,7 +222,7 @@ void stlModel::generateLambda
 	if (!insideMesh)
 	{
 		Info << "stlModel: body bounding box lies outside the mesh. "
-			 << "Aborting lambda generation." << endl;
+			 << "Aborting lambda generation." << exit(FatalError);
 		return;
 	}
 
