@@ -41,7 +41,7 @@ while (simple.correctNonOrthogonal())
     );
 
     pEqn.setReference(pRefCell, pRefValue);
-    
+
     pEqn.solve();
 
     if (simple.finalNonOrthogonalIter())
