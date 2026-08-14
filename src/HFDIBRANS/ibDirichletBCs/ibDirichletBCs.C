@@ -317,7 +317,7 @@ void ibDirichletBCs::updateUTauAtIB
             }
             else if (uTauType_ == "cellDistance")
             {
-                dist = Foam::pow(mesh_.V()[cellI],0.333);
+                dist = ibMesh_.getCellSize(cellI);
             }
             else if (uTauType_ == "coeffDistance")
             {

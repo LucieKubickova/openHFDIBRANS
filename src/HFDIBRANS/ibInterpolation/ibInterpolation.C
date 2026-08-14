@@ -1230,7 +1230,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
                 
@@ -1323,7 +1323,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1419,7 +1419,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1604,7 +1604,7 @@ void ibInterpolation::calculateSurfaceDist
 
         else
         {
-            scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+            scalar intDist = ibMesh_.getCellSize(cellI);
             vector surfPoint = vector::zero;
             vector surfNorm = vector::zero;
 

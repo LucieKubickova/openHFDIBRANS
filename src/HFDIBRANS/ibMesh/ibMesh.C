@@ -641,7 +641,7 @@ void ibMesh::createCutCellAndCenter
     surfPoint /= uniquePoints.size();
 
     point closestPoint(vector::zero);
-    scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+    scalar intDist = getCellSize(cellI);
     getClosestPointAndNormal(
         surfPoint,
         intDist*2*vector::one,
