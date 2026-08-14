@@ -960,9 +960,6 @@ void ibDirichletBCs::calculateForces
         label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
-        // decide where to put
-        label whereI(outCellI);
-
         // save to added
         if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_) // Note (LK): type 0
         {
@@ -971,16 +968,38 @@ void ibDirichletBCs::calculateForces
         else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_) // Note (LK): type 1
         {
             surfAdded[inCellI] += 1.0;
-            whereI = inCellI;
         }
         else // Note (LK): type 2
         {
             surfAdded[outCellI] += 1.0;
         }
+    }
+
+    // go through boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // decide where to put
+        label whereI(outCellI);
+
+        if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
+        {
+            whereI = inCellI;
+        }
+
+        else
+        {
+            whereI = outCellI;
+        }
 
         // get and save surf point
         surfPoints[whereI] = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
-        tauws[whereI] += tauw[outCellI];
+
+        // add wall shear stress
+        tauws[whereI] += tauw[outCellI]/surfAdded[whereI];
 
         // get surface normal
         vector normal = -1*boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
@@ -989,10 +1008,10 @@ void ibDirichletBCs::calculateForces
         scalar sA = boundaryCells_[Pstream::myProcNo()][bCell].sArea_;
 
         // calculate normal force
-        fN[whereI] += rhoInf*normal*sA*(p[outCellI] - pRef/rhoInf); // Note (LK): zero gradient considered
+        fN[whereI] += rhoInf*normal*sA*(p[outCellI] - pRef/rhoInf)/surfAdded[whereI]; // Note (LK): zero gradient considered
 
         // calculate tangential force
-        fT[whereI] += -1*sA*rhoInf*tauw[outCellI]; // Note (LK): minus in calculation of tauw
+        fT[whereI] += -1*sA*rhoInf*tauw[outCellI]/surfAdded[whereI]; // Note (LK): minus in calculation of tauw
     }
 
     // check if some surface cells were skipped
@@ -1044,7 +1063,7 @@ void ibDirichletBCs::calculateForces
 
                 // add
                 totWeight += weight;
-                totTauws += weight*tauws[nI]/surfAdded[nI]; // Note (LK): surfAdded should be one, but can be more
+                totTauws += weight*tauws[nI];
             }
         }
 
