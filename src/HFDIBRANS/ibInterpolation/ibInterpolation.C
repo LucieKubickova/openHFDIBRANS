@@ -1633,6 +1633,37 @@ void ibInterpolation::calculateSurfaceDist
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::correctYInBoundaryCells
+(
+    volScalarField& y,
+    bool useYEff
+)
+{
+    // if stl is provided, corrected in ibMesh
+    if (!sdBasedLambda_)
+    {
+        return;
+    }
+
+    // if only lambda is provided, correct at least boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // assign distance to boundary
+        if (useYEff)
+        {
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+        }
+        else
+        {
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
 (
     word name

@@ -62,7 +62,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST::F1
     );
 
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -91,7 +91,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST::
 F2() const
 {
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -116,7 +116,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST::
 F3() const
 {
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -420,8 +420,7 @@ HFDIBKOmegaSST<BasicMomentumTransportModel>::HFDIBKOmegaSST
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        this->mesh_,
-        dimensionedScalar("zero",y_.dimensions(),0.0)
+        y_
     ),
     k_
     (
@@ -589,6 +588,12 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     volScalarField& nut = this->nut_;
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
+    // correct distance from surface
+    if (correctFs_)
+    {
+        HFDIBRANS.correctY(yIB_, false); // false to not redo once created
+    }
+
     // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
     HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
@@ -619,12 +624,6 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     (
         (2*alphaOmega2_)*(fvc::grad(k_) & fvc::grad(omega_))/omega_
     );
-
-    // HFDIB: correct y_
-    if (correctFs_)
-    {
-        HFDIBRANS.correctY(yIB_);
-    }
 
     volScalarField F1(this->F1(CDkOmega));
     volScalarField F23(this->F23());

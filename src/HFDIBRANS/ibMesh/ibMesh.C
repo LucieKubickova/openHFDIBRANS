@@ -57,13 +57,15 @@ HFDIBDEMDict_
         IOobject::MUST_READ,
         IOobject::NO_WRITE
     )
-)
+),
+yCorrected_(false)
 {
 	// read HFDIBDEM dictionary
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
     readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
+    thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
 
     if (!sdBasedLambda_)
@@ -703,4 +705,56 @@ scalar ibMesh::getCellSize
     return cellSize;
 }
 
+//---------------------------------------------------------------------------//
+void ibMesh::correctY
+(
+    volScalarField& y,
+    bool recreate
+)
+{
+    // if only lambda is provided, corrected in ibInterpolation
+    if (sdBasedLambda_)
+    {
+        return;
+    }
+
+    // skip if already done
+    if (!recreate and yCorrected_)
+    {
+        return;
+    }
+
+    else
+    {
+        yCorrected_ = true;
+    }
+
+    // set search distance span
+    vector sDSpan(4.0*(mesh_.bounds().max()-mesh_.bounds().min()));
+
+    // loop over all cells
+    forAll(y, cellI)
+    {
+        // skip cells inside body
+        if (body_[cellI] > 0.5)
+        {
+            continue;
+        }
+
+        // prepare point and normal
+        point closestPoint(vector::zero);
+        vector surfNorm(vector::zero);
+
+        // get closest point and normal 
+        getClosestPointAndNormal(
+            mesh_.C()[cellI],
+            sDSpan,
+            closestPoint,
+            surfNorm
+        );
+
+        // set corrected y
+        y[cellI] = mag(mesh_.C()[cellI] - closestPoint);
+    }
+}
 // ************************************************************************* //

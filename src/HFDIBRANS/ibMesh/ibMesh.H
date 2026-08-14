@@ -98,6 +98,7 @@ class ibMesh
     bool readL_;
     scalar valueL_;
     bool sdBasedLambda_;
+    scalar thrSurf_;
     word cutCellType_;
 
     // stl things
@@ -108,6 +109,9 @@ class ibMesh
 
     // dictionaries
     IOdictionary HFDIBDEMDict_;
+
+    // flags
+    bool yCorrected_;
 
     public:
 
@@ -148,6 +152,9 @@ class ibMesh
 
     // post processing of distance
     scalar getCellSize(label cellI);
+
+    // correct distance function
+    void correctY(volScalarField& y, bool recreate);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
