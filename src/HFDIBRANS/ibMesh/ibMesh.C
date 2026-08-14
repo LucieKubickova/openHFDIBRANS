@@ -681,7 +681,8 @@ void ibMesh::getClosestPointAndNormal
     }
     else
     {
-        FatalError << "Missing the closest point from " << startPoint << " to " << stlName_ << exit(FatalError);
+        //~ FatalError << "Missing the closest point from " << startPoint << " to " << stlName_ << exit(FatalError);
+        Info << "Missing the closest point from " << startPoint << " to " << stlName_ << endl;
     }
 }
 
