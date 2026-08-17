@@ -179,34 +179,23 @@ labelList stlModel::classifyCell
 bool stlModel::isBodyInMesh()
 {
 	const boundBox ibBound(bounds());
-	bool insideMesh = false;
-	const pointField ibCorners(ibBound.points());
 
-	forAll(ibCorners, pI)
+	forAll(geometricD_, dir)
 	{
-		bool cornerOk = true;
-		forAll(geometricD_, dir)
+		if (geometricD_[dir] == 1)
 		{
-			if (geometricD_[dir] == 1)
+			if
+			(!(
+				meshBounds_.max()[dir] >= ibBound.min()[dir]
+			 && meshBounds_.min()[dir] <= ibBound.max()[dir]
+			))
 			{
-				if
-				(
-					ibCorners[pI][dir] < meshBounds_.min()[dir]
-				 && ibCorners[pI][dir] > meshBounds_.max()[dir]
-				)
-				{
-					cornerOk = false;
-				}
+				return false;
 			}
-		}
-		if (cornerOk)
-		{
-			insideMesh = true;
-			break;
 		}
 	}
 
-	return insideMesh;
+	return true;
 }
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
