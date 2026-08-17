@@ -6,32 +6,37 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+	Foam::HFDIBRASModels::HFDIBKOmega
 
 Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
+	An implementation of the Wilcox k-omega two-equation turbulence model.
+
+SourceFiles
+	HFDIBKOmega.C
 
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef HFDIBKOmega_H
@@ -54,7 +59,13 @@ namespace HFDIBRASModels
 template<class BasicHFDIBMomentumTransportModel>
 class HFDIBKOmega
 :
-    public eddyViscosity<HFDIBRASModel<BasicHFDIBMomentumTransportModel>>
+    public eddyViscosity
+	<
+		HFDIBRASModel
+		<
+			BasicHFDIBMomentumTransportModel
+		>
+	>
 {
 
 protected:
@@ -74,7 +85,6 @@ protected:
 
             volScalarField k_;
             volScalarField omega_;
-            volScalarField lambda_;
             volScalarField kSurface_;
             volScalarField omegaGSurface_;
             volScalarField ki_;
@@ -99,14 +109,21 @@ protected:
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
         virtual tmp<fvScalarMatrix> omegaSource() const;
-        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, volScalarField& surface);
+        virtual void matrixManipulate
+		(
+			fvScalarMatrix& eqn,
+			volScalarField& phi,
+			volScalarField& surface,
+			volScalarField& lambda
+		);
 
 
 public:
 
     typedef typename BasicHFDIBMomentumTransportModel::alphaField alphaField;
     typedef typename BasicHFDIBMomentumTransportModel::rhoField rhoField;
-    typedef typename BasicHFDIBMomentumTransportModel::transportModel transportModel;
+    typedef typename BasicHFDIBMomentumTransportModel::
+		transportModel transportModel;
 
 
     //- Runtime type information
@@ -181,7 +198,8 @@ public:
             );
         }
 
-        //- Solve the turbulence equations and correct the turbulence viscosity
+        //- Solve the turbulence equations and correct
+		//- the turbulence viscosity
         virtual void correct();
 
         //- second image of the correct function to accept arguments

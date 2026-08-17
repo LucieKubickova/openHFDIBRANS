@@ -69,26 +69,34 @@ ibMesh::ibMesh
 		"cutCellType",
 		"cutCell"
 	);
-	bool genLambda = HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
+	thrSurf_ = HFDIBDEMDict_.lookupOrDefault<scalar>("surfaceThreshold", 1.0);
+	intSpan_ = HFDIBDEMDict_.lookupOrDefault("interfaceSpan", 1.0);
+	bool genLambda
+		= HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
 	if (stlName_.empty())
 	{
 		return;
 	}
 
-    stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
+    //stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
 
 	// read stl
-	bodySurfMesh_.reset(new triSurfaceMesh
+	bodySurfMesh_.reset
 	(
-		IOobject
+		new triSurfaceMesh
 		(
-			stlPath_,
-			mesh_,
-			IOobject::MUST_READ,
-			IOobject::NO_WRITE
+			IOobject
+			(
+				stlName_ + ".stl",
+				mesh_.time().constant(),
+				"triSurface",
+				mesh_,
+				IOobject::MUST_READ,
+				IOobject::NO_WRITE
+			)
 		)
-	));
+	);
 
 	// tri surface search
 	triSurf_.reset(new triSurface(bodySurfMesh_()));
@@ -97,13 +105,24 @@ ibMesh::ibMesh
 	// Call to generate lambda
 	if (max(body_).value() < SMALL && genLambda)
 	{
-		Info << "No initial lambda field found. Generating based on "
+		Info << "No initial lambda field found. Generating based on body: "
 			 << stlName_ << nl << endl;
-		generateLambda();
+
+		stlModel model
+		(
+			mesh_,
+			thrSurf_,
+			intSpan_,
+			bodySurfMesh_,
+			triSurfSearch_
+		);
+		model.generateLambda(body_);
+
+		Info << "Lambda field successfully generated" << nl << endl;
 	}
 	else
 	{
-		Info << "Initial lambda field provided." << nl << endl;
+		Info << "Initial lambda field provided" << nl << endl;
 	}
 }
 
@@ -112,22 +131,6 @@ ibMesh::ibMesh
 
 ibMesh::~ibMesh()
 {}
-
-
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-void ibMesh::generateLambda()
-{
-	stlModel model
-	(
-		mesh_,
-		thrSurf_,
-		intSpan_,
-		bodySurfMesh_,
-		triSurfSearch_
-	);
-	model.generateLambda(body_);
-}
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //

@@ -119,7 +119,7 @@ private:
 		scalar intSpan_;
 
 		//- STL things
-		word stlPath_;
+		//word stlPath_;
 		autoPtr<triSurfaceMesh> bodySurfMesh_;
 		autoPtr<triSurface> triSurf_;
 		autoPtr<triSurfaceSearch> triSurfSearch_;
@@ -127,10 +127,6 @@ private:
 		//- Dictionaries
 		IOdictionary HFDIBDEMDict_;
 
-	// Private Member Functions
-
-		//- Generate lambda field
-		void generateLambda();
 
 public:
 

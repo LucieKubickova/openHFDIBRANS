@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
 
 	if (stlName.empty())
 	{
-		FatalError << "No STL file name provded. Aborting" << exit(FatalError);
+		FatalError << "No STL file name provided in HFDIBDEMDict. Aborting..."
+			<< exit(FatalError);
 	}
 
 	scalar thrSurf =
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
 		HFDIBDEMDict.lookupOrDefault<scalar>("interfaceSpan", 1.0);
 
 	// Load the STL
-	Info << "Reading the " << stlName << " file\n" << endl;
+	Info << "Reading the " << stlName << " file" << nl << endl;
 	autoPtr<triSurfaceMesh> surfMesh
 	(
 		new triSurfaceMesh(
@@ -125,12 +126,12 @@ int main(int argc, char *argv[])
 	stlModel model(mesh, thrSurf, intSpan, surfMesh, triSurfSearch);
 	model.generateLambda(lambda);
 
-	Info << "Writing lambda\n" << endl;
+	Info << "Writing lambda" << nl << endl;
 
 	// Write lambda field
 	lambda.write();
 
-	Info << "End\n" << endl;
+	Info << "End" << nl << endl;
 
     return 0;
 }

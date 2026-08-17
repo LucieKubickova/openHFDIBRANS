@@ -138,10 +138,7 @@ public:
 	// Member Functions
 
 		//- Generate the lambda field based on an STL
-		void generateLambda
-		(
-			volScalarField& lambda
-		);
+		void generateLambda(volScalarField& lambda);
 
 		//- Return bounding box of the STL
 		boundBox bounds() const

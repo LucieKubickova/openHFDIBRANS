@@ -219,6 +219,7 @@ void stlModel::generateLambda
 	internalCells_[Pstream::myProcNo()].clear();
 
 	//- Check if atleast one body corner lies in mesh
+	Info << "Checking if body intersects mesh" << endl;
 	bool insideMesh = isBodyInMesh();
 
 	if (!insideMesh)
@@ -226,6 +227,7 @@ void stlModel::generateLambda
 		FatalError << "stlModel: body bounding box lies outside the mesh. "
 				   << "Aborting lambda generation." << exit(FatalError);
 	}
+	Info << "Body-mesh intersection OK" << endl;
 
 	// Octree traversal through mesh cells
 	if (cellToStart_ >= mesh_.nCells())
@@ -329,7 +331,6 @@ void stlModel::generateLambda
 	{
 		cellToStart_ = min(internalCells_[Pstream::myProcNo()]);
 	}
-
 }
 
 

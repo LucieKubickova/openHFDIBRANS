@@ -117,4 +117,4 @@ autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
 
 #include "createMRF.H"
 #include "createFvOptions.H"
-Info << nl << endl;
+Info << endl;
