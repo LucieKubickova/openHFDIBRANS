@@ -795,24 +795,12 @@ void openHFDIBRANS::calculateForceCoeffs
 //---------------------------------------------------------------------------//
 void openHFDIBRANS::correctY
 (
-    volScalarField& y
+    volScalarField& y,
+    bool recreate
 )
 {
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-        // assign distance to boundary
-        if (useYEff_)
-        {
-            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
-        }
-        else
-        {
-            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-        }
-    }
+    ibInterpolation_->correctYInBoundaryCells(y, useYEff_);
+    ibMesh_->correctY(y, recreate);
 }
 
 //---------------------------------------------------------------------------//

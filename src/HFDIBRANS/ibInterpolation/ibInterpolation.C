@@ -1230,7 +1230,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
                 
@@ -1323,7 +1323,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1419,7 +1419,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = Foam::pow(mesh_.V()[outCellI],0.333);
+                scalar intDist = ibMesh_.getCellSize(outCellI);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1604,7 +1604,7 @@ void ibInterpolation::calculateSurfaceDist
 
         else
         {
-            scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+            scalar intDist = ibMesh_.getCellSize(cellI);
             vector surfPoint = vector::zero;
             vector surfNorm = vector::zero;
 
@@ -1629,6 +1629,37 @@ void ibInterpolation::calculateSurfaceDist
 
         // assign
         surfaceCells_[Pstream::myProcNo()][sCell].sigma_ = sigma;
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibInterpolation::correctYInBoundaryCells
+(
+    volScalarField& y,
+    bool useYEff
+)
+{
+    // if stl is provided, corrected in ibMesh
+    if (!sdBasedLambda_)
+    {
+        return;
+    }
+
+    // if only lambda is provided, correct at least boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // assign distance to boundary
+        if (useYEff)
+        {
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+        }
+        else
+        {
+            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        }
     }
 }
 

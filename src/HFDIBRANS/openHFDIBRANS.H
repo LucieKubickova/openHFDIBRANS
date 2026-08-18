@@ -130,7 +130,7 @@ class openHFDIBRANS
     void calculateForceCoeffs(scalar& Cl, scalar& Cd, volVectorField& fN, volVectorField& fT, dictionary forceDict);
 
     // correct y for blending functions in kOmegaSST
-    void correctY(volScalarField& y);
+    void correctY(volScalarField& y, bool recreate);
 
     // bound fields
     void bound(volScalarField& phi, dimensionedScalar& phiMin);

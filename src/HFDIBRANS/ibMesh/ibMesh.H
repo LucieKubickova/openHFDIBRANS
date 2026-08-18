@@ -117,12 +117,16 @@ private:
 		word cutCellType_;
 		scalar thrSurf_;
 		scalar intSpan_;
+		bool sdBasedLambda_;
 
 		//- STL things
 		//word stlPath_;
 		autoPtr<triSurfaceMesh> bodySurfMesh_;
 		autoPtr<triSurface> triSurf_;
 		autoPtr<triSurfaceSearch> triSurfSearch_;
+
+		//- Flags
+		bool yCorrected_;
 
 		//- Dictionaries
 		IOdictionary HFDIBDEMDict_;
@@ -185,6 +189,8 @@ public:
 
 		//- Post processing of distance
 		scalar getCellSize(label cellI);
+		// correct distance function
+		void correctY(volScalarField& y, bool recreate);
 };
 
 

@@ -187,6 +187,9 @@ class ibInterpolation
     void calculateBoundaryDist();
     void calculateSurfaceDist();
 
+    // correct distance from surface
+    void correctYInBoundaryCells(volScalarField& y, bool useYEff);
+
     // post processing of distance
     //~ scalar getCellSize(label cellI);
     void postProcessYOrtho();

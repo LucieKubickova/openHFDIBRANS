@@ -47,6 +47,7 @@ ibMesh::ibMesh
 :
 	mesh_(mesh),
 	body_(body),
+	yCorrected_(false),
 	HFDIBDEMDict_
 	(
 		IOobject
@@ -70,7 +71,10 @@ ibMesh::ibMesh
 		"cutCell"
 	);
 	thrSurf_ = HFDIBDEMDict_.lookupOrDefault<scalar>("surfaceThreshold", 1.0);
-	intSpan_ = HFDIBDEMDict_.lookupOrDefault("interfaceSpan", 1.0);
+	intSpan_ = HFDIBDEMDict_.lookupOrDefault<scalar>("interfaceSpan", 1.0);
+	sdBasedLambda_
+		= HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
+
 	bool genLambda
 		= HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
@@ -694,7 +698,7 @@ void ibMesh::createCutCellAndCenter
     surfPoint /= uniquePoints.size();
 
     point closestPoint(vector::zero);
-    scalar intDist = Foam::pow(mesh_.V()[cellI],0.333);
+    scalar intDist = getCellSize(cellI);
     getClosestPointAndNormal(
         surfPoint,
         intDist*2*vector::one,
@@ -735,7 +739,8 @@ void ibMesh::getClosestPointAndNormal
     }
     else
     {
-        FatalError << "Missing the closest point from " << startPoint << " to " << stlName_ << exit(FatalError);
+        //~ FatalError << "Missing the closest point from " << startPoint << " to " << stlName_ << exit(FatalError);
+        Info << "Missing the closest point from " << startPoint << " to " << stlName_ << endl;
     }
 }
 
@@ -758,6 +763,60 @@ scalar ibMesh::getCellSize
     }
 
     return cellSize;
+}
+
+//---------------------------------------------------------------------------//
+
+void ibMesh::correctY
+(
+    volScalarField& y,
+    bool recreate
+)
+{
+    // if only lambda is provided, corrected in ibInterpolation
+    if (sdBasedLambda_)
+    {
+        return;
+    }
+
+    // skip if already done
+    if (!recreate and yCorrected_)
+    {
+        return;
+    }
+
+    else
+    {
+        yCorrected_ = true;
+    }
+
+    // set search distance span
+    vector sDSpan(4.0*(mesh_.bounds().max()-mesh_.bounds().min()));
+
+    // loop over all cells
+    forAll(y, cellI)
+    {
+        // skip cells inside body
+        if (body_[cellI] > 0.5)
+        {
+            continue;
+        }
+
+        // prepare point and normal
+        point closestPoint(vector::zero);
+        vector surfNorm(vector::zero);
+
+        // get closest point and normal
+        getClosestPointAndNormal(
+            mesh_.C()[cellI],
+            sDSpan,
+            closestPoint,
+            surfNorm
+        );
+
+        // set corrected y
+        y[cellI] = mag(mesh_.C()[cellI] - closestPoint);
+    }
 }
 
 
