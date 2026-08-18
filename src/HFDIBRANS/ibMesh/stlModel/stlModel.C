@@ -30,6 +30,7 @@ Contributors
 
 \*---------------------------------------------------------------------------*/
 
+#include "HashSet.H"
 #include "HashTable.H"
 #include "Pstream.H"
 #include "error.H"
@@ -64,8 +65,7 @@ stlModel::stlModel
 	geometricD_(mesh_.geometricD()),
 	meshBounds_(mesh_.points(), false),
 	cellToStart_(0),
-	cellPoints_(mesh_.nCells()),
-	lastCellPoints_(0)
+	cellPoints_(mesh_.nCells())
 {
 	internalCells_.setSize(Pstream::nProcs());
 
@@ -198,6 +198,69 @@ bool stlModel::isBodyInMesh()
 	return true;
 }
 
+//---------------------------------------------------------------------------//
+
+bool stlModel::isPointInBody
+(
+	point pointI
+)
+{
+	pointField points(1, pointI);
+	boolList returnList = triSurfSearch_().calcInside(points);
+
+	return returnList[0];
+}
+
+//---------------------------------------------------------------------------//
+
+label stlModel::findCellInBody()
+{
+	labelHashSet visited;
+
+	const pointField& cellCenters = mesh_.C();
+
+	if (cellToStart_ >= mesh_.nCells())
+	{
+		cellToStart_ = 0;
+	}
+
+	autoPtr<DynamicLabelList> pending(new DynamicLabelList(1, cellToStart_));
+	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
+
+	label iterCount(0); label iterMax(mesh_.nCells());
+
+	while (pending().size() > 0 and iterCount < iterMax)
+	{
+		nextPending().clear();
+		forAll(pending(), cellToCheck)
+		{
+			if (!visited.found(pending()[cellToCheck]))
+			{
+				visited.insert(pending()[cellToCheck]);
+				iterCount++;
+
+				if (isPointInBody(cellCenters[pending()[cellToCheck]]))
+				{
+					return pending()[cellToCheck];
+				}
+				else
+				{
+					nextPending().append
+					(
+						mesh_.cellCells()[pending()[cellToCheck]]
+					);
+				}
+			}
+		}
+
+		autoPtr<DynamicLabelList> helperPtr(pending.ptr());
+		pending.reset(nextPending.ptr());
+		nextPending = std::move(helperPtr);
+	}
+
+	return -1;
+}
+
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 void stlModel::generateLambda
@@ -213,17 +276,20 @@ void stlModel::generateLambda
 
 	if (!insideMesh)
 	{
-		FatalError << "stlModel: body bounding box lies outside the mesh. "
+		FatalError << "Body bounding box lies outside the mesh. "
 				   << "Aborting lambda generation." << exit(FatalError);
 	}
 	Info << "Body-mesh intersection OK" << endl;
 
-	// Octree traversal through mesh cells
-	if (cellToStart_ >= mesh_.nCells())
+	// Octree traversal through mesh to find seed cell
+	cellToStart_ = findCellInBody();
+
+	if (cellToStart_ == -1)
 	{
 		cellToStart_ = 0;
 	}
 
+	// Octree traversal through mesh to determine lambda
 	Field<label> visited(mesh_.nCells(), 0);
 	labelList pending(1, cellToStart_);
 	label iterCount = 0;
@@ -232,7 +298,6 @@ void stlModel::generateLambda
 	const boundBox ibBound(bounds());
 	bool insideIB = false;
 	bool insideIBBound = false;
-	HashTable<pointField, label, Hash<label>> newCellPtsCache(0);
 	DynamicLabelList nextPending;
 
 	while (pending.size() > 0 && iterCount < iterMax)
@@ -248,15 +313,7 @@ void stlModel::generateLambda
 			visited[cellI] = 1;
 
 			// Get vertex positions, use cache whenever possible
-			pointField pts;
-			if (lastCellPoints_.found(cellI))
-			{
-				pts = lastCellPoints_[cellI];
-			}
-			else
-			{
-				pts = cellPoints_[cellI];
-			}
+			pointField pts = cellPoints_[cellI];
 
 			// Check if any vertex lies inside the IB box
 			bool inBB = false;
@@ -273,7 +330,6 @@ void stlModel::generateLambda
 			{
 				insideIBBound = true;
 				cellToStart_ = cellI;
-				newCellPtsCache.insert(cellI, pts);
 
 				boolList verticesInside = triSurfSearch_().calcInside(pts);
                 const pointField centreField(1, mesh_.C()[cellI]);
@@ -311,9 +367,6 @@ void stlModel::generateLambda
 		}
 		pending = nextPending;
 	}
-
-	// Update cached cell-point positions
-	lastCellPoints_ = newCellPtsCache;
 
 	// Update octree start cell for next call
 	if (internalCells_[Pstream::myProcNo()].size() > 0)

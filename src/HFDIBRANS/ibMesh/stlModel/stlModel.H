@@ -95,9 +95,6 @@ private:
 		//- List of all cell-certex positions
 		List<pointField> cellPoints_;
 
-		//- Cache of cell-vertex positions
-		HashTable<pointField, label, Hash<label>> lastCellPoints_;
-
 		//- List of per processor internal cells
 		List<DynamicLabelList> internalCells_;
 
@@ -116,6 +113,12 @@ private:
 
 		//- Check if STL body lies inside mesh
 		bool isBodyInMesh();
+
+		//- Check if point lies inside STL body
+		bool isPointInBody(point pointI);
+
+		//- Find a cell inside body
+		label findCellInBody();
 
 public:
 
