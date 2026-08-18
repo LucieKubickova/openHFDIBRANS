@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	stlModel model(mesh, thrSurf, intSpan, surfMesh, triSurfSearch);
 	model.generateLambda(lambda);
 
-	Info << "Writing lambda" << nl << endl;
+	Info << nl << "Writing lambda" << nl << endl;
 
 	// Write lambda field
 	lambda.write();

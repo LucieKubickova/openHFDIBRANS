@@ -34,10 +34,8 @@ Contributors
 #include "HashTable.H"
 #include "Pstream.H"
 #include "error.H"
-#include "labelList.H"
 #include "pointIndexHit.H"
 #include "vector.H"
-#include <algorithm>
 
 #include "stlModel.H"
 
@@ -91,7 +89,6 @@ stlModel::~stlModel()
 labelList stlModel::classifyCell
 (
 	label cellI,
-	bool& insideIB,
 	bool& centreInside,
 	boolList& verticesInside,
 	volScalarField& lambda
@@ -158,13 +155,6 @@ labelList stlModel::classifyCell
 				cBody = 0.5*(-Foam::tanh(intSpan_*dist/cellSize) + 1.0);
 			}
 		}
-
-		insideIB = true;
-		neighbours = mesh_.cellCells()[cellI];
-	}
-	else if (!insideIB)
-	{
-		neighbours = mesh_.cellCells()[cellI];
 	}
 
 	// Clip field values
@@ -227,7 +217,7 @@ label stlModel::findCellInBody()
 	autoPtr<DynamicLabelList> pending(new DynamicLabelList(1, cellToStart_));
 	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
 
-	label iterCount(0); label iterMax(mesh_.nCells());
+	label iterCount(0); const label iterMax(mesh_.nCells());
 
 	while (pending().size() > 0 and iterCount < iterMax)
 	{
@@ -261,6 +251,42 @@ label stlModel::findCellInBody()
 	return -1;
 }
 
+void stlModel::findProcBoundaryCells
+(
+	label cellI,
+	List<DynamicLabelList>& neighboursToSend
+)
+{
+	forAll(mesh_.cells()[cellI], fI)
+	{
+		label faceI = mesh_.cells()[cellI][fI];
+
+		if (!mesh_.isInternalFace(faceI))
+		{
+			label facePatchI
+			(
+				mesh_.boundaryMesh().whichPatch(faceI)
+			);
+			const polyPatch& patch
+				= mesh_.boundaryMesh()[facePatchI];
+
+			if (patch.type() ==	"processor")
+			{
+				const processorPolyPatch& procPatch
+					= refCast<const processorPolyPatch>(patch);
+				label iProc =
+				(
+					Pstream::myProcNo() == procPatch.myProcNo()
+				)
+					? procPatch.neighbProcNo()
+					: procPatch.myProcNo();
+
+				neighboursToSend[iProc].append(patch.whichFace(faceI));
+			}
+		}
+	}
+}
+
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 void stlModel::generateLambda
@@ -270,102 +296,176 @@ void stlModel::generateLambda
 {
 	internalCells_[Pstream::myProcNo()].clear();
 
-	//- Check if atleast one body corner lies in mesh
+	//- Check if body lies in mesh
 	Info << "Checking if body intersects mesh" << endl;
-	bool insideMesh = isBodyInMesh();
-
-	if (!insideMesh)
+	label pendingSize = 1;
+	if (!isBodyInMesh())
 	{
-		FatalError << "Body bounding box lies outside the mesh. "
-				   << "Aborting lambda generation." << exit(FatalError);
+		// FatalError << "Body bounding box lies outside the mesh. "
+		//  		   << "Aborting lambda generation." << exit(FatalError);
+		Info << "Body doesn't intersect mesh at processor "
+			<< Pstream::myProcNo() << endl;
+		pendingSize = 0;
 	}
-	Info << "Body-mesh intersection OK" << endl;
+	//Info << "Body-mesh intersection OK" << endl;
 
 	// Octree traversal through mesh to find seed cell
+	const pointField& cellCenters = mesh_.C();
 	cellToStart_ = findCellInBody();
 
 	if (cellToStart_ == -1)
 	{
-		cellToStart_ = 0;
+		pendingSize = 0;
 	}
 
 	// Octree traversal through mesh to determine lambda
 	Field<label> visited(mesh_.nCells(), 0);
-	labelList pending(1, cellToStart_);
-	label iterCount = 0;
-	const label iterMax = mesh_.nCells();
+	autoPtr<DynamicLabelList> pending(new DynamicLabelList(pendingSize, cellToStart_));
+	//labelList pending(1, cellToStart_);
+	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
+	autoPtr<List<DynamicLabelList>> neighboursToSend
+	(
+		new List<DynamicLabelList>(Pstream::nProcs())
+	);
 
-	const boundBox ibBound(bounds());
-	bool insideIB = false;
-	bool insideIBBound = false;
-	DynamicLabelList nextPending;
+	//const boundBox ibBound(bounds());
+	//bool insideIB = false;
+	//bool insideIBBound = false;
+	//DynamicLabelList nextPending;
 
-	while (pending.size() > 0 && iterCount < iterMax)
+	// Find the total number of empty patches
+	label nEmptyDirs(0);
+	forAll(mesh_.boundaryMesh(), patchI)
 	{
-		iterCount++;
-		nextPending.clear();
-
-		forAll(pending, pi)
+		const polyPatch& patch = mesh_.boundaryMesh()[patchI];
+		if (patch.type() == "empty")
 		{
-			const label cellI = pending[pi];
+			nEmptyDirs++;
+		}
+	}
 
-			if (visited[cellI]) continue;
-			visited[cellI] = 1;
+	HashTable<bool, label, Hash<label>> cellInside(128);
 
-			// Get vertex positions, use cache whenever possible
-			pointField pts = cellPoints_[cellI];
+	label iterCount = 0; const label iterMax = mesh_.nCells();
+	reduce(pendingSize, maxOp<label>());
+	while (pendingSize > 0 && iterCount < iterMax)
+	{
+		nextPending().clear();
 
-			// Check if any vertex lies inside the IB box
-			bool inBB = false;
-			forAll(pts, pI)
+		forAll(pending(), cellToCheck)
+		{
+			const label cellI = pending()[cellToCheck];
+
+			if (!cellInside.found(cellI))
 			{
-				if (ibBound.contains(pts[pI]))
+				iterCount++;
+
+				if (isPointInBody(cellCenters[cellI]))
 				{
-					inBB = true;
-					break;
+					cellInside.set(cellI, true);
+
+					const labelList& neighbours = mesh_.cellCells(cellI);
+					nextPending().append(neighbours);
+
+					label nProcFaces = mesh_.cells()[cellI].size();
+					nProcFaces -= mesh_.cellCells()[cellI].size();
+					nProcFaces -= nEmptyDirs;
+					if (nProcFaces == 0)
+					{
+						continue;
+					}
+
+					findProcBoundaryCells(cellI, neighboursToSend());
 				}
-			}
-
-			if (inBB)
-			{
-				insideIBBound = true;
-				cellToStart_ = cellI;
-
-				boolList verticesInside = triSurfSearch_().calcInside(pts);
-                const pointField centreField(1, mesh_.C()[cellI]);
-				bool centreInside = triSurfSearch_().calcInside(centreField)[0];
-
-				if
-				(
-					std::any_of
-					(
-						verticesInside.begin(), verticesInside.end(),
-						[](bool b){ return b; }
-					)
-				 || centreInside
-				 || !insideIB
-				)
+				else
 				{
-					const labelList neighbours
-					(
-						classifyCell
-						(
-							cellI,
-							insideIB,
-							centreInside,
-							verticesInside,
-							lambda
-						)
-					);
-					nextPending.append(neighbours);
+					cellInside.set(cellI, false);
 				}
-			}
-			else if (!insideIB && !insideIBBound)
-			{
-				nextPending.append(mesh_.cellCells()[cellI]);
 			}
 		}
-		pending = nextPending;
+
+		// Send face indices to neighbours
+		PstreamBuffers pBufsIFaces(Pstream::commsTypes::nonBlocking);
+		for (label proci = 0; proci < Pstream::nProcs(); proci++)
+		{
+			if (proci != Pstream::myProcNo())
+			{
+				UOPstream sendIFaces(proci, pBufsIFaces);
+				sendIFaces << neighboursToSend()[proci];
+				neighboursToSend()[proci].clear();
+			}
+		}
+		pBufsIFaces.finishedSends();
+
+		// Recieve face indices and add to check
+		for (label proci = 0; proci < Pstream::nProcs(); proci++)
+		{
+			if (proci != Pstream::myProcNo())
+			{
+				UIPstream recvIFaces(proci, pBufsIFaces);
+				DynamicLabelList recvIFacesList(recvIFaces);
+
+				// Find cells for faces
+				forAll(recvIFacesList, rFace)
+				{
+					label faceI = recvIFacesList[rFace];
+
+					// Find the cell
+					forAll(mesh_.boundaryMesh(), patchI)
+					{
+						if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+						{
+							const processorPolyPatch& procPatch
+								= refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+
+							// Get neighbouring processor id
+							label iProc =
+							(
+								Pstream::myProcNo() == procPatch.myProcNo()
+							)
+								? procPatch.neighbProcNo()
+								: procPatch.myProcNo();
+
+							if (iProc == proci)
+							{
+								label rCellI = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+								nextPending().append(rCellI);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Clear processor stream buffer
+		pBufsIFaces.clear();
+
+		// Clear pending queue and setup next wave
+		autoPtr<DynamicLabelList> helperPtr(pending.ptr());
+		pending.reset(nextPending.ptr());
+		nextPending = std::move(helperPtr);
+
+		// Check if all processors finished
+		pendingSize = pending().size();
+		reduce(pendingSize, maxOp<label>());
+	}
+
+	// Classify all cells found by octree
+	forAll(cellInside.toc(), i)
+	{
+		label cellI = cellInside.toc()[i];
+		bool centreInside = cellInside[cellI];
+
+		pointField& points = cellPoints_[cellI];
+		boolList verticesInside = triSurfSearch_().calcInside(points);
+
+		classifyCell
+		(
+			cellI,
+			centreInside,
+			verticesInside,
+			lambda
+		);
 	}
 
 	// Update octree start cell for next call

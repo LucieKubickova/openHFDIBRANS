@@ -105,7 +105,6 @@ private:
 		labelList classifyCell
 		(
 			label cellI,
-			bool& insideIB,
 			bool& centerInside,
 			boolList& verticesInside,
 			volScalarField& lambda
@@ -119,6 +118,14 @@ private:
 
 		//- Find a cell inside body
 		label findCellInBody();
+
+		//- Find processor boundary cells
+		void findProcBoundaryCells
+		(
+			label cellI,
+			List<DynamicLabelList>& neighborsToSend
+		);
+
 
 public:
 
@@ -154,6 +161,8 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 
