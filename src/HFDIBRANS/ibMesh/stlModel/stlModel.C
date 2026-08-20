@@ -49,8 +49,9 @@ namespace Foam
 stlModel::stlModel
 (
 	const fvMesh& mesh,
-	scalar& thrSurf,
-	scalar& intSpan,
+	scalar thrSurf,
+	scalar intSpan,
+	bool sdBasedLambda,
 	autoPtr<triSurfaceMesh>& triSurfMesh,
 	autoPtr<triSurfaceSearch>& triSurfSearch
 )
@@ -58,6 +59,7 @@ stlModel::stlModel
 	mesh_(mesh),
 	thrSurf_(thrSurf),
 	intSpan_(intSpan),
+	sdBasedLambda_(sdBasedLambda),
 	triSurfMesh_(triSurfMesh),
 	triSurfSearch_(triSurfSearch),
 	geometricD_(mesh_.geometricD()),
@@ -120,7 +122,7 @@ labelList stlModel::classifyCell
 			// Fully internal cell
 			internalCells_[Pstream::myProcNo()].append(cellI);
 		}
-		else
+		else if (sdBasedLambda_)
 		{
 			// Replace vertex weight estimate with tanh profiling
 			// based on signed distance to nearest STL surface
@@ -140,8 +142,8 @@ labelList stlModel::classifyCell
 			}
 			else
 			{
-				Info << "stlModel: missed nearest point for cell "
-					 << cellI << endl;
+				Info << "Missed the closest point from cell "
+					 << cellI << " to STL body"  << endl;
 			}
 
 			const scalar cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
@@ -152,7 +154,7 @@ labelList stlModel::classifyCell
 			}
 			else
 			{
-				cBody = 0.5*(-Foam::tanh(intSpan_*dist/cellSize) + 1.0);
+				cBody = 0.5*(-1.0*Foam::tanh(intSpan_*dist/cellSize) + 1.0);
 			}
 		}
 	}
@@ -301,13 +303,8 @@ void stlModel::generateLambda
 	label pendingSize = 1;
 	if (!isBodyInMesh())
 	{
-		// FatalError << "Body bounding box lies outside the mesh. "
-		//  		   << "Aborting lambda generation." << exit(FatalError);
-		Info << "Body doesn't intersect mesh at processor "
-			<< Pstream::myProcNo() << endl;
 		pendingSize = 0;
 	}
-	//Info << "Body-mesh intersection OK" << endl;
 
 	// Octree traversal through mesh to find seed cell
 	const pointField& cellCenters = mesh_.C();
@@ -321,17 +318,11 @@ void stlModel::generateLambda
 	// Octree traversal through mesh to determine lambda
 	Field<label> visited(mesh_.nCells(), 0);
 	autoPtr<DynamicLabelList> pending(new DynamicLabelList(pendingSize, cellToStart_));
-	//labelList pending(1, cellToStart_);
 	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
 	autoPtr<List<DynamicLabelList>> neighboursToSend
 	(
 		new List<DynamicLabelList>(Pstream::nProcs())
 	);
-
-	//const boundBox ibBound(bounds());
-	//bool insideIB = false;
-	//bool insideIBBound = false;
-	//DynamicLabelList nextPending;
 
 	// Find the total number of empty patches
 	label nEmptyDirs(0);

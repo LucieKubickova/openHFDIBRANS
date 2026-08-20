@@ -117,6 +117,7 @@ ibMesh::ibMesh
 			mesh_,
 			thrSurf_,
 			intSpan_,
+			sdBasedLambda_,
 			bodySurfMesh_,
 			triSurfSearch_
 		);

@@ -73,11 +73,10 @@ private:
 		//- Mesh
 		const fvMesh& mesh_;
 
-		//- Minimum contribution to treat as inside
-		const scalar& thrSurf_;
-
-		//- Width parameter for signed distance lambda
-		const scalar& intSpan_;
+		//- Options
+		const scalar thrSurf_;
+		const scalar intSpan_;
+		const bool sdBasedLambda_;
 
 		//- STL surface mesh
 		const autoPtr<triSurfaceMesh>& triSurfMesh_;
@@ -134,8 +133,9 @@ public:
 		stlModel
 		(
 			const fvMesh& mesh,
-			scalar& thrSurf,
-			scalar& intSpan,
+			scalar thrSurf,
+			scalar intSpan,
+			bool sdBasedLambda_,
 			autoPtr<triSurfaceMesh>& triSurfMesh,
 			autoPtr<triSurfaceSearch>& triSurfSearch
 		);

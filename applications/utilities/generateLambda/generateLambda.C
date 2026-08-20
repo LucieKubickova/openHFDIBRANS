@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
 		HFDIBDEMDict.lookupOrDefault<scalar>("surfaceThreshold", 1.0);
 	scalar intSpan =
 		HFDIBDEMDict.lookupOrDefault<scalar>("interfaceSpan", 1.0);
+	bool sdBasedLambda =
+		HFDIBDEMDict.lookupOrDefault<bool>("sdBasedLambda", false);
 
 	// Load the STL
 	Info << "Reading the " << stlName << " file" << nl << endl;
@@ -123,7 +125,15 @@ int main(int argc, char *argv[])
 	Info << "Generating lambda based on " << stlName << nl << endl;
 
 	// Initialize STL model and generate lambda
-	stlModel model(mesh, thrSurf, intSpan, surfMesh, triSurfSearch);
+	stlModel model
+	(
+		mesh,
+		thrSurf,
+		intSpan,
+		sdBasedLambda,
+		surfMesh,
+		triSurfSearch
+	);
 	model.generateLambda(lambda);
 
 	Info << nl << "Writing lambda" << nl << endl;
