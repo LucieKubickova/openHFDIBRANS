@@ -69,14 +69,10 @@ stlModel::stlModel
 {
 	internalCells_.setSize(Pstream::nProcs());
 
-	forAll(mesh.cells(), cellI)
+	cellPoints_.setSize(mesh_.nCells());
+	forAll(mesh.C(), cellI)
 	{
-		const labelList& ptIndices = mesh.cellPoints()[cellI];
-		cellPoints_[cellI].setSize(ptIndices.size());
-		forAll(ptIndices, pI)
-		{
-			cellPoints_[cellI][pI] = mesh.points()[ptIndices[pI]];
-		}
+		cellPoints_[cellI] = mesh_.cellPoints()[cellI];
 	}
 }
 
@@ -88,32 +84,73 @@ stlModel::~stlModel()
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-labelList stlModel::classifyCell
+DynamicList<label> stlModel::findPotentSurfCells
 (
-	label cellI,
-	bool& centreInside,
-	boolList& verticesInside,
-	volScalarField& lambda
+	volScalarField& lambda,
+	HashTable<bool, label, Hash<label>>& cellInside
 )
 {
+	// Expand cell inside by one cell outward from inside cell
+	// to catch edge/vertex neighbours
+	const labelList foundCells = cellInside.toc();
+	forAll(foundCells, i)
+	{
+		label cellI = foundCells[i];
+
+		if (!cellInside[cellI])
+		{
+			const labelList& neighbours = mesh_.cellCells()[cellI];
+
+			forAll(neighbours, neighI)
+			{
+				label neighbour = neighbours[neighI];
+				// If neighbour not in inside, set to false
+				if (!cellInside.found(neighbour))
+				{
+					cellInside.set(neighbour, false);
+				}
+			}
+		}
+	}
+
+	// Build potentSurfCells and classify fully internal cells
+	DynamicLabelList potentSurfCells(cellInside.size());
+	forAll(cellInside.toc(), i)
+	{
+		potentSurfCells.append(cellInside.toc()[i]);
+	}
+
+	return potentSurfCells;
+}
+
+//---------------------------------------------------------------------------//
+
+void stlModel::classifyCell
+(
+	volScalarField& lambda,
+	vector sdSpan,
+	label cellI,
+	bool centerInside
+)
+{
+	const labelList& cellVertices = cellPoints_[cellI];
 	// Vertex weight contribution:
 	// each vertex = 0.5/N, centre = 0.5 -> 1.0 in total
-	const scalar vertexWeight = 0.5/verticesInside.size();
+	const scalar vertexWeight = 0.5/cellVertices.size();
 	scalar cBody = 0;
 
-	forAll(verticesInside, vI)
+	forAll(cellVertices, vertI)
 	{
-		if (verticesInside[vI])
+		bool vertexInside = isPointInBody(mesh_.points()[cellVertices[vertI]]);
+		if (vertexInside)
 		{
 			cBody += vertexWeight;
 		}
 	}
-	if (centreInside)
+	if (centerInside)
 	{
 		cBody += 0.5;
 	}
-
-	labelList neighbours;
 
 	if (cBody > thrSurf_)
 	{
@@ -126,13 +163,9 @@ labelList stlModel::classifyCell
 		{
 			// Replace vertex weight estimate with tanh profiling
 			// based on signed distance to nearest STL surface
-			const vector sDSpan
-			(
-				4.0*(mesh_.bounds().max() - mesh_.bounds().min())
-			);
 			pointIndexHit hit
 			(
-				triSurfSearch_().nearest(mesh_.C()[cellI], sDSpan)
+				triSurfSearch_().nearest(mesh_.C()[cellI], sdSpan)
 			);
 
 			scalar dist = 0;
@@ -148,7 +181,7 @@ labelList stlModel::classifyCell
 
 			const scalar cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
 
-			if (centreInside)
+			if (centerInside)
 			{
 				cBody = 0.5*(Foam::tanh(intSpan_*dist/cellSize) + 1.0);
 			}
@@ -157,13 +190,11 @@ labelList stlModel::classifyCell
 				cBody = 0.5*(-1.0*Foam::tanh(intSpan_*dist/cellSize) + 1.0);
 			}
 		}
+
+		// Clip field values
+		lambda[cellI] += cBody;
+		lambda[cellI] = min(max(0.0, lambda[cellI]), 1.0);
 	}
-
-	// Clip field values
-	lambda[cellI] += cBody;
-	lambda[cellI] = min(max(0.0, lambda[cellI]), 1.0);
-
-	return neighbours;
 }
 
 //---------------------------------------------------------------------------//
@@ -253,6 +284,8 @@ label stlModel::findCellInBody()
 	return -1;
 }
 
+//---------------------------------------------------------------------------//
+
 void stlModel::findProcBoundaryCells
 (
 	label cellI,
@@ -265,29 +298,22 @@ void stlModel::findProcBoundaryCells
 
 		if (!mesh_.isInternalFace(faceI))
 		{
-			label facePatchI
-			(
-				mesh_.boundaryMesh().whichPatch(faceI)
-			);
-			const polyPatch& patch
-				= mesh_.boundaryMesh()[facePatchI];
+			label facePatchI = mesh_.boundaryMesh().whichPatch(faceI);
+			const polyPatch& patch = mesh_.boundaryMesh()[facePatchI];
 
 			if (patch.type() ==	"processor")
 			{
 				const processorPolyPatch& procPatch
 					= refCast<const processorPolyPatch>(patch);
-				label iProc =
-				(
-					Pstream::myProcNo() == procPatch.myProcNo()
-				)
-					? procPatch.neighbProcNo()
-					: procPatch.myProcNo();
+				label iProc = (Pstream::myProcNo() == procPatch.myProcNo())
+					? procPatch.neighbProcNo() : procPatch.myProcNo();
 
 				neighboursToSend[iProc].append(patch.whichFace(faceI));
 			}
 		}
 	}
 }
+
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
@@ -307,7 +333,6 @@ void stlModel::generateLambda
 	}
 
 	// Octree traversal through mesh to find seed cell
-	const pointField& cellCenters = mesh_.C();
 	cellToStart_ = findCellInBody();
 
 	if (cellToStart_ == -1)
@@ -316,8 +341,12 @@ void stlModel::generateLambda
 	}
 
 	// Octree traversal through mesh to determine lambda
+	const pointField& cellCenters = mesh_.C();
 	Field<label> visited(mesh_.nCells(), 0);
-	autoPtr<DynamicLabelList> pending(new DynamicLabelList(pendingSize, cellToStart_));
+	autoPtr<DynamicLabelList> pending
+	(
+		new DynamicLabelList(pendingSize, cellToStart_)
+	);
 	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
 	autoPtr<List<DynamicLabelList>> neighboursToSend
 	(
@@ -325,13 +354,13 @@ void stlModel::generateLambda
 	);
 
 	// Find the total number of empty patches
-	label nEmptyDirs(0);
+	nEmptyDirs_ = 0;
 	forAll(mesh_.boundaryMesh(), patchI)
 	{
 		const polyPatch& patch = mesh_.boundaryMesh()[patchI];
 		if (patch.type() == "empty")
 		{
-			nEmptyDirs++;
+			nEmptyDirs_++;
 		}
 	}
 
@@ -339,10 +368,12 @@ void stlModel::generateLambda
 
 	label iterCount = 0; const label iterMax = mesh_.nCells();
 	reduce(pendingSize, maxOp<label>());
-	while (pendingSize > 0 && iterCount < iterMax)
+	while (pendingSize > 0 && iterCount++ < iterMax)
 	{
+		// Clear queue for next iteration
 		nextPending().clear();
 
+		// Loop throuh neighbours queued from last iteration
 		forAll(pending(), cellToCheck)
 		{
 			const label cellI = pending()[cellToCheck];
@@ -360,7 +391,7 @@ void stlModel::generateLambda
 
 					label nProcFaces = mesh_.cells()[cellI].size();
 					nProcFaces -= mesh_.cellCells()[cellI].size();
-					nProcFaces -= nEmptyDirs;
+					nProcFaces -= nEmptyDirs_;
 					if (nProcFaces == 0)
 					{
 						continue;
@@ -404,18 +435,25 @@ void stlModel::generateLambda
 					// Find the cell
 					forAll(mesh_.boundaryMesh(), patchI)
 					{
-						if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+						if
+						(
+							isA<processorPolyPatch>
+							(
+								mesh_.boundaryMesh()[patchI]
+							)
+						)
 						{
-							const processorPolyPatch& procPatch
-								= refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+							const processorPolyPatch& procPatch =
+								refCast<const processorPolyPatch>
+								(
+									mesh_.boundaryMesh()[patchI]
+								);
 
 							// Get neighbouring processor id
 							label iProc =
-							(
-								Pstream::myProcNo() == procPatch.myProcNo()
-							)
-								? procPatch.neighbProcNo()
-								: procPatch.myProcNo();
+								(Pstream::myProcNo() == procPatch.myProcNo())
+									? procPatch.neighbProcNo()
+									: procPatch.myProcNo();
 
 							if (iProc == proci)
 							{
@@ -441,22 +479,18 @@ void stlModel::generateLambda
 		reduce(pendingSize, maxOp<label>());
 	}
 
+	// Find potent surface cells
+	DynamicLabelList potentSurfCells = findPotentSurfCells(lambda, cellInside);
+
 	// Classify all cells found by octree
-	forAll(cellInside.toc(), i)
+	Info << "Calculating lambda values" << endl;
+	const vector sdSpan(4.0*(mesh_.bounds().max() - mesh_.bounds().min()));
+	forAll(potentSurfCells, i)
 	{
-		label cellI = cellInside.toc()[i];
-		bool centreInside = cellInside[cellI];
+		label cellI = potentSurfCells[i];
+		bool centerInside = cellInside[cellI];
 
-		pointField& points = cellPoints_[cellI];
-		boolList verticesInside = triSurfSearch_().calcInside(points);
-
-		classifyCell
-		(
-			cellI,
-			centreInside,
-			verticesInside,
-			lambda
-		);
+		classifyCell(lambda, sdSpan, cellI, centerInside);
 	}
 
 	// Update octree start cell for next call

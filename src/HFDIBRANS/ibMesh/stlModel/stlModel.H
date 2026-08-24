@@ -92,21 +92,31 @@ private:
 		label cellToStart_;
 
 		//- List of all cell-certex positions
-		List<pointField> cellPoints_;
+		List<labelList> cellPoints_;
 
 		//- List of per processor internal cells
 		List<DynamicLabelList> internalCells_;
 
+		//- Number of empty directions
+		label nEmptyDirs_;
+
 
 	// Private Member Functions
 
-		//- Process cell, clasify it and return neighbors
-		labelList classifyCell
+		//- Find potent surface cells
+		DynamicLabelList findPotentSurfCells
 		(
+			volScalarField& lambda,
+			HashTable<bool, label, Hash<label>>& cellInside
+		);
+
+		//- Calculate lambda value for candidate cell
+		void classifyCell
+		(
+			volScalarField& lambda,
+			vector sdSpan,
 			label cellI,
-			bool& centerInside,
-			boolList& verticesInside,
-			volScalarField& lambda
+			bool centerInside
 		);
 
 		//- Check if STL body lies inside mesh
