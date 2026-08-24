@@ -12,11 +12,7 @@ L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Imme
 ## Compatibility
 The code is prepared for compilation with OpenFOAM v8 (https://openfoam.org/version/8/).
 
-## Compilation
-./Allwclean && ./Allwmake
-
-## Tutorials
-cd tutorials && ./Allrun
+For information regarding the compilation and usage of this solver, please refer to the [wiki](https://github.com/LucieKubickova/openHFDIBRANS/wiki).
 
 ## License
 openHFDIBRANS is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
