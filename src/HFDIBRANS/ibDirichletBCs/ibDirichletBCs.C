@@ -317,7 +317,7 @@ void ibDirichletBCs::updateUTauAtIB
             }
             else if (uTauType_ == "cellDistance")
             {
-                dist = ibMesh_.getCellSize(cellI);
+                dist = ibMesh_.getCellSize(cellI, sNorm);
             }
             else if (uTauType_ == "coeffDistance")
             {

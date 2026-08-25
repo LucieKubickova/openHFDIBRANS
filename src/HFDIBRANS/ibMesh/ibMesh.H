@@ -95,7 +95,7 @@ class ibMesh
 
     // options
     word stlName_;
-    bool readL_;
+    word cellSizeType_;
     scalar valueL_;
     bool sdBasedLambda_;
     scalar thrSurf_;
@@ -151,7 +151,7 @@ class ibMesh
     void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
 
     // post processing of distance
-    scalar getCellSize(label cellI);
+    scalar getCellSize(label cellI, vector surfNorm);
 
     // correct distance function
     void correctY(volScalarField& y, bool recreate);

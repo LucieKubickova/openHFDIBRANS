@@ -62,8 +62,8 @@ yCorrected_(false)
 {
 	// read HFDIBDEM dictionary
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
-    readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
-    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0); // LK: experimental
+    cellSizeType_ = HFDIBDEMDict_.lookupOrDefault<word>("cellSizeType", "volumeRoot");
+    valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0);
     sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
@@ -636,20 +636,17 @@ void ibMesh::createCutCellAndCenter
     forAll(uniquePoints, uI)
     {
         surfPoint += uniquePoints[uI];
-        //~ surfNorm += normalVectorField[uI];
     }
     surfPoint /= uniquePoints.size();
 
     point closestPoint(vector::zero);
-    scalar intDist = getCellSize(cellI);
+    scalar intDist = getCellSize(cellI, surfNorm);
     getClosestPointAndNormal(
         surfPoint,
         intDist*2*vector::one,
         closestPoint,
         surfNorm
     );
-
-    //~ surfNorm /= uniquePoints.size();
 
     return;
 }
@@ -689,19 +686,57 @@ void ibMesh::getClosestPointAndNormal
 //---------------------------------------------------------------------------//
 scalar ibMesh::getCellSize
 (
-    label cellI
+    label cellI,
+    vector surfNorm
 )
 {
     scalar cellSize(0.0);
 
-    if (readL_)
+    if (cellSizeType_ == "readSize")
     {
         cellSize = valueL_;
     }
-    else
+
+    else if (cellSizeType_ == "volumeRoot" or mag(surfNorm) < SMALL)
     {
         cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
     }
+
+    else if (cellSizeType_ == "vertexBoundBox")
+    {
+        // get cell vertices
+        const labelList& cellVerts(mesh_.cellPoints()[cellI]);
+
+        // prepare bounding box
+        vector boundMin(mesh_.points()[cellVerts[0]]);
+        vector boundMax(mesh_.points()[cellVerts[0]]);
+
+        // loop over vertices
+        forAll(cellVerts, vI)
+        {
+            // get vertex label
+            label vertI = cellVerts[vI];
+
+            // get vertex point
+            point vertP(mesh_.points()[vertI]);
+
+            // update bounding box
+            boundMin.x() = min(boundMin.x(), vertP.x());
+            boundMin.y() = min(boundMin.y(), vertP.y());
+            boundMin.z() = min(boundMin.z(), vertP.z());
+
+            boundMax.x() = max(boundMax.x(), vertP.x());
+            boundMax.y() = max(boundMax.y(), vertP.y());
+            boundMax.z() = max(boundMax.z(), vertP.z());
+        }
+
+        // get bounding box size
+        vector boundSize = boundMax - boundMin;
+
+        // get cell size in direction of surface normal
+        cellSize = mag(boundSize & surfNorm);
+    }
+
 
     return cellSize;
 }
