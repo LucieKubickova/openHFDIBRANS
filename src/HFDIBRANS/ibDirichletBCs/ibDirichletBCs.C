@@ -1042,6 +1042,12 @@ void ibDirichletBCs::calculateForces
         {
             // get face label
             label faceI = mesh_.cells()[cellI][fI];
+
+            // skip boundary faces
+            if (!mesh_.isInternalFace(faceI))
+            {
+                continue;
+            }
             
             // get owner and neighbor
             label owner(mesh_.owner()[faceI]);
