@@ -117,7 +117,8 @@ void lineIntInfo::setIntpInfo
                 // latest interpolation point
                 intPoint cIntPoint = intPointsToSolve[proci][iInfo];
                 point cPoint = cIntPoint.iPoint_;
-                scalar intDist = ibMesh_.getCellSize(cIntPoint.iCell_);
+                scalar intDist = ibMesh_.getCellSize(cIntPoint.iCell_, ibNormalsToSolve[proci][iInfo]);
+                intDist /= 2.0;
 
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
