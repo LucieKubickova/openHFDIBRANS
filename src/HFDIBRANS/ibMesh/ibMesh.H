@@ -120,7 +120,6 @@ private:
 		bool sdBasedLambda_;
 
 		//- STL things
-		//word stlPath_;
 		autoPtr<triSurfaceMesh> bodySurfMesh_;
 		autoPtr<triSurface> triSurf_;
 		autoPtr<triSurfaceSearch> triSurfSearch_;
@@ -189,7 +188,8 @@ public:
 
 		//- Post processing of distance
 		scalar getCellSize(label cellI);
-		// correct distance function
+
+		//- Correct distance function
 		void correctY(volScalarField& y, bool recreate);
 };
 

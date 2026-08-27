@@ -65,69 +65,62 @@ ibMesh::ibMesh
     readL_ = HFDIBDEMDict_.lookupOrDefault<bool>("readSize", false);
 	// LK: experimental
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0);
-    cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>
-	(
-		"cutCellType",
-		"cutCell"
-	);
-	thrSurf_ = HFDIBDEMDict_.lookupOrDefault<scalar>("surfaceThreshold", 1.0);
-	intSpan_ = HFDIBDEMDict_.lookupOrDefault<scalar>("interfaceSpan", 1.0);
-	sdBasedLambda_
-		= HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
+    cutCellType_ =
+		HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
+	thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+	intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
+	sdBasedLambda_ =
+		HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
 
-	bool genLambda
-		= HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
+	bool genLambda =
+		HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
-	if (stlName_.empty())
+	if (!stlName_.empty())
 	{
-		return;
-	}
-
-    //stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
-
-	// read stl
-	bodySurfMesh_.reset
-	(
-		new triSurfaceMesh
+		// read stl
+		bodySurfMesh_.reset
 		(
-			IOobject
+			new triSurfaceMesh
 			(
-				stlName_ + ".stl",
-				mesh_.time().constant(),
-				"triSurface",
-				mesh_,
-				IOobject::MUST_READ,
-				IOobject::NO_WRITE
+				IOobject
+				(
+					stlName_ + ".stl",
+					mesh_.time().constant(),
+					"triSurface",
+					mesh_,
+					IOobject::MUST_READ,
+					IOobject::NO_WRITE
+				)
 			)
-		)
-	);
-
-	// tri surface search
-	triSurf_.reset(new triSurface(bodySurfMesh_()));
-	triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
-
-	// Call to generate lambda
-	if (max(body_).value() < SMALL && genLambda)
-	{
-		Info << "No initial lambda field found. Generating based on body: "
-			 << stlName_ << nl << endl;
-
-		stlModel model
-		(
-			mesh_,
-			thrSurf_,
-			intSpan_,
-			sdBasedLambda_,
-			bodySurfMesh_,
-			triSurfSearch_
 		);
-		model.generateLambda(body_);
 
-		Info << "Lambda field successfully generated" << nl << endl;
-	}
-	else
-	{
-		Info << "Initial lambda field provided" << nl << endl;
+		// tri surface search
+		triSurf_.reset(new triSurface(bodySurfMesh_()));
+		triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
+
+		// Call to generate lambda
+		if (max(body_).value() < SMALL && genLambda)
+		{
+			Info << "No initial lambda field found. Generating based on body: "
+				 << stlName_ << endl;
+
+			stlModel model
+			(
+				mesh_,
+				thrSurf_,
+				intSpan_,
+				sdBasedLambda_,
+				bodySurfMesh_,
+				triSurfSearch_
+			);
+			model.generateLambda(body_);
+
+			Info << "Lambda field successfully generated" << nl << endl;
+		}
+		else
+		{
+			Info << "Initial lambda field provided" << nl << endl;
+		}
 	}
 }
 
