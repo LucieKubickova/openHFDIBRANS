@@ -113,8 +113,8 @@ private:
 
 		//- Options
 		word stlName_;
-		bool readL_;
 		scalar valueL_;
+		word cellSizeType_;
 		word cutCellType_;
 		scalar thrSurf_;
 		scalar intSpan_;
@@ -193,7 +193,7 @@ public:
 		);
 
 		//- Post processing of distance
-		scalar getCellSize(label cellI);
+		scalar getCellSize(label cellI, vector surfNorm);
 
 		//- Correct distance function
 		void correctY(volScalarField& y, bool recreate);

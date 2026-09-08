@@ -1199,7 +1199,7 @@ void ibInterpolation::calculateBoundaryDist
         // if outer cell is intersected
         if (body_[outCellI] >= thrSurf_)
         {
-            l = ibMesh_.getCellSize(outCellI);
+            l = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
 
             if (sdBasedLambda_)
             {
@@ -1230,7 +1230,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = ibMesh_.getCellSize(outCellI);
+                scalar intDist = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
                 
@@ -1251,6 +1251,9 @@ void ibInterpolation::calculateBoundaryDist
 
             // compute distances
             yOrtho = -1*sigma; // standard approach
+
+            // get corrected cell size
+            l = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
             yEff = 0.5*(yOrtho + l*0.5);
         }
 
@@ -1259,7 +1262,7 @@ void ibInterpolation::calculateBoundaryDist
         {
             if (body_[inCellI] < 1.0 - thrSurf_ and sdBasedLambda_)
             {
-                l = ibMesh_.getCellSize(inCellI);
+                l = ibMesh_.getCellSize(inCellI, surfNorm_[inCellI]);
                 surfPoint = mesh_.C()[inCellI];
                 sigma = -1*Foam::atanh(1-2*body_[inCellI])*l/intSpan_; // y > 0 for lambda > 0.5
                 surfPoint += surfNorm_[inCellI]*sigma;
@@ -1283,7 +1286,7 @@ void ibInterpolation::calculateBoundaryDist
                 sigma = mag(surfPoint - mesh_.C()[inCellI]);
                 surfNorm_[inCellI] = surfNorm/mag(surfNorm);
                 yOrtho = surfNorm_[inCellI] & (mesh_.C()[outCellI] - surfPoint); // standard approach
-                l = ibMesh_.getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI, surfNorm_[inCellI]);
                 yEff = 0.5*(yOrtho + l*0.5);
 
                 // Note (LK): save to boundary cell, has to be done somewhere centraly
@@ -1323,7 +1326,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = ibMesh_.getCellSize(outCellI);
+                scalar intDist = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1342,7 +1345,7 @@ void ibInterpolation::calculateBoundaryDist
                 boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
                 boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
-                l = ibMesh_.getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
                 yEff = 0.5*(yOrtho + l*0.5);
             }
         }
@@ -1351,7 +1354,6 @@ void ibInterpolation::calculateBoundaryDist
         {
             if (sdBasedLambda_)
             {
-                l = ibMesh_.getCellSize(outCellI); // Note (LK): should be the size of the inner cell, needs fixing
                 forAll(mesh_.boundaryMesh(), patchI)
                 {
                     const polyPatch& cPatch = mesh_.boundaryMesh()[patchI];
@@ -1379,6 +1381,7 @@ void ibInterpolation::calculateBoundaryDist
                             {
                                 // calc data
                                 surfPoint = cellCenterN[iFace];
+                                l = ibMesh_.getCellSize(outCellI, surfNormN[iFace]);
                                 sigma = -1*Foam::atanh(1-2*bodyN[iFace])*l/intSpan_; // y > 1 for lambda > 0.5
                                 surfPoint += surfNormN[iFace]*sigma;
                                 yOrtho = surfNormN[iFace] & (mesh_.C()[outCellI] - surfPoint); // standard approach
@@ -1419,7 +1422,7 @@ void ibInterpolation::calculateBoundaryDist
 
             else
             {
-                scalar intDist = ibMesh_.getCellSize(outCellI);
+                scalar intDist = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]); // zero vector for unknown surface normal
                 vector surfPoint = vector::zero;
                 vector surfNorm = vector::zero;
 
@@ -1438,7 +1441,7 @@ void ibInterpolation::calculateBoundaryDist
                 boundaryCells_[Pstream::myProcNo()][bCell].sNorm_ = surfNorm_[outCellI];
                 boundaryCells_[Pstream::myProcNo()][bCell].sPoint_ = surfPoint;
 
-                l = ibMesh_.getCellSize(outCellI);
+                l = ibMesh_.getCellSize(outCellI, surfNorm_[outCellI]);
                 yEff = 0.5*(yOrtho + l*0.5);
             }
         }
@@ -1594,7 +1597,7 @@ void ibInterpolation::calculateSurfaceDist
         label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
 
         // get cell dimension
-        scalar l = ibMesh_.getCellSize(cellI);
+        scalar l = ibMesh_.getCellSize(cellI, surfNorm_[cellI]);
 
         // calculate signed distance
         if (sdBasedLambda_)
@@ -1604,13 +1607,12 @@ void ibInterpolation::calculateSurfaceDist
 
         else
         {
-            scalar intDist = ibMesh_.getCellSize(cellI);
             vector surfPoint = vector::zero;
             vector surfNorm = vector::zero;
 
             ibMesh_.getClosestPointAndNormal(
                 mesh_.C()[cellI],
-                intDist*2*vector::one,
+                l*2*vector::one,
                 surfPoint,
                 surfNorm
             );
