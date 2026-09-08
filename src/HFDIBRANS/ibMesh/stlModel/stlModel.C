@@ -30,19 +30,15 @@ Contributors
 
 \*---------------------------------------------------------------------------*/
 
-#include "HashSet.H"
-#include "HashTable.H"
-#include "Pstream.H"
-#include "error.H"
-#include "pointIndexHit.H"
-#include "vector.H"
-
 #include "stlModel.H"
+
+#include "volFields.H"
+#include "pointFields.H"
+#include "processorPolyPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
+using namespace Foam;
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -82,48 +78,7 @@ stlModel::stlModel
 stlModel::~stlModel()
 {}
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-DynamicList<label> stlModel::findPotentSurfCells
-(
-	volScalarField& lambda,
-	HashTable<bool, label, Hash<label>>& cellInside
-)
-{
-	// Expand cell inside by one cell outward from inside cell
-	// to catch edge/vertex neighbours
-	const labelList foundCells = cellInside.toc();
-	forAll(foundCells, i)
-	{
-		label cellI = foundCells[i];
-
-		if (!cellInside[cellI])
-		{
-			const labelList& neighbours = mesh_.cellCells()[cellI];
-
-			forAll(neighbours, neighI)
-			{
-				label neighbour = neighbours[neighI];
-				// If neighbour not in inside, set to false
-				if (!cellInside.found(neighbour))
-				{
-					cellInside.set(neighbour, false);
-				}
-			}
-		}
-	}
-
-	// Build potentSurfCells and classify fully internal cells
-	DynamicLabelList potentSurfCells(cellInside.size());
-	forAll(cellInside.toc(), i)
-	{
-		potentSurfCells.append(cellInside.toc()[i]);
-	}
-
-	return potentSurfCells;
-}
-
-//---------------------------------------------------------------------------//
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 void stlModel::classifyCell
 (
@@ -236,56 +191,6 @@ bool stlModel::isPointInBody
 
 //---------------------------------------------------------------------------//
 
-label stlModel::findCellInBody()
-{
-	labelHashSet visited;
-
-	const pointField& cellCenters = mesh_.C();
-
-	if (cellToStart_ >= mesh_.nCells())
-	{
-		cellToStart_ = 0;
-	}
-
-	autoPtr<DynamicLabelList> pending(new DynamicLabelList(1, cellToStart_));
-	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
-
-	label iterCount(0); const label iterMax(mesh_.nCells());
-
-	while (pending().size() > 0 and iterCount < iterMax)
-	{
-		nextPending().clear();
-		forAll(pending(), cellToCheck)
-		{
-			if (!visited.found(pending()[cellToCheck]))
-			{
-				visited.insert(pending()[cellToCheck]);
-				iterCount++;
-
-				if (isPointInBody(cellCenters[pending()[cellToCheck]]))
-				{
-					return pending()[cellToCheck];
-				}
-				else
-				{
-					nextPending().append
-					(
-						mesh_.cellCells()[pending()[cellToCheck]]
-					);
-				}
-			}
-		}
-
-		autoPtr<DynamicLabelList> helperPtr(pending.ptr());
-		pending.reset(nextPending.ptr());
-		nextPending = std::move(helperPtr);
-	}
-
-	return -1;
-}
-
-//---------------------------------------------------------------------------//
-
 void stlModel::findProcBoundaryCells
 (
 	label cellI,
@@ -301,7 +206,7 @@ void stlModel::findProcBoundaryCells
 			label facePatchI = mesh_.boundaryMesh().whichPatch(faceI);
 			const polyPatch& patch = mesh_.boundaryMesh()[facePatchI];
 
-			if (patch.type() ==	"processor")
+			if (isA<processorPolyPatch>(patch))
 			{
 				const processorPolyPatch& procPatch
 					= refCast<const processorPolyPatch>(patch);
@@ -317,192 +222,10 @@ void stlModel::findProcBoundaryCells
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void stlModel::generateLambda
-(
-	volScalarField& lambda
-)
+boundBox stlModel::bounds() const
 {
-	internalCells_[Pstream::myProcNo()].clear();
-
-	//- Check if body lies in mesh
-	Info << "Checking if body intersects mesh" << endl;
-	label pendingSize = 1;
-	if (!isBodyInMesh())
-	{
-		pendingSize = 0;
-	}
-
-	// Octree traversal through mesh to find seed cell
-	cellToStart_ = findCellInBody();
-
-	if (cellToStart_ == -1)
-	{
-		pendingSize = 0;
-	}
-
-	// Octree traversal through mesh to determine lambda
-	const pointField& cellCenters = mesh_.C();
-	Field<label> visited(mesh_.nCells(), 0);
-	autoPtr<DynamicLabelList> pending
-	(
-		new DynamicLabelList(pendingSize, cellToStart_)
-	);
-	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
-	autoPtr<List<DynamicLabelList>> neighboursToSend
-	(
-		new List<DynamicLabelList>(Pstream::nProcs())
-	);
-
-	// Find the total number of empty patches
-	nEmptyDirs_ = 0;
-	forAll(mesh_.boundaryMesh(), patchI)
-	{
-		const polyPatch& patch = mesh_.boundaryMesh()[patchI];
-		if (patch.type() == "empty")
-		{
-			nEmptyDirs_++;
-		}
-	}
-
-	HashTable<bool, label, Hash<label>> cellInside(128);
-
-	label iterCount = 0; const label iterMax = mesh_.nCells();
-	reduce(pendingSize, maxOp<label>());
-	while (pendingSize > 0 && iterCount++ < iterMax)
-	{
-		// Clear queue for next iteration
-		nextPending().clear();
-
-		// Loop throuh neighbours queued from last iteration
-		forAll(pending(), cellToCheck)
-		{
-			const label cellI = pending()[cellToCheck];
-
-			if (!cellInside.found(cellI))
-			{
-				iterCount++;
-
-				if (isPointInBody(cellCenters[cellI]))
-				{
-					cellInside.set(cellI, true);
-
-					const labelList& neighbours = mesh_.cellCells(cellI);
-					nextPending().append(neighbours);
-
-					label nProcFaces = mesh_.cells()[cellI].size();
-					nProcFaces -= mesh_.cellCells()[cellI].size();
-					nProcFaces -= nEmptyDirs_;
-					if (nProcFaces == 0)
-					{
-						continue;
-					}
-
-					findProcBoundaryCells(cellI, neighboursToSend());
-				}
-				else
-				{
-					cellInside.set(cellI, false);
-				}
-			}
-		}
-
-		// Send face indices to neighbours
-		PstreamBuffers pBufsIFaces(Pstream::commsTypes::nonBlocking);
-		for (label proci = 0; proci < Pstream::nProcs(); proci++)
-		{
-			if (proci != Pstream::myProcNo())
-			{
-				UOPstream sendIFaces(proci, pBufsIFaces);
-				sendIFaces << neighboursToSend()[proci];
-				neighboursToSend()[proci].clear();
-			}
-		}
-		pBufsIFaces.finishedSends();
-
-		// Recieve face indices and add to check
-		for (label proci = 0; proci < Pstream::nProcs(); proci++)
-		{
-			if (proci != Pstream::myProcNo())
-			{
-				UIPstream recvIFaces(proci, pBufsIFaces);
-				DynamicLabelList recvIFacesList(recvIFaces);
-
-				// Find cells for faces
-				forAll(recvIFacesList, rFace)
-				{
-					label faceI = recvIFacesList[rFace];
-
-					// Find the cell
-					forAll(mesh_.boundaryMesh(), patchI)
-					{
-						if
-						(
-							isA<processorPolyPatch>
-							(
-								mesh_.boundaryMesh()[patchI]
-							)
-						)
-						{
-							const processorPolyPatch& procPatch =
-								refCast<const processorPolyPatch>
-								(
-									mesh_.boundaryMesh()[patchI]
-								);
-
-							// Get neighbouring processor id
-							label iProc =
-								(Pstream::myProcNo() == procPatch.myProcNo())
-									? procPatch.neighbProcNo()
-									: procPatch.myProcNo();
-
-							if (iProc == proci)
-							{
-								label rCellI = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
-								nextPending().append(rCellI);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Clear processor stream buffer
-		pBufsIFaces.clear();
-
-		// Clear pending queue and setup next wave
-		autoPtr<DynamicLabelList> helperPtr(pending.ptr());
-		pending.reset(nextPending.ptr());
-		nextPending = std::move(helperPtr);
-
-		// Check if all processors finished
-		pendingSize = pending().size();
-		reduce(pendingSize, maxOp<label>());
-	}
-
-	// Find potent surface cells
-	DynamicLabelList potentSurfCells = findPotentSurfCells(lambda, cellInside);
-
-	// Classify all cells found by octree
-	Info << "Calculating lambda values" << endl;
-	const vector sdSpan(4.0*(mesh_.bounds().max() - mesh_.bounds().min()));
-	forAll(potentSurfCells, i)
-	{
-		label cellI = potentSurfCells[i];
-		bool centerInside = cellInside[cellI];
-
-		classifyCell(lambda, sdSpan, cellI, centerInside);
-	}
-
-	// Update octree start cell for next call
-	if (internalCells_[Pstream::myProcNo()].size() > 0)
-	{
-		cellToStart_ = min(internalCells_[Pstream::myProcNo()]);
-	}
+	return boundBox(triSurfMesh_().points());
 }
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
 
 // ************************************************************************* //

@@ -32,17 +32,10 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-#include "IOdictionary.H"
-#include "IOobject.H"
-#include "dimensionedScalarFwd.H"
-#include "error.H"
-#include "fvCFD.H"
-#include "triSurface.H"
-#include "triSurfaceMesh.H"
-#include "triSurfaceSearch.H"
-#include "volFieldsFwd.H"
+#include "convexBody.H"
+#include "nonConvexBody.H"
 
-#include "stlModel.H"
+#include "fvCFD.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -101,6 +94,8 @@ int main(int argc, char *argv[])
 		HFDIBDEMDict.lookupOrDefault<scalar>("interfaceSpan", 1.0);
 	bool sdBasedLambda =
 		HFDIBDEMDict.lookupOrDefault<bool>("sdBasedLambda", false);
+	word geomModel =
+		HFDIBDEMDict.lookupOrDefault<word>("geomModel", "convex");
 
 	// Load the STL
 	Info << "Reading the " << stlName << " file" << nl << endl;
@@ -125,16 +120,37 @@ int main(int argc, char *argv[])
 	Info << "Generating lambda based on " << stlName << nl << endl;
 
 	// Initialize STL model and generate lambda
-	stlModel model
-	(
-		mesh,
-		thrSurf,
-		intSpan,
-		sdBasedLambda,
-		surfMesh,
-		triSurfSearch
-	);
-	model.generateLambda(lambda);
+	if (geomModel == "convex")
+	{
+		convexBody model
+		(
+			mesh,
+			thrSurf,
+			intSpan,
+			sdBasedLambda,
+			surfMesh,
+			triSurfSearch
+		);
+		model.generateLambda(lambda);
+	}
+	else if (geomModel == "nonConvex")
+	{
+		nonConvexBody model
+		(
+			mesh,
+			thrSurf,
+			intSpan,
+			sdBasedLambda,
+			surfMesh,
+			triSurfSearch
+		);
+		model.generateLambda(lambda);
+	}
+	else
+	{
+		Info<< "geomModel " << geomModel << " not implemented" << endl;
+	}
+
 
 	Info << nl << "Writing lambda" << nl << endl;
 

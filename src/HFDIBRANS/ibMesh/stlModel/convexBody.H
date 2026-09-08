@@ -24,13 +24,13 @@ License
     <http://www.gnu.org/licenses/lgpl.html>.
 
 Class
-	Foam::stlModel
+	Foam::convexBody
 
 Description
 	Class for the generation of a lambda field based on an STL file.
 
 SourceFiles
-	stlModel.C
+	convexBody.C
 
 Contributors
     Federico Municchi (2016),
@@ -39,11 +39,10 @@ Contributors
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef stlModel_H
-#define stlModel_H
+#ifndef convexBody_H
+#define convexBody_H
 
-#include "fvMesh.H"
-#include "triSurfaceMesh.H"
+#include "stlModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -51,74 +50,28 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class stlModel Declaration
+                         Class convexBody Declaration
 \*---------------------------------------------------------------------------*/
 
-class stlModel
+class convexBody
+:
+	public stlModel
 {
 
 private:
 
 	typedef DynamicList<label> DynamicLabelList;
 
+	// Private Member Functions
 
-protected:
+		//- Find a cell inside body
+		label findCellInBody();
 
-	// Protected Data
-
-		//- Mesh
-		const fvMesh& mesh_;
-
-		//- Options
-		const scalar thrSurf_;
-		const scalar intSpan_;
-		const bool sdBasedLambda_;
-
-		//- STL surface mesh
-		const autoPtr<triSurfaceMesh>& triSurfMesh_;
-		const autoPtr<triSurfaceSearch>& triSurfSearch_;
-
-		//- Active geometric directions
-		const Vector<label> geometricD_;
-
-		//- Mesh bounding box
-		const boundBox meshBounds_;
-
-		//- BFS starting cell
-		label cellToStart_;
-
-		//- List of all cell-certex positions
-		List<labelList> cellPoints_;
-
-		//- List of per processor internal cells
-		List<DynamicLabelList> internalCells_;
-
-		//- Number of empty directions
-		label nEmptyDirs_;
-
-
-	// Protected Member Functions
-
-		//- Calculate lambda value for candidate cell
-		void classifyCell
+		//- Find potent surface cells
+		DynamicLabelList findPotentSurfCells
 		(
 			volScalarField& lambda,
-			vector sdSpan,
-			label cellI,
-			bool centerInside
-		);
-
-		//- Check if STL body lies inside mesh
-		bool isBodyInMesh();
-
-		//- Check if point lies inside STL body
-		bool isPointInBody(point pointI);
-
-		//- Find processor boundary cells
-		void findProcBoundaryCells
-		(
-			label cellI,
-			List<DynamicLabelList>& neighborsToSend
+			HashTable<bool, label, Hash<label>>& cellInside
 		);
 
 
@@ -126,7 +79,7 @@ public:
 
 	// Constructors
 
-		stlModel
+		convexBody
 		(
 			const fvMesh& mesh,
 			scalar thrSurf,
@@ -138,16 +91,13 @@ public:
 
 
 	//- Destructor
-	virtual ~stlModel();
+	~convexBody();
 
 
 	// Member Functions
 
 		//- Generate the lambda field based on an STL
-		virtual void generateLambda(volScalarField& lambda) = 0;
-
-		//- Return bounding box of the STL
-		boundBox bounds() const;
+		void generateLambda(volScalarField& lambda) override;
 };
 
 

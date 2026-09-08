@@ -44,6 +44,11 @@ Contributors
 #ifndef ibMesh_H
 #define ibMesh_H
 
+#include "ibCutCell.H"
+#include "intPoint.H"
+#include "convexBody.H"
+#include "nonConvexBody.H"
+
 #include "DynamicList.H"
 #include "polyMesh.H"
 #include "fvCFD.H"
@@ -79,10 +84,6 @@ Contributors
 
 #include "triSurfaceMesh.H"
 #include "triangleFuncs.H"
-
-#include "ibCutCell.H"
-#include "intPoint.H"
-#include "stlModel.H"
 
 #define ORDER 2
 
@@ -129,6 +130,11 @@ private:
 
 		//- Dictionaries
 		IOdictionary HFDIBDEMDict_;
+
+	// Private Member Functions
+
+		//- Initialize and correct lambda field
+		void initializeLambda(bool genLambda, word geomModel);
 
 
 public:

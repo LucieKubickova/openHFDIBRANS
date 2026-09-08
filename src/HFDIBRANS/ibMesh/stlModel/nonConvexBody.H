@@ -24,13 +24,13 @@ License
     <http://www.gnu.org/licenses/lgpl.html>.
 
 Class
-	Foam::stlModel
+	Foam::nonConvexBody
 
 Description
 	Class for the generation of a lambda field based on an STL file.
 
 SourceFiles
-	stlModel.C
+	nonConvexBody.C
 
 Contributors
     Federico Municchi (2016),
@@ -39,11 +39,10 @@ Contributors
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef stlModel_H
-#define stlModel_H
+#ifndef nonConvexBody_H
+#define nonConvexBody_H
 
-#include "fvMesh.H"
-#include "triSurfaceMesh.H"
+#include "stlModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -51,74 +50,40 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class stlModel Declaration
+						Class nonConvexBody Declaration
 \*---------------------------------------------------------------------------*/
 
-class stlModel
+class nonConvexBody
+:
+	public stlModel
 {
 
 private:
 
 	typedef DynamicList<label> DynamicLabelList;
 
+	// Private Data
 
-protected:
+		//- Bounding box
+		vector minBbox_;
+		vector maxBbox_;
 
-	// Protected Data
+	// Private Member Functions
 
-		//- Mesh
-		const fvMesh& mesh_;
+		// //- Find potent surface cells
+		// DynamicLabelList findPotentSurfCells
+		// (
+		// 	volScalarField& lambda,
+		// 	HashTable<bool, label, Hash<label>>& cellInside
+		// );
 
-		//- Options
-		const scalar thrSurf_;
-		const scalar intSpan_;
-		const bool sdBasedLambda_;
-
-		//- STL surface mesh
-		const autoPtr<triSurfaceMesh>& triSurfMesh_;
-		const autoPtr<triSurfaceSearch>& triSurfSearch_;
-
-		//- Active geometric directions
-		const Vector<label> geometricD_;
-
-		//- Mesh bounding box
-		const boundBox meshBounds_;
-
-		//- BFS starting cell
-		label cellToStart_;
-
-		//- List of all cell-certex positions
-		List<labelList> cellPoints_;
-
-		//- List of per processor internal cells
-		List<DynamicLabelList> internalCells_;
-
-		//- Number of empty directions
-		label nEmptyDirs_;
-
-
-	// Protected Member Functions
-
-		//- Calculate lambda value for candidate cell
-		void classifyCell
+		//- Find cells inside boundary box
+		labelList findBboxCells
 		(
-			volScalarField& lambda,
-			vector sdSpan,
-			label cellI,
-			bool centerInside
-		);
-
-		//- Check if STL body lies inside mesh
-		bool isBodyInMesh();
-
-		//- Check if point lies inside STL body
-		bool isPointInBody(point pointI);
-
-		//- Find processor boundary cells
-		void findProcBoundaryCells
-		(
-			label cellI,
-			List<DynamicLabelList>& neighborsToSend
+			label cellToCheck,
+			bool& isInsideBB,
+			List<DynamicLabelList>& bBoxCells,
+			Field<label>& visited
 		);
 
 
@@ -126,7 +91,7 @@ public:
 
 	// Constructors
 
-		stlModel
+		nonConvexBody
 		(
 			const fvMesh& mesh,
 			scalar thrSurf,
@@ -138,16 +103,13 @@ public:
 
 
 	//- Destructor
-	virtual ~stlModel();
+	~nonConvexBody();
 
 
 	// Member Functions
 
 		//- Generate the lambda field based on an STL
-		virtual void generateLambda(volScalarField& lambda) = 0;
-
-		//- Return bounding box of the STL
-		boundBox bounds() const;
+		void generateLambda(volScalarField& lambda) override;
 };
 
 

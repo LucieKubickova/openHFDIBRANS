@@ -34,8 +34,7 @@ Contributors
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-namespace Foam
-{
+using namespace Foam;
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -72,6 +71,8 @@ ibMesh::ibMesh
 	sdBasedLambda_ =
 		HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
 
+	word geomModel =
+		HFDIBDEMDict_.lookupOrDefault<word>("geomModel", "convex");
 	bool genLambda =
 		HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
@@ -99,12 +100,32 @@ ibMesh::ibMesh
 		triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
 
 		// Call to generate lambda
-		if (max(body_).value() < SMALL && genLambda)
-		{
-			Info << "No initial lambda field found. Generating based on body: "
-				 << stlName_ << endl;
+		initializeLambda(genLambda, geomModel);
+	}
+}
 
-			stlModel model
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+ibMesh::~ibMesh()
+{}
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void ibMesh::initializeLambda
+(
+	bool genLambda,
+	word geomModel
+)
+{
+	if (max(body_).value() < SMALL && genLambda)
+	{
+		Info<< "No initial lambda field found. Generating based on body: "
+			 << stlName_ << endl;
+		if (geomModel == "convex")
+		{
+			convexBody model
 			(
 				mesh_,
 				thrSurf_,
@@ -115,20 +136,55 @@ ibMesh::ibMesh
 			);
 			model.generateLambda(body_);
 
-			Info << "Lambda field successfully generated" << nl << endl;
+			Info<< "Lambda field successfully generated" << endl;
+		}
+		else if (geomModel == "nonConvex")
+		{
+			nonConvexBody model
+			(
+				mesh_,
+				thrSurf_,
+				intSpan_,
+				sdBasedLambda_,
+				bodySurfMesh_,
+				triSurfSearch_
+			);
+			model.generateLambda(body_);
+
+			Info<< "Lambda field successfully generated" << endl;
 		}
 		else
 		{
-			Info << "Initial lambda field provided" << nl << endl;
+			FatalError
+				<< "geomModel " << geomModel
+				<<" not implemented" << exit(FatalError);
+		}
+	}
+	else
+	{
+		Info << "Initial lambda field provided" << endl;
+	}
+
+	// Update lambda values at the boundary
+	Info<< "Correcting lambda boundary" << nl << endl;
+	forAll(mesh_.boundaryMesh(), patchI)
+	{
+		const polyPatch& patch = mesh_.boundaryMesh()[patchI];
+
+		if
+		(
+			!isA<emptyPolyPatch>(patch)
+		 && !isA<processorPolyPatch>(patch)
+		)
+		{
+			forAll(patch, faceI)
+			{
+				label owner = mesh_.faceOwner()[patch.start() + faceI];
+				body_.boundaryFieldRef()[patchI][faceI] = body_[owner];
+			}
 		}
 	}
 }
-
-
-// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
-
-ibMesh::~ibMesh()
-{}
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -145,7 +201,6 @@ bool ibMesh::pointInCell
         label fI = cellFaces[faceI];
         vector outNorm = mesh_.faceAreas()[fI];
         outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-
         if (((pToCheck - mesh_.faceCentres()[fI]) & outNorm) > 0)
         {
             return false;
@@ -813,9 +868,5 @@ void ibMesh::correctY
     }
 }
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-} // End namespace Foam
 
 // ************************************************************************* //
