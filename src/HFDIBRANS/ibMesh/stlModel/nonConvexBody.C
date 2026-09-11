@@ -87,7 +87,7 @@ labelList nonConvexBody::findBboxCells
 	{
 		visited[cellToCheck] = 1;
 		vector cellCenter = mesh_.C()[cellToCheck];
-		label partCheck(0);
+		label partCheck = 0;
 
 		forAll(minBbox_, vecI)
 		{
@@ -145,7 +145,7 @@ void nonConvexBody::generateLambda
 	}
 
 	// Reduce computational domain to the body bounding box
-	scalar inflFact(2*sqrt(mesh_.magSf()[0]));
+	scalar inflFact = 2*sqrt(mesh_.magSf()[0]);
 	vector unitVec(1, 1, 1);
 	minBbox_ = bounds().min() - unitVec*inflFact;
 	maxBbox_ = bounds().max() + unitVec*inflFact;
@@ -174,8 +174,9 @@ void nonConvexBody::generateLambda
 		}
 	}
 
-	bool isInsideBB(false);
-	label iterCount = 0; const label iterMax = mesh_.nCells();
+	bool isInsideBB = false;
+	label iterCount = 0;
+	const label iterMax = mesh_.nCells();
 	reduce(pendingSize, maxOp<label>());
 	while (pendingSize > 0 && iterCount < iterMax)
 	{
@@ -288,12 +289,9 @@ void nonConvexBody::generateLambda
 		reduce(pendingSize, maxOp<label>());
 	}
 
-	// Find potent surface cells
-	//DynamicLabelList potentSurfCells = findPotentSurfCells(lambda, cellInside);
-
 	// Classify all cells found by octree
 	Info<< "Calculating lambda values" << endl;
-	const vector sdSpan(4.0*(mesh_.bounds().max() - mesh_.bounds().min()));
+	const vector sdSpan = 4.0*(mesh_.bounds().max() - mesh_.bounds().min());
 	forAll(bBoxCells[Pstream::myProcNo()], i)
 	{
 		label cellI = bBoxCells[Pstream::myProcNo()][i];
@@ -301,12 +299,6 @@ void nonConvexBody::generateLambda
 
 		classifyCell(lambda, sdSpan, cellI, centerInside);
 	}
-
-	// Update octree start cell for next call
-	// if (internalCells_[Pstream::myProcNo()].size() > 0)
-	// {
-	// 	cellToStart_ = min(internalCells_[Pstream::myProcNo()]);
-	// }
 }
 
 

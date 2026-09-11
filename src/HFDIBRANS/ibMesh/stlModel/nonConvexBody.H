@@ -27,7 +27,8 @@ Class
 	Foam::nonConvexBody
 
 Description
-	Class for the generation of a lambda field based on an STL file.
+	Class for the generation of a lambda field based on an STL file of a
+	non-convex body.
 
 SourceFiles
 	nonConvexBody.C
@@ -70,13 +71,6 @@ private:
 
 	// Private Member Functions
 
-		// //- Find potent surface cells
-		// DynamicLabelList findPotentSurfCells
-		// (
-		// 	volScalarField& lambda,
-		// 	HashTable<bool, label, Hash<label>>& cellInside
-		// );
-
 		//- Find cells inside boundary box
 		labelList findBboxCells
 		(
@@ -91,25 +85,26 @@ public:
 
 	// Constructors
 
+		//- Construct from components
 		nonConvexBody
 		(
 			const fvMesh& mesh,
 			scalar thrSurf,
 			scalar intSpan,
-			bool sdBasedLambda_,
+			bool sdBasedLambda,
 			autoPtr<triSurfaceMesh>& triSurfMesh,
 			autoPtr<triSurfaceSearch>& triSurfSearch
 		);
 
 
 	//- Destructor
-	~nonConvexBody();
+	virtual ~nonConvexBody();
 
 
 	// Member Functions
 
 		//- Generate the lambda field based on an STL
-		void generateLambda(volScalarField& lambda) override;
+		virtual void generateLambda(volScalarField& lambda) override;
 };
 
 

@@ -27,7 +27,8 @@ Class
 	Foam::convexBody
 
 Description
-	Class for the generation of a lambda field based on an STL file.
+	Class for the generation of a lambda field based on an STL file of a convex
+	body.
 
 SourceFiles
 	convexBody.C
@@ -79,25 +80,26 @@ public:
 
 	// Constructors
 
+		//- Construct from components
 		convexBody
 		(
 			const fvMesh& mesh,
 			scalar thrSurf,
 			scalar intSpan,
-			bool sdBasedLambda_,
+			bool sdBasedLambda,
 			autoPtr<triSurfaceMesh>& triSurfMesh,
 			autoPtr<triSurfaceSearch>& triSurfSearch
 		);
 
 
 	//- Destructor
-	~convexBody();
+	virtual ~convexBody();
 
 
 	// Member Functions
 
 		//- Generate the lambda field based on an STL
-		void generateLambda(volScalarField& lambda) override;
+		virtual void generateLambda(volScalarField& lambda) override;
 };
 
 

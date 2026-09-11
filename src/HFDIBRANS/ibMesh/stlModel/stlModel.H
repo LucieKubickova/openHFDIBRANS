@@ -27,7 +27,8 @@ Class
 	Foam::stlModel
 
 Description
-	Class for the generation of a lambda field based on an STL file.
+	Base abstract class used for the generation of a lambda field based on
+	an STL file.
 
 SourceFiles
 	stlModel.C
@@ -103,16 +104,16 @@ protected:
 		void classifyCell
 		(
 			volScalarField& lambda,
-			vector sdSpan,
+			const vector& sdSpan,
 			label cellI,
 			bool centerInside
 		);
 
 		//- Check if STL body lies inside mesh
-		bool isBodyInMesh();
+		bool isBodyInMesh() const;
 
 		//- Check if point lies inside STL body
-		bool isPointInBody(point pointI);
+		bool isPointInBody(const point& pointI) const;
 
 		//- Find processor boundary cells
 		void findProcBoundaryCells
@@ -126,12 +127,13 @@ public:
 
 	// Constructors
 
+		// - Construct from components
 		stlModel
 		(
 			const fvMesh& mesh,
 			scalar thrSurf,
 			scalar intSpan,
-			bool sdBasedLambda_,
+			bool sdBasedLambda,
 			autoPtr<triSurfaceMesh>& triSurfMesh,
 			autoPtr<triSurfaceSearch>& triSurfSearch
 		);

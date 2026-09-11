@@ -127,9 +127,10 @@ label convexBody::findCellInBody()
 	autoPtr<DynamicLabelList> pending(new DynamicLabelList(1, cellToStart_));
 	autoPtr<DynamicLabelList> nextPending(new DynamicLabelList);
 
-	label iterCount(0); const label iterMax(mesh_.nCells());
+	label iterCount = 0;
+	const label iterMax = mesh_.nCells();
 
-	while (pending().size() > 0 and iterCount < iterMax)
+	while (pending().size() > 0 && iterCount < iterMax)
 	{
 		nextPending().clear();
 		forAll(pending(), cellToCheck)
@@ -172,7 +173,7 @@ void convexBody::generateLambda
 	internalCells_[Pstream::myProcNo()].clear();
 
 	//- Check if body lies in mesh
-	Info << "Checking if body intersects mesh" << endl;
+	Info<< "Checking if body intersects mesh" << endl;
 	label pendingSize = 1;
 	if (!isBodyInMesh())
 	{
@@ -213,7 +214,8 @@ void convexBody::generateLambda
 
 	HashTable<bool, label, Hash<label>> cellInside(128);
 
-	label iterCount = 0; const label iterMax = mesh_.nCells();
+	label iterCount = 0;
+	const label iterMax = mesh_.nCells();
 	reduce(pendingSize, maxOp<label>());
 	while (pendingSize > 0 && iterCount++ < iterMax)
 	{
@@ -322,8 +324,8 @@ void convexBody::generateLambda
 	DynamicLabelList potentSurfCells = findPotentSurfCells(lambda, cellInside);
 
 	// Classify all cells found by octree
-	Info << "Calculating lambda values" << endl;
-	const vector sdSpan(4.0*(mesh_.bounds().max() - mesh_.bounds().min()));
+	Info<< "Calculating lambda values" << endl;
+	const vector sdSpan = 4.0*(mesh_.bounds().max() - mesh_.bounds().min());
 	forAll(potentSurfCells, i)
 	{
 		label cellI = potentSurfCells[i];

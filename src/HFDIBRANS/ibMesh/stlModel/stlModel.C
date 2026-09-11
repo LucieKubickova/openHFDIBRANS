@@ -83,7 +83,7 @@ stlModel::~stlModel()
 void stlModel::classifyCell
 (
 	volScalarField& lambda,
-	vector sdSpan,
+	const vector& sdSpan,
 	label cellI,
 	bool centerInside
 )
@@ -130,8 +130,8 @@ void stlModel::classifyCell
 			}
 			else
 			{
-				Info << "Missed the closest point from cell "
-					 << cellI << " to STL body"  << endl;
+				Info<< "Missed the closest point from cell "
+					<< cellI << " to STL body"  << endl;
 			}
 
 			const scalar cellSize = Foam::pow(mesh_.V()[cellI], 0.333);
@@ -154,9 +154,9 @@ void stlModel::classifyCell
 
 //---------------------------------------------------------------------------//
 
-bool stlModel::isBodyInMesh()
+bool stlModel::isBodyInMesh() const
 {
-	const boundBox ibBound(bounds());
+	const boundBox ibBound = bounds();
 
 	forAll(geometricD_, dir)
 	{
@@ -180,8 +180,8 @@ bool stlModel::isBodyInMesh()
 
 bool stlModel::isPointInBody
 (
-	point pointI
-)
+	const point& pointI
+) const
 {
 	pointField points(1, pointI);
 	boolList returnList = triSurfSearch_().calcInside(points);

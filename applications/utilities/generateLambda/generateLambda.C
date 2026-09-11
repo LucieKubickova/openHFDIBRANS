@@ -36,6 +36,7 @@ Description
 #include "nonConvexBody.H"
 
 #include "fvCFD.H"
+#include "triSurfaceMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
 		dimensionedScalar("zero", dimless, 0.0)
 	);
 
-	Info << "Reading HFDIBDEMDict\n" << endl;
+	Info<< "Reading HFDIBDEMDict\n" << endl;
 
 	// Load dictionary
 	IOdictionary HFDIBDEMDict
@@ -84,7 +85,8 @@ int main(int argc, char *argv[])
 
 	if (stlName.empty())
 	{
-		FatalError << "No STL file name provided in HFDIBDEMDict. Aborting..."
+		FatalError
+			<< "No STL file name provided in HFDIBDEMDict. Aborting..."
 			<< exit(FatalError);
 	}
 
@@ -98,7 +100,7 @@ int main(int argc, char *argv[])
 		HFDIBDEMDict.lookupOrDefault<word>("geomModel", "convex");
 
 	// Load the STL
-	Info << "Reading the " << stlName << " file" << nl << endl;
+	Info<< "Reading the " << stlName << " file" << nl << endl;
 	autoPtr<triSurfaceMesh> surfMesh
 	(
 		new triSurfaceMesh(
@@ -117,7 +119,7 @@ int main(int argc, char *argv[])
 	autoPtr<triSurface> triSurf(new triSurface(surfMesh()));
 	autoPtr<triSurfaceSearch> triSurfSearch(new triSurfaceSearch(triSurf()));
 
-	Info << "Generating lambda based on " << stlName << nl << endl;
+	Info<< "Generating lambda based on " << stlName << nl << endl;
 
 	// Initialize STL model and generate lambda
 	if (geomModel == "convex")
@@ -152,12 +154,12 @@ int main(int argc, char *argv[])
 	}
 
 
-	Info << nl << "Writing lambda" << nl << endl;
+	Info<< nl << "Writing lambda" << nl << endl;
 
 	// Write lambda field
 	lambda.write();
 
-	Info << "End" << nl << endl;
+	Info<< "End" << nl << endl;
 
     return 0;
 }
