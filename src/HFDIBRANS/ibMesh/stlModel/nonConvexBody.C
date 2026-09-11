@@ -34,10 +34,9 @@ Contributors
 
 #include "emptyPolyPatch.H"
 #include "processorPolyPatch.H"
-#include "scalarField.H"
-#include "surfaceFieldsFwd.H"
 #include "volFields.H"
 #include "pointField.H"
+#include "surfaceMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -145,11 +144,11 @@ void nonConvexBody::generateLambda
 		pendingSize = 0;
 	}
 
-	// Reduce computational domain to body bounding box
-    // note(VV): can't get magSf()[0] to work, this is a temporary substitute
-    scalar inflFact(2*sqrt(mesh_.V()[0]));
-	minBbox_ = bounds().min() - vector::one*inflFact;
-	maxBbox_ = bounds().max() + vector::one*inflFact;
+	// Reduce computational domain to the body bounding box
+	scalar inflFact(2*sqrt(mesh_.magSf()[0]));
+	vector unitVec(1, 1, 1);
+	minBbox_ = bounds().min() - unitVec*inflFact;
+	maxBbox_ = bounds().max() + unitVec*inflFact;
 
 	// Octree traversal through mesh to determine lambda
 	Field<label> visited(mesh_.nCells(), 0);
