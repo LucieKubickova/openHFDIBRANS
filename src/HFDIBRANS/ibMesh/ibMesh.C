@@ -123,7 +123,7 @@ bool ibMesh::isWallCell
     label& cellI
 )
 {
-    bool isWallCell(true);
+    bool isWallCell(false);
 
     // get wall patches
     DynamicList<label> wPatchIs;
@@ -164,7 +164,7 @@ bool ibMesh::isWallCell
             // exclude wall faces
             if (wallFace)
             {
-                isWallCell = false;
+                isWallCell = true;
             }
         }
     }
