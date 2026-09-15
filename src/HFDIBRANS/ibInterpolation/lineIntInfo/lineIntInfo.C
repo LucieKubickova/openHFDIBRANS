@@ -364,7 +364,8 @@ intPoint lineIntInfo::findIntPoint
         {
             //~ faceInDir = ibMesh_.getFaceInDir(retP, faceInDir);
             vector dir = retP.iPoint_ - mesh_.C()[retP.iCell_];
-            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir);
+            dir /= mag(dir);
+            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir, faceInDir);
             if (!mesh_.isInternalFace(faceInDir))
             {
                 label facePatchId(mesh_.boundaryMesh().whichPatch(faceInDir));

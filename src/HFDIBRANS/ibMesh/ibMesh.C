@@ -210,7 +210,8 @@ bool ibMesh::isOnPatch
 label ibMesh::getFaceInDir
 (               
     label& cellI,
-    vector& dir
+    vector& dir,
+    label& prevFaceInDir
 )
 {
     // prepare data
@@ -232,7 +233,7 @@ label ibMesh::getFaceInDir
         //~ outNorm /= mag(outNorm); // LK: this should be there, no?
 
         scalar auxDotProd(outNorm & dir);
-        if (auxDotProd > dotProd)
+        if (auxDotProd > dotProd and fI != prevFaceInDir)
         {       
             dotProd = auxDotProd;
             faceToReturn = fI;
