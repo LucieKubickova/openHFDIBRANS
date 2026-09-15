@@ -417,6 +417,13 @@ void ibDirichletBCs::updateUTauAtIB
                     uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
                 }
             }
+
+            else if (fProc == -1)
+            {
+                // get uTau from the boundary cell itself
+                uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[cellI]);
+            }
+
             else
             {
                 fCellsToSync[fProc].append(fCell);
