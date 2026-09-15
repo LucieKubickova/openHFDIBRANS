@@ -733,8 +733,11 @@ scalar ibMesh::getCellSize
         // get bounding box size
         vector boundSize = boundMax - boundMin;
 
+        // get surface normal but in absolute values
+        vector absSurfNorm = vector(mag(surfNorm.x()), mag(surfNorm.y()), mag(surfNorm.z()));
+
         // get cell size in direction of surface normal
-        cellSize = mag(boundSize & surfNorm);
+        cellSize = mag(boundSize & absSurfNorm);
     }
 
 
