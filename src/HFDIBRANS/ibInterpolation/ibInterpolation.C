@@ -710,7 +710,8 @@ void ibInterpolation::findNeighborInBody
         // get labels
         // Note (LK): surf norm should be from STL file if stated
         vector dir = -1*surfNorm_[cellI];
-        label faceI = ibMesh_.getFaceInDir(cellI, dir);
+        label prevFaceInDir = -1; // Note (LK): -1 means no previous face in dir was looked for
+        label faceI = ibMesh_.getFaceInDir(cellI, dir, prevFaceInDir);
         label nI(-1);
     
         // check for non-internal cells
