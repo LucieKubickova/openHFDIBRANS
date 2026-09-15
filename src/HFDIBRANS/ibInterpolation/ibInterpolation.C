@@ -1240,6 +1240,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
@@ -1336,6 +1344,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
@@ -1432,6 +1448,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
@@ -1616,6 +1640,14 @@ void ibInterpolation::calculateSurfaceDist
                 surfPoint,
                 surfNorm
             );
+            surfNorm /= mag(surfNorm);
+
+            // Note (LK): check for inward pointing surface normal
+            scalar dotProd = surfNorm & surfNorm_[cellI];
+            if (dotProd < 0.0)
+            {
+                surfNorm *= -1;
+            }
 
             sigma = mag(surfPoint - mesh_.C()[cellI]);
             if (body_[cellI] < 0.5)
