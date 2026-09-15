@@ -605,7 +605,8 @@ void ibInterpolation::findNeighborInBody
     {
         // get the best face, edge and vertex
         vector dir = -1*surfNorm_[cellI];
-        label faceI = ibMesh_.getFaceInDir(cellI, dir);
+        label prevFaceInDir = -1;
+        label faceI = ibMesh_.getFaceInDir(cellI, dir, prevFaceInDir);
         label edgeI = ibMesh_.getEdgeInDir(faceI, cellI, dir);
         //~ label vertI = ibMesh_.getVertInDir(edgeI, cellI, dir);
 
