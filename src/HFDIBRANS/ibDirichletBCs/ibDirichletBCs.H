@@ -33,6 +33,7 @@ Description
 
 SourceFiles
     ibDirichletBCs.C
+    ibDirichletBCsI.H
 
 Contributors
 	Federico Municchi (2016),
@@ -130,28 +131,16 @@ private:
 		void calcYPlusLam();
 
 		//- Get zero scalar
-		scalar ibZero(scalar dummy)
-		{
-			return 0.0;
-		}
+		inline scalar ibZero(scalar dummy);
 
 		//- Get zero vector
-		vector ibZero(vector dummy)
-		{
-			return vector::zero;
-		}
+		inline vector ibZero(vector dummy);
 
 		//- Get unit scalar
-		scalar ibOne(scalar dummy)
-		{
-			return 1.0;
-		}
+		inline scalar ibOne(scalar dummy);
 
 		//- Get unit vector
-		vector ibOne(vector dummy)
-		{
-			return vector::one;
-		}
+		inline vector ibOne(vector dummy);
 
 
 public:
@@ -237,52 +226,35 @@ public:
 		// Access
 
 			//- Get immersed yPlus field
-			volScalarField& getYPlusi()
-			{
-				return yPlusi_;
-			}
+			inline volScalarField& getYPlusi();
 
 			//- Get yPlusLam
-			scalar getYPlusLam()
-			{
-				return yPlusLam_;
-			}
+			inline scalar getYPlusLam();
 
 			//- Get E coefficient
-			scalar getE()
-			{
-				return E_;
-			}
+			inline scalar getE();
 
 			//- Get nut at immersed boundary
-			List<List<scalar>>& getNutAtIB()
-			{
-				return nutAtIB_;
-			}
+			inline List<List<scalar>>& getNutAtIB();
 
 			//- Get k at immersed boundary
-			List<List<scalar>>& getKAtIB()
-			{
-				return kAtIB_;
-			}
+			inline List<List<scalar>>& getKAtIB();
 
 			//- Get imposed nut field
-			volScalarField& getNuti()
-			{
-				return nuti_;
-			}
+			inline volScalarField& getNuti();
 
 			//- Get imposed friction velocity field
-			volScalarField& getUTaui()
-			{
-				return uTaui_;
-			}
+			inline volScalarField& getUTaui();
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "ibDirichletBCsI.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
