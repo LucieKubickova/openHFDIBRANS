@@ -6,118 +6,211 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
-
-InNamspace
-    Foam
-
-Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #include "ibMesh.H"
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 using namespace Foam;
 
-//---------------------------------------------------------------------------//
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
 ibMesh::ibMesh
 (
     const fvMesh& mesh,
-    const volScalarField& body
+    volScalarField& body
 )
 :
-mesh_(mesh),
-body_(body),
-HFDIBDEMDict_
-(
-    IOobject
-    (
-        "HFDIBDEMDict",
-        "constant",
-        mesh_,
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE
-    )
-),
-yCorrected_(false)
+	mesh_(mesh),
+	body_(body),
+	yCorrected_(false),
+	HFDIBDEMDict_
+	(
+		IOobject
+		(
+			"HFDIBDEMDict",
+			"constant",
+			mesh_,
+			IOobject::MUST_READ,
+			IOobject::NO_WRITE
+		)
+	)
 {
 	// read HFDIBDEM dictionary
     stlName_ = HFDIBDEMDict_.lookupOrDefault<word>("stlName", "");
-    cellSizeType_ = HFDIBDEMDict_.lookupOrDefault<word>("cellSizeType", "volumeRoot");
+    cellSizeType_ =
+		HFDIBDEMDict_.lookupOrDefault<word>("cellSizeType", "volumeRoot");
     valueL_ = HFDIBDEMDict_.lookupOrDefault<scalar>("sizeValue", 0.0);
-    sdBasedLambda_ = HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", true);
-    thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
-    cutCellType_ = HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
+    cutCellType_ =
+		HFDIBDEMDict_.lookupOrDefault<word>("cutCellType", "cutCell");
+	thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
+	intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
+	sdBasedLambda_ =
+		HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
 
-    if (!sdBasedLambda_)
-    {
-        stlPath_ = "constant/triSurface/" + stlName_ + ".stl";
+	word geomModel =
+		HFDIBDEMDict_.lookupOrDefault<word>("geomModel", "convex");
+	bool genLambda =
+		HFDIBDEMDict_.lookupOrDefault<bool>("generateLambda", false);
 
-        // read stl
-        bodySurfMesh_.reset(new triSurfaceMesh
-        (
-            IOobject
-            (
-                stlPath_,
-                mesh_,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE
-            )
-        ));
+	if (!stlName_.empty())
+	{
+		// read stl
+		bodySurfMesh_.reset
+		(
+			new triSurfaceMesh
+			(
+				IOobject
+				(
+					stlName_ + ".stl",
+					mesh_.time().constant(),
+					"triSurface",
+					mesh_,
+					IOobject::MUST_READ,
+					IOobject::NO_WRITE
+				)
+			)
+		);
 
-        // tri surface search
-        triSurf_.reset(new triSurface(bodySurfMesh_()));
-        triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
-    }
+		// tri surface search
+		triSurf_.reset(new triSurface(bodySurfMesh_()));
+		triSurfSearch_.reset(new triSurfaceSearch(triSurf_()));
+
+		// Call to generate lambda
+		initializeLambda(genLambda, geomModel);
+	}
 }
 
-//---------------------------------------------------------------------------//
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
 ibMesh::~ibMesh()
+{}
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void ibMesh::initializeLambda
+(
+	bool genLambda,
+	word geomModel
+)
 {
+	if (max(body_).value() < SMALL && genLambda)
+	{
+		Info<< "No initial lambda field found. Generating based on body: "
+			 << stlName_ << endl;
+		if (geomModel == "convex")
+		{
+			convexBody model
+			(
+				mesh_,
+				thrSurf_,
+				intSpan_,
+				sdBasedLambda_,
+				bodySurfMesh_,
+				triSurfSearch_
+			);
+			model.generateLambda(body_);
+
+			Info<< "Lambda field successfully generated" << endl;
+		}
+		else if (geomModel == "nonConvex")
+		{
+			nonConvexBody model
+			(
+				mesh_,
+				thrSurf_,
+				intSpan_,
+				sdBasedLambda_,
+				bodySurfMesh_,
+				triSurfSearch_
+			);
+			model.generateLambda(body_);
+
+			Info<< "Lambda field successfully generated" << endl;
+		}
+		else
+		{
+			FatalError
+				<< "geomModel " << geomModel
+				<<" not implemented" << exit(FatalError);
+		}
+	}
+	else
+	{
+		Info << "Initial lambda field provided" << endl;
+	}
+
+	// Update lambda values at the boundary
+	Info<< "Correcting lambda boundary" << nl << endl;
+	forAll(mesh_.boundaryMesh(), patchI)
+	{
+		const polyPatch& patch = mesh_.boundaryMesh()[patchI];
+
+		if
+		(
+			!isA<emptyPolyPatch>(patch)
+		 && !isA<processorPolyPatch>(patch)
+		)
+		{
+			forAll(patch, faceI)
+			{
+				label owner = mesh_.faceOwner()[patch.start() + faceI];
+				body_.boundaryFieldRef()[patchI][faceI] = body_[owner];
+			}
+		}
+	}
 }
 
-//---------------------------------------------------------------------------//
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
 bool ibMesh::pointInCell
-(           
+(
     point pToCheck,
     label cToCheck
 )
-{           
+{
     const labelList& cellFaces(mesh_.cells()[cToCheck]);
     forAll(cellFaces, faceI)
     {
         label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Sf()[fI];
+        vector outNorm = mesh_.faceAreas()[fI];
         outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-                
-        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
+        if (((pToCheck - mesh_.faceCentres()[fI]) & outNorm) > 0)
         {
             return false;
         }
-    }       
+    }
     return true;
 }
 
 //---------------------------------------------------------------------------//
+
 bool ibMesh::isWallCell
 (
     label& cellI
@@ -173,6 +266,7 @@ bool ibMesh::isWallCell
 }
 
 //---------------------------------------------------------------------------//
+
 bool ibMesh::isOnPatch
 (
     label& cellI,
@@ -207,8 +301,9 @@ bool ibMesh::isOnPatch
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getFaceInDir
-(               
+(
     label& cellI,
     vector& dir,
     label& prevFaceInDir
@@ -223,18 +318,19 @@ label ibMesh::getFaceInDir
 
     // loop over cell faces
     forAll(cellFaces, faceI)
-    {    
+    {
         label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
+        //vector outNorm = mesh_.Cf()[fI] - mesh_.C()[cellI];
+        vector outNorm = mesh_.faceCentres()[fI] - mesh_.cellCentres()[cellI];
         outNorm /= mag(outNorm);
-                    
+
         //~ vector outNorm = (mesh_.faceOwner()[fI] == cellI)
             //~ ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
         //~ outNorm /= mag(outNorm); // LK: this should be there, no?
 
         scalar auxDotProd(outNorm & dir);
         if (auxDotProd > dotProd and fI != prevFaceInDir)
-        {       
+        {
             dotProd = auxDotProd;
             faceToReturn = fI;
         }
@@ -244,6 +340,7 @@ label ibMesh::getFaceInDir
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getEdgeInDir
 (
     label& faceI,
@@ -286,6 +383,7 @@ label ibMesh::getEdgeInDir
 }
 
 //---------------------------------------------------------------------------//
+
 label ibMesh::getVertInDir
 (
     label& edgeI,
@@ -319,6 +417,7 @@ label ibMesh::getVertInDir
 }
 
 //---------------------------------------------------------------------------//
+
 vector ibMesh::getClosestPoint
 (
     vector ibPoint,
@@ -334,6 +433,7 @@ vector ibMesh::getClosestPoint
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::createCutCellAndSurface
 (
     label cellI,
@@ -348,7 +448,8 @@ scalar ibMesh::createCutCellAndSurface
         // Note (LK): original cut cell
         const cell& bCellSurf(mesh_.cells()[cellI]);
         ibCutCell cCellSurf(mesh_, normal, surfPoint, bCellSurf);
-        scalar yOrtho = cCellSurf.yOrtho(); // Note (LK): creates the cut cell itself, should be as constructor
+        scalar yOrtho = cCellSurf.yOrtho();
+		// Note (LK): creates the cut cell itself, should be as constructor
 
         // if the cell is uncut skip
         if (cCellSurf.faces().size() == 0)
@@ -358,7 +459,8 @@ scalar ibMesh::createCutCellAndSurface
         }
 
         // get area of cut face
-        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]); // Note (LK): should be always the last one
+        sArea = mag(cCellSurf.Sf()[cCellSurf.Sf().size()-1]);
+		// Note (LK): should be always the last one
     }
 
     // Note (LK): new cut cell, cutting edges by stl
@@ -494,19 +596,22 @@ scalar ibMesh::createCutCellAndSurface
 
         else
         {
-            Info << "Warning: cell cut with " << uniquePoints.size() << " points near " << mesh_.C()[cellI] << endl;
+            Info << "Warning: cell cut with " << uniquePoints.size()
+				 << " points near " << mesh_.C()[cellI] << endl;
         }
     }
 
     else
     {
-        FatalError << "Surface area calculation type " << cutCellType_ << " not implemented" << exit(FatalError);
+        FatalError << "Surface area calculation type " << cutCellType_
+				   << " not implemented" << exit(FatalError);
     }
 
     return sArea;
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::calculateTriangleArea
 (
     point p0,
@@ -518,6 +623,7 @@ scalar ibMesh::calculateTriangleArea
 }
 
 //---------------------------------------------------------------------------//
+
 void ibMesh::createCutCellAndCenter
 (
     label cellI,
@@ -653,6 +759,7 @@ void ibMesh::createCutCellAndCenter
 }
 
 //---------------------------------------------------------------------------//
+
 void ibMesh::getClosestPointAndNormal
 (
     const point& startPoint,
@@ -685,6 +792,7 @@ void ibMesh::getClosestPointAndNormal
 }
 
 //---------------------------------------------------------------------------//
+
 scalar ibMesh::getCellSize
 (
     label cellI,
@@ -746,6 +854,7 @@ scalar ibMesh::getCellSize
 }
 
 //---------------------------------------------------------------------------//
+
 void ibMesh::correctY
 (
     volScalarField& y,
@@ -785,7 +894,7 @@ void ibMesh::correctY
         point closestPoint(vector::zero);
         vector surfNorm(vector::zero);
 
-        // get closest point and normal 
+        // get closest point and normal
         getClosestPointAndNormal(
             mesh_.C()[cellI],
             sDSpan,
@@ -797,4 +906,6 @@ void ibMesh::correctY
         y[cellI] = mag(mesh_.C()[cellI] - closestPoint);
     }
 }
+
+
 // ************************************************************************* //

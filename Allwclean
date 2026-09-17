@@ -23,4 +23,7 @@ cd $cwd/applications/utilities/calculateWallShearStress
 cd $cwd/applications/utilities/calculateForceCoeffs
 ./Allwclean
 
+cd $cwd/applications/utilities/generateLambda
+./Allwclean
+
 cd $cwd
