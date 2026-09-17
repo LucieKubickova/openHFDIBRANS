@@ -67,7 +67,7 @@ protected:
 
 	// Protected Data
 
-		//- Mesh
+		//- fvMesh
 		const fvMesh& mesh_;
 
 		//- Options
@@ -77,6 +77,8 @@ protected:
 
 		//- STL surface mesh
 		const autoPtr<triSurfaceMesh>& triSurfMesh_;
+
+		//- STL surface mesh search
 		const autoPtr<triSurfaceSearch>& triSurfSearch_;
 
 		//- Active geometric directions
@@ -127,7 +129,7 @@ public:
 
 	// Constructors
 
-		// - Construct from components
+		//- Construct from components
 		stlModel
 		(
 			const fvMesh& mesh,
