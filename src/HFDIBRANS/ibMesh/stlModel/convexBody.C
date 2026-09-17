@@ -111,7 +111,7 @@ DynamicList<label> convexBody::findPotentSurfCells
 	return potentSurfCells;
 }
 
-//---------------------------------------------------------------------------//
+// ------------------------------------------------------------------------- //
 
 label convexBody::findCellInBody()
 {
