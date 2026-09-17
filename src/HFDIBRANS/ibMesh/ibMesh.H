@@ -93,7 +93,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class ibMesh Declaration
+							Class ibMesh Declaration
 \*---------------------------------------------------------------------------*/
 
 class ibMesh
@@ -141,6 +141,7 @@ public:
 
     // Constructors
 
+		//- Construct from components
 		ibMesh
 		(
 			const fvMesh& mesh,
@@ -155,22 +156,29 @@ public:
 		//- Check if point is in cell
 		bool pointInCell(point pToCheck, label cToCheck);
 
-		//- Patch checks
+		//- Check if cell is next to wall
 		bool isWallCell(label& cellI);
+
+		//- Check if cell is next to patch
 		bool isOnPatch(label& cellI, word& patchName);
 
-		//- Find best instance in direction
+		//- Find best face in direction
 		label getFaceInDir(label& cellI, vector& dir, label& prevFaceInDir);
+
+		//- Find best edge in direction
 		label getEdgeInDir(label& faceI, label& cellI, vector& dir);
+
+		//- Find best vertex in direction
 		label getVertInDir(label& edgeI, label& cellI, vector& dir);
 
+		//- Find closes point
 		vector getClosestPoint
 		(
 			vector ibPoint,
 			intPoint& cPoint
 		);
 
-		//- Work with STL files
+		//- Find closes point and surface normal
 		void getClosestPointAndNormal
 		(
 			const point& startPoint,
@@ -178,13 +186,16 @@ public:
 			point& closestPoint,
 			vector& normal
 		);
+
+		//- Create cut cell and surface
 		scalar createCutCellAndSurface
 		(
 			label cellI,
 			vector& normal,
 			point& surfPoint
 		);
-		scalar calculateTriangleArea(point p0, point p1, point p2);
+
+		//- Create cut cell and center
 		void createCutCellAndCenter
 		(
 			label cellI,
@@ -192,10 +203,13 @@ public:
 			point& surfPoint
 		);
 
-		//- Post processing of distance
+		//- Calculate area of a triangle
+		scalar calculateTriangleArea(point p0, point p1, point p2);
+
+		//- Get cell size in direction of a surface normal
 		scalar getCellSize(label cellI, vector surfNorm);
 
-		//- Correct distance function
+		//- Correct y distance function
 		void correctY(volScalarField& y, bool recreate);
 };
 
