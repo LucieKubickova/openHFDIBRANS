@@ -605,7 +605,8 @@ void ibInterpolation::findNeighborInBody
     {
         // get the best face, edge and vertex
         vector dir = -1*surfNorm_[cellI];
-        label faceI = ibMesh_.getFaceInDir(cellI, dir);
+        label prevFaceInDir = -1;
+        label faceI = ibMesh_.getFaceInDir(cellI, dir, prevFaceInDir);
         label edgeI = ibMesh_.getEdgeInDir(faceI, cellI, dir);
         //~ label vertI = ibMesh_.getVertInDir(edgeI, cellI, dir);
 
@@ -709,7 +710,8 @@ void ibInterpolation::findNeighborInBody
         // get labels
         // Note (LK): surf norm should be from STL file if stated
         vector dir = -1*surfNorm_[cellI];
-        label faceI = ibMesh_.getFaceInDir(cellI, dir);
+        label prevFaceInDir = -1; // Note (LK): -1 means no previous face in dir was looked for
+        label faceI = ibMesh_.getFaceInDir(cellI, dir, prevFaceInDir);
         label nI(-1);
     
         // check for non-internal cells
@@ -1240,6 +1242,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = -1*mag(surfPoint - mesh_.C()[outCellI]);
                 surfNorm_[outCellI] = surfNorm/mag(surfNorm);
@@ -1336,6 +1346,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
@@ -1432,6 +1450,14 @@ void ibInterpolation::calculateBoundaryDist
                     surfPoint,
                     surfNorm 
                 );
+                surfNorm /= mag(surfNorm);
+
+                // Note (LK): check for inward pointing surface normal
+                scalar dotProd = surfNorm & surfNorm_[outCellI];
+                if (dotProd < 0.0)
+                {
+                    surfNorm *= -1;
+                }
 
                 sigma = mag(surfPoint - mesh_.C()[inCellI]); // LK: not really true
                 yOrtho = mag(surfPoint - mesh_.C()[outCellI]);
@@ -1616,6 +1642,14 @@ void ibInterpolation::calculateSurfaceDist
                 surfPoint,
                 surfNorm
             );
+            surfNorm /= mag(surfNorm);
+
+            // Note (LK): check for inward pointing surface normal
+            scalar dotProd = surfNorm & surfNorm_[cellI];
+            if (dotProd < 0.0)
+            {
+                surfNorm *= -1;
+            }
 
             sigma = mag(surfPoint - mesh_.C()[cellI]);
             if (body_[cellI] < 0.5)

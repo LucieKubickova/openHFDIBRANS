@@ -358,11 +358,14 @@ intPoint lineIntInfo::findIntPoint
     if(fromP.iProc_ == Pstream::myProcNo())
     {
         label faceInDir = -1;
+        label kMax(100);
+        label kI(0);
         while(!ibMesh_.pointInCell(retP.iPoint_, retP.iCell_))
         {
             //~ faceInDir = ibMesh_.getFaceInDir(retP, faceInDir);
             vector dir = retP.iPoint_ - mesh_.C()[retP.iCell_];
-            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir);
+            dir /= mag(dir);
+            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir, faceInDir);
             if (!mesh_.isInternalFace(faceInDir))
             {
                 label facePatchId(mesh_.boundaryMesh().whichPatch(faceInDir));
@@ -390,6 +393,15 @@ intPoint lineIntInfo::findIntPoint
             label owner(mesh_.owner()[faceInDir]);
             label neighbour(mesh_.neighbour()[faceInDir]);
             retP.iCell_ = (retP.iCell_ == neighbour) ? owner : neighbour;
+
+            // safety net exit
+            kI++;
+            if (kI > kMax)
+            {
+                Info << "Missing cell to interpolation point " << retP.iPoint_ << " starting from " << fromP.iPoint_ << endl;
+                retP.iProc_ = -1;
+                return retP;
+            }
         }
 
         return retP;

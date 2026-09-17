@@ -160,7 +160,7 @@ public:
 		bool isOnPatch(label& cellI, word& patchName);
 
 		//- Find best instance in direction
-		label getFaceInDir(label& cellI, vector& dir);
+		label getFaceInDir(label& cellI, vector& dir, label& prevFaceInDir);
 		label getEdgeInDir(label& faceI, label& cellI, vector& dir);
 		label getVertInDir(label& edgeI, label& cellI, vector& dir);
 

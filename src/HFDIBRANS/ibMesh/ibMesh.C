@@ -216,7 +216,7 @@ bool ibMesh::isWallCell
     label& cellI
 )
 {
-    bool isWallCell(true);
+    bool isWallCell(false);
 
     // get wall patches
     DynamicList<label> wPatchIs;
@@ -257,7 +257,7 @@ bool ibMesh::isWallCell
             // exclude wall faces
             if (wallFace)
             {
-                isWallCell = false;
+                isWallCell = true;
             }
         }
     }
@@ -305,7 +305,8 @@ bool ibMesh::isOnPatch
 label ibMesh::getFaceInDir
 (
     label& cellI,
-    vector& dir
+    vector& dir,
+    label& prevFaceInDir
 )
 {
     // prepare data
@@ -328,7 +329,7 @@ label ibMesh::getFaceInDir
         //~ outNorm /= mag(outNorm); // LK: this should be there, no?
 
         scalar auxDotProd(outNorm & dir);
-        if (auxDotProd > dotProd)
+        if (auxDotProd > dotProd and fI != prevFaceInDir)
         {
             dotProd = auxDotProd;
             faceToReturn = fI;
@@ -841,8 +842,11 @@ scalar ibMesh::getCellSize
         // get bounding box size
         vector boundSize = boundMax - boundMin;
 
+        // get surface normal but in absolute values
+        vector absSurfNorm = vector(mag(surfNorm.x()), mag(surfNorm.y()), mag(surfNorm.z()));
+
         // get cell size in direction of surface normal
-        cellSize = mag(boundSize & surfNorm);
+        cellSize = mag(boundSize & absSurfNorm);
     }
 
 
