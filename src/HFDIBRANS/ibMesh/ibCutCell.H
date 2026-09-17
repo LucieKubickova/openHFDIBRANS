@@ -6,29 +6,36 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+    Foam::ibCutCell
 
 Description
-    cutCell class to be used for hfdibRANS turbulence models
+    cutCell class to be used for HFDIBRANS turbulence models
+
+SourceFiles
+    ibCutCell.C
 
 Contributors
-    Martin Isoz (2019-*), Lucie Kubíčková (2021-*)
+	Federico Municchi (2016),
+	Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef ibCutCell_H
@@ -37,89 +44,158 @@ Contributors
 #include "fvMesh.H"
 #include "List.H"
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 namespace Foam
 {
-//---------------------------------------------------------------------------//
+
+/*---------------------------------------------------------------------------*\
+						Class ibCutCell Declaration
+\*---------------------------------------------------------------------------*/
+
 class ibCutCell
 {
-    private:
 
-    // Private data types ------------------------------------------
-    const fvMesh& mesh_;
-    
-    const vector& surfNorm_;
-    const point& surfPoint_;
-    const cell& inCell_;
-    
-    
-    //~ DynamicList<point> v_;
-    DynamicList<DynamicList<point>> v_;
-    
-    
-    //~ faceList faces_;
-    //~ DynamicList<List<label>> faces_;                                           //face class is too complicated
-    DynamicList<DynamicList<point>> faces_;                                           //face class is too complicated
-    List<vector> faceCentres_;
-    List<vector> faceAreas_;
-    
-    vector C_;                                                          //cutCell centre
-    scalar V_;                                                          //cutCell volume
-    vector CIn_;                                                        //input cell centre
-    scalar VIn_;                                                        //input cell volume
-        
-    label type_;                                                        //-1 .. in, 1 .. out, 0 .. cut
-    label nCutFaces_;
+private:
 
-    // private member functions
-    void makeFaces(const List<point>& vertices);
-    
-    void makeCellCentreAndVol();
-    void makeFaceCentresAndAreas();
-    
-    void syncNormals();
-    
-    protected:
+    // Private Data
 
-    public:
+		//- fvMesh
+		const fvMesh& mesh_;
 
-    // Constructors ----------------------------------------------------
-    ibCutCell(
-        const fvMesh& mesh,                                             //reference to fvMesh
-        const vector& surfNorm,                                         //normal to the cutting plane
-        const point& surfPoint,                                         //point on the cutting plane
-        const cell& inCell                                              //input cell
-    );
+		//- Surface normal
+		const vector& surfNorm_;
+		const point& surfPoint_;
+		const cell& inCell_;
 
-    // Destructors -----------------------------------------------------
+		DynamicList<DynamicList<point>> v_;
+
+		DynamicList<DynamicList<point>> faces_;
+		List<vector> faceCentres_;
+		List<vector> faceAreas_;
+
+		//- Cut cell center
+		vector C_;
+
+		//- Cut cell volume
+		scalar V_;
+
+		//- Input cell center
+		vector CIn_;
+
+		//- Input cell volume
+		scalar VIn_;
+
+		//- Cut cell type
+		// -1 ... in
+		//  0 ... cut
+		//  1 ... out
+		label type_;
+
+		//- Number of cut faces
+		label nCutFaces_;
+
+		// Private Member Functions
+
+			//- Make faces
+			void makeFaces(const List<point>& vertices);
+
+			//- Make cell center and volume
+			void makeCellCentreAndVol();
+
+			//- Make face centers and areas
+			void makeFaceCentresAndAreas();
+
+			//- Synchronize normals
+			void syncNormals();
+
+
+public:
+
+    // Constructors
+
+		//- Construct from components
+		ibCutCell
+		(
+			const fvMesh& mesh,
+			const vector& surfNorm,
+			const point& surfPoint,
+			const cell& inCell
+		);
+
+    //- Destructor
     ~ibCutCell();
 
-    // Public methods --------------------------------------------------
-    
-    // getters
-    vector C(){return C_;};                                             //return cutCell centre
-    scalar V(){return V_;};                                             //return cutCell volume
-    vector S(){return surfPoint_;};                                     //return surfPoint
-    
-    vector CIn(){return CIn_;};                                         //return input cell centre
-    scalar VIn(){return VIn_;};                                         //return input cell volume
-    
-    List<vector> Sf(){return faceAreas_;};
-    List<vector> n();
-    vector Ss(){return surfNorm_;};                                     //return cutting surface normal
-    
-    DynamicList<DynamicList<point>> faces(){return faces_;};            //return cutCell faces
-    
-    label status(){return type_;};
-    
-    scalar yOrtho();                                                    //returns orthogonal distance from C() to the wall
-    
-    scalar yOrthoEst();                                                 //returns 1/2 of distance from S() to the oposite face
-    
-    //~ faceList faces();
+    // Member Functions
+
+		// Access
+
+			//- Get cut cell center
+			vector C()
+			{
+				return C_;
+			};
+
+			//- Get cut cell volume
+			scalar V()
+			{
+				return V_;
+			};
+
+			//- Get cut cell surface point
+			vector S()
+			{
+				return surfPoint_;
+			};
+
+			//- Get input cell center
+			vector CIn()
+			{
+				return CIn_;
+			};
+
+			//- Get input cell volume
+			scalar VIn()
+			{
+				return VIn_;
+			};
+
+			//- Get cut cell face areas
+			List<vector> Sf()
+			{
+				return faceAreas_;
+			};
+
+			//- Get cutting surface normal
+			vector Ss()
+			{
+				return surfNorm_;
+			};
+
+			//- Get cut cell faces
+			DynamicList<DynamicList<point>> faces()
+			{
+				return faces_;
+			};
+
+			//- Get cut cell type
+			label status()
+			{
+				return type_;
+			};
+
+		//- Get orthogonal distance from cut cell center to the wall
+		scalar yOrtho();
+
+		//- Get 1/2 of the distance from surface point to the opposite face
+		scalar yOrthoEst();
 };
 
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 } // End namespace Foam
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
