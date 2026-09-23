@@ -5,19 +5,25 @@
 # Clear old IC
 rm -rf 0
 
-# create base mesh
-cp -rf constant/polyMesh_bcp constant/polyMesh
-
 # copy IC
 mkdir -p 0
 cp -rf 0.org/* 0
+
+# create base mesh
+runApplication blockMesh
+runApplication decomposePar -copyZero
+runParallel snappyHexMesh -parallel -overwrite
+
+# reconstruct mesh and clear
+runApplication reconstructParMesh -constant
+rm -rf log.decomposePar processor*
 
 # create files for postprocessing
 paraFoam -touch
 paraFoam -builtin -touch
 
-# decompose
-runApplication decomposePar
+# decompose fields
+runApplication decomposePar -force
 
 # get the solver application
 application=`getApplication`
