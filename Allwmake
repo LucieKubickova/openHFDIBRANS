@@ -23,4 +23,10 @@ cd $cwd/applications/utilities/calculateWallShearStress
 cd $cwd/applications/utilities/calculateForceCoeffs
 ./Allwmake
 
+cd $cwd/applications/utilities/createLambdaBoundary
+./Allwmake
+
+cd $cwd/applications/utilities/correctLambdaBoundary
+./Allwmake
+
 cd $cwd
