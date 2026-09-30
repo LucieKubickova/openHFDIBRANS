@@ -1,0 +1,35 @@
+#!/bin/bash
+# set openFoam environment
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# create base mesh
+runApplication blockMesh
+runApplication decomposePar -copyZero
+runParallel snappyHexMesh -parallel -overwrite
+
+# reconstruct mesh and clear
+runApplication reconstructParMesh -constant
+rm -rf log.decomposePar processor*
+
+# create files for postprocessing
+paraFoam -touch
+paraFoam -builtin -touch
+
+# decompose fields
+runApplication decomposePar -force
+
+# get the solver application
+application=`getApplication`
+
+# run the application
+runParallel $application
+
+# reconstruct
+runApplication reconstructPar -newTimes
