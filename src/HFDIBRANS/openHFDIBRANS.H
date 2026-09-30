@@ -102,9 +102,9 @@ class openHFDIBRANS
     // Public methods --------------------------------------------------
 
     // compute imposed fields
-    void computeUi(volVectorField& U, volVectorField& Ui, word surfType);
-    void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
-    void computeTi(volScalarField& T, volScalarField& Ti, word surfType, scalar TIn);
+    void computeUi(volVectorField& U, volVectorField& Ui, word surfType, scalar boundaryVal);
+    void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu, scalar boundaryVal);
+    void computeTi(volScalarField& T, volScalarField& Ti, word surfType, scalar TIn, scalar boundaryVal);
 
     // update friction velocity
     void updateUTau(volScalarField& k);
@@ -116,7 +116,7 @@ class openHFDIBRANS
 
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
-    void updateSurface(volScalarField& surface, word surfType);
+    void updateSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
     void calculateSurfaceArea();
 

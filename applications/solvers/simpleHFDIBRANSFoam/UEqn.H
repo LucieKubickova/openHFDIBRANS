@@ -17,11 +17,11 @@ UEqn.relax();
 fvOptions.constrain(UEqn);
 
 // HFDIBRANS: set up imposed velocity
-HFDIBRANS.computeUi(U, Ui, surfaceType);
+HFDIBRANS.computeUi(U, Ui, surfaceType, boundaryVal);
 Ui.correctBoundaryConditions();
 
 // HFDIBRANS: set up surfaces
-HFDIBRANS.updateSurface(surface, surfaceType);
+HFDIBRANS.updateSurface(surface, surfaceType, boundaryVal);
 surface.correctBoundaryConditions();
 HFDIBRANS.correctSurfaceByNormal(normSurface, surface, normCorrLimit);
 normSurface.correctBoundaryConditions();

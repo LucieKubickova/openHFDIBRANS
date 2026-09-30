@@ -135,7 +135,8 @@ void openHFDIBRANS::computeUi
 (
     volVectorField& U,
     volVectorField& Ui,
-    word surfType // Note (LK): add UIn
+    word surfType,
+    scalar boundaryValue // Note (LK): add UIn
 )
 {
     // reset imposed field
@@ -205,6 +206,11 @@ void openHFDIBRANS::computeUi
         ibInterpolation_->switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->outerInnerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
@@ -226,7 +232,8 @@ void openHFDIBRANS::computeKi
 (
     volScalarField& k,
     volScalarField& ki,
-    volScalarField& nu
+    volScalarField& nu,
+    scalar boundaryValue
 )
 {
     // prepare lists
@@ -279,6 +286,11 @@ void openHFDIBRANS::computeKi
         ibInterpolation_->switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->outerInnerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
@@ -309,7 +321,8 @@ void openHFDIBRANS::computeTi
     volScalarField& T,
     volScalarField& Ti,
     word surfType,
-    scalar TIn
+    scalar TIn,
+    scalar boundaryValue
 )
 {
     // reset imposed field
@@ -387,6 +400,11 @@ void openHFDIBRANS::computeTi
     else if (interpType == "switched")
     {
         ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
+    }
+
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, boundaryValue);
     }
 
     else if (interpType == "outerInner")
@@ -692,7 +710,7 @@ void openHFDIBRANS::createBaseSurface
 (
     volScalarField& surface,
     word surfType,
-    scalar boundaryVal
+    scalar boundaryValue
 )
 {
     if (surfType == "readOnly")
@@ -700,19 +718,19 @@ void openHFDIBRANS::createBaseSurface
         return;
     }
 
-    else if (surfType == "setValue" or surfType == "switched")
+    else if (surfType == "setValue" or surfType == "switched" or surfType == "switchedValue")
     {
-        ibInterpolation_->setUpSurface(surface, boundaryVal);
+        ibInterpolation_->setUpSurface(surface, boundaryValue);
     }
 
     else if (surfType == "lambdaBased")
     {
-        ibInterpolation_->setLambdaBasedSurface(surface, boundaryVal);
+        ibInterpolation_->setLambdaBasedSurface(surface, boundaryValue);
     }
 
     else if (surfType == "onlyInnerValue")
     {
-        ibInterpolation_->setOnlyInnerSurface(surface, boundaryVal);
+        ibInterpolation_->setOnlyInnerSurface(surface, boundaryValue);
     }
 
     else
@@ -725,12 +743,18 @@ void openHFDIBRANS::createBaseSurface
 void openHFDIBRANS::updateSurface
 (
     volScalarField& surface,
-    word surfType
+    word surfType,
+    scalar boundaryValue
 )
 {
     if (surfType == "switched")
     {
         ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), ibDirichletBCs_->getYPlusLam());
+    }
+
+    else if (surfType == "switchedValue")
+    {
+        ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), boundaryValue);
     }
 }
 

@@ -596,12 +596,12 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
 
     // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
     kSurface_.correctBoundaryConditions();
 
     // HFDIBRANS: create surface for omega
     HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
-    HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_);
+    HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
     omegaGSurface_.correctBoundaryConditions();
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
@@ -689,7 +689,7 @@ void HFDIBKOmegaSST<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRA
     bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
-    HFDIBRANS.computeKi(k_, ki_, nu_);
+    HFDIBRANS.computeKi(k_, ki_, nu_, kBoundaryValue_);
     ki_.correctBoundaryConditions();
 
     // Turbulent kinetic energy equation

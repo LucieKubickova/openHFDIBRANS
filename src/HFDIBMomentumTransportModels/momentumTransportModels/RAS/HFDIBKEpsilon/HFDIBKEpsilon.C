@@ -350,12 +350,12 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
 
     // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
     kSurface_.correctBoundaryConditions();
 
     // HFDIBRANS: create surface for epsilon
     HFDIBRANS.createBaseSurface(epsilonGSurface_, epsilonGSurfaceType_, epsilonGBoundaryValue_);
-    HFDIBRANS.updateSurface(epsilonGSurface_, epsilonGSurfaceType_);
+    HFDIBRANS.updateSurface(epsilonGSurface_, epsilonGSurfaceType_, epsilonGBoundaryValue_);
     epsilonGSurface_.correctBoundaryConditions();
 
     eddyViscosity<HFDIBRASModel<BasicMomentumTransportModel>>::correct();
@@ -409,7 +409,7 @@ void HFDIBKEpsilon<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRAN
     bound(epsilon_, this->epsilonMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
-    HFDIBRANS.computeKi(k_, ki_, nu_);
+    HFDIBRANS.computeKi(k_, ki_, nu_, kBoundaryValue_);
     ki_.correctBoundaryConditions();
 
     // Turbulent kinetic energy equation
