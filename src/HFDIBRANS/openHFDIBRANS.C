@@ -6,10 +6,10 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+	openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -21,8 +21,8 @@ openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
     You should have received a copy of the GNU Lesser General Public License
     along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+	Foam::openHFDIBRANS
 
 Description
     implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
@@ -32,7 +32,9 @@ Description
 Contributors
     Federico Municchi (2016),
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+
 \*---------------------------------------------------------------------------*/
+
 #include "openHFDIBRANS.H"
 
 using namespace Foam;
@@ -41,7 +43,7 @@ using namespace Foam;
 openHFDIBRANS::openHFDIBRANS
 (
     const fvMesh& mesh,
-    const volScalarField& body
+    volScalarField& body
 ) :
 mesh_(mesh),
 body_(body),
@@ -89,7 +91,7 @@ fvSchemes_
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     assignNut_ = HFDIBDEMDict_.lookupOrDefault<bool>("assignNut", false);
 
-    // read fvSchemes
+	// read fvSchemes
     HFDIBOuterSchemes_ = fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
 
     // identify boundary cells
@@ -157,7 +159,7 @@ void openHFDIBRANS::computeUi
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
     scalar yPlusLam = ibDirichletBCs_->getYPlusLam();
-        
+
     // calculate log scales for interpolation
     List<scalar> logScales;
     logScales.setSize(UIB.size());
@@ -341,7 +343,7 @@ void openHFDIBRANS::computeTi
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
     scalar yPlusLam = ibDirichletBCs_->getYPlusLam();
-        
+
     // calculate log scales for interpolation
     List<scalar> logScales;
     logScales.setSize(TIB.size());

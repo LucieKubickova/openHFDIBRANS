@@ -6,23 +6,25 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Application
+	simpleHFDIBRANSFoam
 
 Description
     implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
@@ -31,7 +33,9 @@ Description
 
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
@@ -67,15 +71,21 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    Info << "\nStarting time loop\n" << endl;
-
     // read simple dict
     dictionary HFDIBSIMPLEDict = simple.dict().subDict("HFDIB").subDict("U");
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-    bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>("useNormSurface", false);
-    scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>("normalCorrectionLimit", 0.5);
+    bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>
+	(
+		"useNormSurface",
+		false
+	);
+    scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>
+	(
+		"normalCorrectionLimit",
+		0.5
+	);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
@@ -87,7 +97,9 @@ int main(int argc, char *argv[])
     Ui *= 0.0;
     Ui.correctBoundaryConditions();
 
-    while (simple.loop(runTime))
+    Info << "\nStarting time loop\n" << endl;
+
+	while (simple.loop(runTime))
     {
         Info << "Time = " << runTime.timeName() << nl << endl;
 

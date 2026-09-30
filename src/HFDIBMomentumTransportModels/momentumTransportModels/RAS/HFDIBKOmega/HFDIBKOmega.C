@@ -6,32 +6,28 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
+    (LGPL).
 
-    Everyone is permitted to copy and distribute verbatim copies of this license
-    document, but changing it is not allowed.
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
 
-    This version of the GNU Lesser General Public License incorporates the terms
-    and conditions of version 3 of the GNU General Public License, supplemented
-    by the additional permissions listed below.
+    This version of the GNU Lesser General Public License incorporates the
+    terms and conditions of version 3 of the GNU General Public License,
+    supplemented by the additional permissions listed below.
 
     You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
-
-InNamspace
-    Foam
-
-Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
+    along with openHFDIBRANS. If not, see
+    <http://www.gnu.org/licenses/lgpl.html>.
 
 Contributors
     Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*),
+	Vít Večerník (2026-*)
+
 \*---------------------------------------------------------------------------*/
 
 #include "fvOptions.H"
@@ -72,7 +68,8 @@ tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::kSource() const
 
 
 template<class BasicMomentumTransportModel>
-tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::omegaSource() const
+tmp<fvScalarMatrix> HFDIBKOmega<BasicMomentumTransportModel>::omegaSource
+() const
 {
     return tmp<fvScalarMatrix>
     (
@@ -89,13 +86,14 @@ void HFDIBKOmega<BasicMomentumTransportModel>::matrixManipulate
 (
     fvScalarMatrix& eqn,
     volScalarField& phi,
-    volScalarField& surface
+    volScalarField& surface,
+	volScalarField& lambda
 )
 {
     DynamicList<label> cells;
     DynamicList<scalar> phis;
 
-    forAll(lambda_, cellI)
+    forAll(lambda, cellI)
     {
         if (surface[cellI] == 1.0)
         {
@@ -204,18 +202,6 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
         ),
         this->mesh_
     ),
-    lambda_
-    (
-        IOobject
-        (
-            "lambda",
-            this->runTime_.timeName(),
-            this->mesh_,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        ),
-        this->mesh_
-    ),
     kSurface_
     (
         IOobject
@@ -285,7 +271,8 @@ HFDIBKOmega<BasicMomentumTransportModel>::HFDIBKOmega
     HFDIBRASDict.lookup("kSurfaceType") >> kSurfaceType_;
     HFDIBRASDict.lookup("disGSurfaceType") >> omegaGSurfaceType_;
     kBoundaryValue_ = readScalar(HFDIBRASDict.lookup("kBoundaryValue"));
-    omegaGBoundaryValue_ = readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
+    omegaGBoundaryValue_ =
+		readScalar(HFDIBRASDict.lookup("disGBoundaryValue"));
     useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
 
     // bound
@@ -322,7 +309,10 @@ bool HFDIBKOmega<BasicMomentumTransportModel>::read()
 
 
 template<class BasicMomentumTransportModel>
-void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
+void HFDIBKOmega<BasicMomentumTransportModel>::correct
+(
+	openHFDIBRANS& HFDIBRANS
+)
 {
     if (!this->turbulence_)
     {
@@ -343,7 +333,12 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     kSurface_.correctBoundaryConditions();
 
     // HFDIBRANS: create surface for omega
-    HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
+    HFDIBRANS.createBaseSurface
+	(
+		omegaGSurface_,
+		omegaGSurfaceType_,
+		omegaGBoundaryValue_
+	);
     HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_);
     omegaGSurface_.correctBoundaryConditions();
 
@@ -391,7 +386,13 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
+    matrixManipulate
+	(
+		omegaEqn.ref(),
+		omega_,
+		omegaGSurface_,
+		HFDIBRANS.getLambda()
+	);
 
     solve(omegaEqn);
     fvOptions.correct(omega_);
@@ -430,7 +431,7 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     // HFDIBRANS: matrix manipulate
     if (!useKQ_)
     {
-        matrixManipulate(kEqn, ki_, kSurface_);
+        matrixManipulate(kEqn, ki_, kSurface_, HFDIBRANS.getLambda());
     }
 
     // solve
@@ -439,7 +440,8 @@ void HFDIBKOmega<BasicMomentumTransportModel>::correct(openHFDIBRANS& HFDIBRANS)
     // HFDIBRANS: correction
     if (useKQ_)
     {
-        Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
+        Info << "HFDIBRANS: Max error in k -> ki is "
+			 << (max(kSurface_*(ki_ - k_)).value()) << endl;
         k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
