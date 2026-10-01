@@ -7,8 +7,9 @@ The initial HFDIB implementation stems from the work of [Federico Municchi](http
 ## Requirements
 OpenHFDIB-RANS requires [OpenFOAM 8](https://openfoam.org/release/8/) installed on your machine. See the [installation guide](01-Installation) for further details regarding the setup of this library. See the [user guide](02-User-guide) and [tutorials](03-Tutorials) chapters for detailed description of library usage.
 
-## Cite the software as
-L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Immersed Boundary Method. In Proceedings of Topical Problems of Fluid Mechanics 2023, Prague, 2023, Edited by David Šimurda and Tomáš Bodnár, pp. 104–111., DOI: https://doi.org/10.14311/TPFM.2023.015
+## Cite the work as
+* L. Kubíčková and M. Isoz.: Extending the hybrid fictitious domain-immersed boundary method for reynolds-averaged turbulence modeling, 2026. URL: https://arxiv.org/abs/2606.06135. arXiv:2606.06135
+* L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Immersed Boundary Method. In Proceedings of Topical Problems of Fluid Mechanics 2023, Prague, 2023, Edited by David Šimurda and Tomáš Bodnár, pp. 104–111., DOI: https://doi.org/10.14311/TPFM.2023.015
 
 ## License
 OpenHFDIB-RANS is licensed under the GNU General Public License v3 or later. See http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
