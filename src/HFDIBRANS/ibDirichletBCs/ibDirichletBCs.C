@@ -66,6 +66,17 @@ turbulenceProperties_
         IOobject::NO_WRITE
     )
 ),
+transportProperties_
+(   
+    IOobject
+    (       
+        "transportProperties",
+        "constant",
+        mesh_,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+),
 HFDIBDEMDict_
 (
     IOobject
@@ -129,6 +140,7 @@ nuti_
 ),
 kappa_(0.41),
 E_(9.8),
+Prt_(0.85),
 Cmu_(0.09),
 Ceps2_(1.9),
 beta1_(0.075)
@@ -155,6 +167,7 @@ beta1_(0.075)
     if (simulationType_ != "laminar")
     {
         HFDIBBCsDict_.lookup("nut") >> nutWF_;
+        alphatWF_ = HFDIBBCsDict_.lookupOrDefault<word>("alphat", "undefined");
         HFDIBBCsDict_.lookup("k") >> kWF_;
         HFDIBBCsDict_.lookup("omega") >> omegaWF_;
         HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
@@ -183,6 +196,40 @@ void ibDirichletBCs::calcYPlusLam
     {
         yPlusLam_ = Foam::log(max(E_*yPlusLam_, 1))/kappa_;
     }
+}
+
+//---------------------------------------------------------------------------//
+scalar ibDirichletBCs::yPlusTherm
+(
+    const scalar P,
+    const scalar Prat
+) const
+{
+    scalar ypt = 11;
+    scalar tolerance = 0.01;
+    label maxIters = 10;
+
+    for (int iter = 0; iter < maxIters; ++iter)
+    {
+        const scalar f = ypt - (Foam::log(E_*ypt)/kappa_ + P)/Prat;
+        const scalar df = 1.0 - 1.0/(ypt*kappa_*Prat);
+        const scalar yptNew = ypt - f/df;
+
+        if (yptNew < VSMALL)
+        {
+            return 0;
+        }
+        else if (mag(yptNew - ypt) < tolerance)
+        {
+            return yptNew;
+        }
+        else
+        {
+            ypt = yptNew;
+        }
+     }
+
+    return ypt;
 }
 
 //---------------------------------------------------------------------------//
@@ -598,6 +645,78 @@ void ibDirichletBCs::nutAtIB
     else
     {
         FatalError << nutWF_ << " condition for nut not implemented at the IB" << exit(FatalError);
+    }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::correctAlphatAtIB
+(
+    List<scalar>& alphatIB,
+    const volScalarField& nu
+)   
+{
+    if (alphatWF_ == "alphatJayatillekeWallFunction")
+    {
+        // Molecular Prandtl number
+        const scalar Pr
+        (
+            dimensionedScalar("Pr", dimless, transportProperties_).value()
+        );
+
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // get distance to the surface
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+            }
+            else
+            {
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+            }
+
+            // get the friction velocity
+            scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
+
+            // compute yPlus
+            scalar yPlus = uTau*yOrtho/nu[cellI];
+    
+            // saves for later interpolation
+            yPlusi_[cellI] = yPlus;
+
+            // Molecular-to-turbulent Prandtl number ratio
+            const scalar Prat = Pr/Prt_;
+
+            // Thermal sublayer thickness
+            const scalar P = 9.24*(Foam::pow(Prat, 0.75) - 1.0)*(1.0 + 0.28*Foam::exp(-0.007*Prat)); // Psmooth function in source
+            const scalar yPlusTherm = this->yPlusTherm(P, Prat);
+
+            // Update turbulent thermal conductivity
+            if (yPlus > yPlusTherm)
+            {
+                const scalar kt =
+                    nu[cellI]*(yPlus/(Prt_*(Foam::log(E_*yPlus)/kappa_ + P)) - 1.0/Pr);
+
+                alphatIB[bCell] = max(scalar(0), kt);
+            }
+            else
+            {
+                alphatIB[bCell] = 0.0;
+            }
+        }
+    }
+
+    else if (simulationType_ == "laminar")
+    {
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            alphatIB[bCell] = 0.0;
+        }
     }
 }
 

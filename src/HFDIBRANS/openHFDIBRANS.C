@@ -475,6 +475,48 @@ void openHFDIBRANS::correctNut
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::correctAlphat
+(
+    volScalarField& alphat,
+    const volScalarField& nu,
+    volScalarField& surface
+)
+{
+    // prepare lists
+    List<scalar> alphatIB;
+    alphatIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
+
+    // calculate values at the immersed boundary
+    ibDirichletBCs_->correctAlphatAtIB(alphatIB, nu);
+
+    // assign the values for boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // assign
+        alphat[cellI] = alphatIB[bCell];
+    }
+
+    // NOTE: what to do inside?
+    //~ // calculate maximum omega
+    //~ scalar inOmega = max(omegaIB); // internal patch fields for walls should be included as well
+
+    // assign the values in in-solid cells
+    forAll(surface, cellI)
+    {
+        if (surface[cellI] == 1.0)
+        {
+            if (body_[cellI] >= 0.5)
+            {
+                alphat[cellI] = SMALL;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::correctOmegaG
 (
     volScalarField& omega,

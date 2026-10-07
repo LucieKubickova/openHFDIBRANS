@@ -115,6 +115,7 @@ class openHFDIBRANS
 
     // correct values
     void correctNut(volScalarField& nut, volScalarField& k, volScalarField& nu);
+    void correctAlphat(volScalarField& alphat, const volScalarField& nu, volScalarField& surface);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 
