@@ -33,6 +33,22 @@ UEqn -= f;
 if (simple.momentumPredictor())
 {
     solve(UEqn == -fvc::grad(p));
+
+    // Note (LK): following reconstruct needs fixing of ghf
+    // and check of snGrad and magSf at immersed boundary
+    //~ solve
+    //~ (
+    //~     UEqn
+    //~   ==
+    //~     fvc::reconstruct
+    //~     (
+    //~         (
+    //~           - ghf*fvc::snGrad(rho)
+    //~           - fvc::snGrad(p_rgh)
+    //~         )*mesh.magSf()
+    //~     )
+    //~ );
+
     fvOptions.correct(U);
 }
 
