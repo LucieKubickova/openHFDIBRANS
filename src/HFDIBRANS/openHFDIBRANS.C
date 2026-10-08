@@ -750,6 +750,24 @@ void openHFDIBRANS::correctEpsilonG
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::setScalarInSolid
+(
+    volScalarField& phi,
+    scalar value,
+    scalar threshold
+)
+{
+    // set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= threshold)
+        {
+            phi[cellI] = value;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::correctAlphaInSolid
 (
     volScalarField& alpha

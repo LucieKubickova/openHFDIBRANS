@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
     surfaceU.correctBoundaryConditions();
     HFDIBRANS.createBaseSurface(surfaceT, surfaceTypeT, boundaryValT);
     surfaceT.correctBoundaryConditions();
+    HFDIBRANS.setScalarInSolid(T, TIn);
 
     Ui *= 0.0;
     Ui.correctBoundaryConditions();

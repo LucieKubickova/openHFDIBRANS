@@ -124,6 +124,7 @@ class openHFDIBRANS
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 
     // set values inside solid
+    void setScalarInSolid(volScalarField& phi, scalar value, scalar threshold = 0.5);
     void correctAlphaInSolid(volScalarField& alpha);
 
     // create and return surface field
