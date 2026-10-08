@@ -160,7 +160,7 @@ class ibDirichletBCs
     void setSizeToLists();
 
     // velocity boundary condition
-    void UAtIB(List<vector>& UIB, volVectorField& U);
+    void UAtIB(List<vector>& UIB, volVectorField& U, vector& UIn);
 
     // scalar boundary condition
     void TAtIB(List<scalar>& TIB, scalar TIn);

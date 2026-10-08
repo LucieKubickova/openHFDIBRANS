@@ -159,7 +159,7 @@ beta1_(0.075)
     uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
     uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
 
-    // read boundary condition for velocity
+    // read boundary conditions
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
 
@@ -252,7 +252,8 @@ void ibDirichletBCs::setSizeToLists
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
-    volVectorField& U
+    volVectorField& U,
+    vector& UIn
 )
 {
     if (simulationType_ == "laminar" or UBC_ == "noSlip")
@@ -260,7 +261,8 @@ void ibDirichletBCs::UAtIB
         forAll(UIB, uCell)
         {
             // assign zero
-            UIB[uCell] = ibZero(UIB[uCell]);
+            //~ UIB[uCell] = ibZero(UIB[uCell]);
+            UIB[uCell] = UIn;
         }
     }
 

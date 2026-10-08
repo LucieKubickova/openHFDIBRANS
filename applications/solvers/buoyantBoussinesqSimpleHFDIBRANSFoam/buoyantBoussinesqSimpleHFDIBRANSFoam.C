@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
     word surfaceTypeU;
     HFDIBSIMPLEDictU.lookup("surfaceType") >> surfaceTypeU;
     scalar boundaryValU = readScalar(HFDIBSIMPLEDictU.lookup("boundaryValue"));
+    vector UIn = HFDIBSIMPLEDictU.lookupOrDefault<vector>("valInside", vector::zero);
 
     // read dict for T
     dictionary HFDIBSIMPLEDictT = simple.dict().subDict("HFDIB").subDict("T");

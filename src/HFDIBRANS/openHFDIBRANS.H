@@ -106,7 +106,7 @@ class openHFDIBRANS
     // Public methods --------------------------------------------------
 
     // compute imposed fields
-    void computeUi(volVectorField& U, volVectorField& Ui, word surfType, scalar boundaryVal);
+    void computeUi(volVectorField& U, volVectorField& Ui, word surfType, vector UIn, scalar boundaryVal);
     void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu, scalar boundaryVal);
     void computeTi(volScalarField& T, volScalarField& Ti, word surfType, scalar TIn, scalar boundaryVal);
 

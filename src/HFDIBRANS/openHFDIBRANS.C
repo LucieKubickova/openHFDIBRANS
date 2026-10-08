@@ -138,11 +138,21 @@ void openHFDIBRANS::computeUi
     volVectorField& U,
     volVectorField& Ui,
     word surfType,
-    scalar boundaryValue // Note (LK): add UIn
+    vector UIn,
+    scalar boundaryValue
 )
 {
     // reset imposed field
     Ui *= 0.0;
+
+    // assign the values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ui[cellI] = UIn;
+        }
+    }
 
     // calculate values at the immersed boundary
     List<vector> UIB;
@@ -155,7 +165,7 @@ void openHFDIBRANS::computeUi
         UIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
     }
 
-    ibDirichletBCs_->UAtIB(UIB, U);
+    ibDirichletBCs_->UAtIB(UIB, U, UIn);
 
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
@@ -498,10 +508,6 @@ void openHFDIBRANS::correctAlphat
         // assign
         alphat[cellI] = alphatIB[bCell];
     }
-
-    // NOTE: what to do inside?
-    //~ // calculate maximum omega
-    //~ scalar inOmega = max(omegaIB); // internal patch fields for walls should be included as well
 
     // assign the values in in-solid cells
     forAll(surface, cellI)
