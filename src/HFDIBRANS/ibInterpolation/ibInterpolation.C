@@ -900,6 +900,27 @@ void ibInterpolation::setOnlyInnerSurface
 }
 
 //---------------------------------------------------------------------------//
+void ibInterpolation::setOnlyBoundarySurface
+(
+    volScalarField& surface,
+    scalar boundaryValue
+)
+{
+    // reset field
+    surface *= 0.0;
+
+    // find boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get the cell label
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // set the surface value
+        surface[outCellI] = boundaryValue;
+    }
+}
+
+//---------------------------------------------------------------------------//
 void ibInterpolation::updateSwitchSurface
 (
     volScalarField& surface,

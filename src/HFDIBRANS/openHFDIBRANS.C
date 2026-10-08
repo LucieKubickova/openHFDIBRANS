@@ -81,7 +81,6 @@ fvSchemes_
     ibDirichletBCs_.set(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
 
     // properties of the solid
-    solveTInSolid_ = HFDIBDEMDict_.lookupOrDefault<bool>("solveTInSolid", false);
     alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
 
     // read HFDIBDEM dictionary
@@ -343,18 +342,6 @@ void openHFDIBRANS::computeTi
 {
     // reset imposed field
     Ti *= 0.0;
-
-    // assign the values in in-solid cells
-    if (!solveTInSolid_)
-    {
-        forAll(body_, cellI)
-        {
-            if (body_[cellI] >= 0.5)
-            {
-                Ti[cellI] = TIn;
-            }
-        }
-    }
 
     // calculate values at the immersed boundary
     List<scalar> TIB;
@@ -804,6 +791,11 @@ void openHFDIBRANS::createBaseSurface
     else if (surfType == "onlyInnerValue")
     {
         ibInterpolation_->setOnlyInnerSurface(surface, boundaryValue);
+    }
+
+    else if (surfType == "onlyBoundaryCells")
+    {
+        ibInterpolation_->setOnlyBoundarySurface(surface, boundaryValue);
     }
 
     else

@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
     HFDIBSIMPLEDictT.lookup("surfaceType") >> surfaceTypeT;
     scalar boundaryValT = readScalar(HFDIBSIMPLEDictT.lookup("boundaryValue"));
     scalar TIn = readScalar(HFDIBSIMPLEDictT.lookup("valInside"));
+    scalar solveTInSolid = HFDIBSIMPLEDictT.lookupOrDefault<bool>("solveTInSolid", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
