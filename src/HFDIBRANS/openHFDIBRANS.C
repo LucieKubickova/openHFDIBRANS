@@ -80,6 +80,10 @@ fvSchemes_
     ibInterpolation_.set(new ibInterpolation(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
     ibDirichletBCs_.set(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
 
+    // properties of the solid
+    solveTInSolid_ = HFDIBDEMDict_.lookupOrDefault<bool>("solveTInSolid", false);
+    alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
+
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
     cpDisToInner_ = HFDIBDEMDict_.lookupOrDefault<bool>("copyDisToInner", false);
@@ -341,11 +345,14 @@ void openHFDIBRANS::computeTi
     Ti *= 0.0;
 
     // assign the values in in-solid cells
-    forAll(body_, cellI)
+    if (!solveTInSolid_)
     {
-        if (body_[cellI] >= 0.5)
+        forAll(body_, cellI)
         {
-            Ti[cellI] = TIn;
+            if (body_[cellI] >= 0.5)
+            {
+                Ti[cellI] = TIn;
+            }
         }
     }
 
@@ -751,6 +758,22 @@ void openHFDIBRANS::correctEpsilonG
             // assign
             epsilon[inCellI] = epsilon[outCellI];
             G[inCellI] = G[outCellI];
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctAlphaInSolid
+(
+    volScalarField& alpha
+)
+{
+    // set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            alpha[cellI] = alphaInSolid_;
         }
     }
 }

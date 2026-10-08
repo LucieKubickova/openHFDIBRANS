@@ -82,6 +82,10 @@ class openHFDIBRANS
     // wall functions class
     autoPtr<ibDirichletBCs> ibDirichletBCs_;
 
+    // properties of the solid
+    bool solveTInSolid_;
+    scalar alphaInSolid_;
+
     // options
     bool save_;
     bool cpDisToInner_;
@@ -118,6 +122,9 @@ class openHFDIBRANS
     void correctAlphat(volScalarField& alphat, const volScalarField& nu, volScalarField& surface);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
+
+    // set values inside solid
+    void correctAlphaInSolid(volScalarField& alpha);
 
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
