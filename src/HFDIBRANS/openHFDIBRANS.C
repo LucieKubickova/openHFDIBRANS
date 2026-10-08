@@ -343,6 +343,15 @@ void openHFDIBRANS::computeTi
     // reset imposed field
     Ti *= 0.0;
 
+    // assign the values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ti[cellI] = TIn;
+        }
+    }
+
     // calculate values at the immersed boundary
     List<scalar> TIB;
     if (surfType == "lambdaBased")
