@@ -21,7 +21,7 @@ alphaEff.correctBoundaryConditions();
 
 fvScalarMatrix TEqn
 (
-    fvm::div(phi, T)
+    (1 - lambda)*fvm::div(phi, T)
   - fvm::laplacian(alphaEff, T)
  ==
     radiation->ST(rhoCpRef, T)
