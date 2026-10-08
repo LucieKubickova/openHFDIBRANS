@@ -35,7 +35,7 @@ fvOptions.constrain(TEqn);
 // HFDIBRANS: immersed boundary induced source term
 if (!solveTInSolid)
 {
-Tq = surfaceT*(TEqn.A()*Ti - TEqn.H());
+  Tq = surfaceT*(TEqn.A()*Ti - TEqn.H());
 }
 
 // HFDIBRANS: add to T equation
