@@ -162,6 +162,7 @@ beta1_(0.075)
     // read boundary conditions
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
+    TBC_ = HFDIBBCsDict_.lookupOrDefault<word>("T", "fixedValue");
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -298,13 +299,42 @@ void ibDirichletBCs::UAtIB
 void ibDirichletBCs::TAtIB
 (
     List<scalar>& TIB,
-    scalar TIn
+    volScalarField& T,
+    scalar& TIn
 )
 {
-    forAll(TIB, bCell)
+    if (TBC_ == "fixedValue")
     {
-        // assign value
-        TIB[bCell] = TIn;
+        forAll(TIB, tCell)
+        {
+            // assign value
+            TIB[tCell] = TIn;
+        }
+    }
+
+    else if (TBC_ == "zeroGradient")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            if (Pstream::nProcs() == 1)
+            {
+                // get cell label
+                label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+                // Note (LK): works only single core
+                TIB[bCell] = T[inCellI];
+            }
+            else
+            {
+                FatalError << "zeroGradient condition for T is not implemented for multiple processors" << exit(FatalError);
+            }
+        }
+    }
+
+    else
+    {
+        FatalError << TBC_ << " condition for T in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 

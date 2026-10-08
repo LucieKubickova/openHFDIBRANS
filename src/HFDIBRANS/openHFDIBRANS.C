@@ -361,7 +361,7 @@ void openHFDIBRANS::computeTi
     }
 
     // compute values at the immersed boundary
-    ibDirichletBCs_->TAtIB(TIB, TIn);
+    ibDirichletBCs_->TAtIB(TIB, T, TIn);
 
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
