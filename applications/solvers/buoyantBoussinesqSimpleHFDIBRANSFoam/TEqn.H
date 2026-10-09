@@ -15,7 +15,8 @@ const tmp<volScalarField> tnu = turbulence->nu();
 const volScalarField& nu = tnu();
 HFDIBRANS.correctAlphat(alphat, nu, surfaceT);
 
-volScalarField alphaEff("alphaEff", turbulence->nu()/Pr + alphat);
+//~ volScalarField alphaEff("alphaEff", turbulence->nu()/Pr + alphat);
+alphaEff = turbulence->nu()/Pr + alphat;
 HFDIBRANS.correctAlphaInSolid(alphaEff);
 alphaEff.correctBoundaryConditions();
 

@@ -181,6 +181,22 @@ volScalarField alphat
     mesh
 );
 
+// effective thermal conductivity m2/s
+Info<< "Creating field alphaEff\n" << endl;
+volScalarField alphaEff
+(
+    IOobject
+    (
+        "alphaEff",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", alphat.dimensions(), 0.0)
+);
+
 
 #include "readGravitationalAcceleration.H"
 #include "readhRef.H"
