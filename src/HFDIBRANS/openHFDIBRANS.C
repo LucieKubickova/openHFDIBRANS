@@ -76,9 +76,9 @@ fvSchemes_
     internalCells_.setSize(Pstream::nProcs());
 
     // initialize classes
-    ibMesh_.set(new ibMesh(mesh_, body_));
-    ibInterpolation_.set(new ibInterpolation(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
-    ibDirichletBCs_.set(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
+    ibMesh_.reset(new ibMesh(mesh_, body_));
+    ibInterpolation_.reset(new ibInterpolation(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
+    ibDirichletBCs_.reset(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
 
     // properties of the solid
     alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
@@ -324,7 +324,7 @@ void openHFDIBRANS::computeKi
     // bound ki
     forAll(ki, cellI)
     {
-        ki[cellI] = max(ki[cellI], small);
+        ki[cellI] = max(ki[cellI], SMALL);
     }
 
     // TODO: blended interpolation
@@ -460,7 +460,7 @@ void openHFDIBRANS::correctNut
     {
         if (body_[cellI] >= 0.5)
         {
-            nut[cellI] = small;
+            nut[cellI] = SMALL;
         }
     }
 
@@ -625,7 +625,7 @@ void openHFDIBRANS::correctOmegaG
             if (body_[cellI] >= 0.5)
             {
                 omega[cellI] = inOmega;
-                G[cellI] = small;
+                G[cellI] = SMALL;
             }
         }
     }

@@ -295,7 +295,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoBoundary_.set(new lineIntInfo(mesh_, ibMesh_, bCells, bPoints, bNormals, correctIntPoints_));
+    lineIntInfoBoundary_.reset(new lineIntInfo(mesh_, ibMesh_, bCells, bPoints, bNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoBoundary_->setIntpInfo();
@@ -343,7 +343,7 @@ void ibInterpolation::calculateInterpolationPoints
     }
 
     // initialize interpolation class
-    lineIntInfoSurface_.set(new lineIntInfo(mesh_, ibMesh_, sCells, sPoints, sNormals, correctIntPoints_));
+    lineIntInfoSurface_.reset(new lineIntInfo(mesh_, ibMesh_, sCells, sPoints, sNormals, correctIntPoints_));
 
     // find interpolation points
     lineIntInfoSurface_->setIntpInfo();
@@ -1730,32 +1730,32 @@ autoPtr<ibScheme> ibInterpolation::chosenInterpFunc
 
     if (name == "constant")
     {
-        funcPtr.set(new constantScheme());
+        funcPtr.reset(new constantScheme());
     }
 
     else if (name == "linear")
     {
-        funcPtr.set(new linearScheme());
+        funcPtr.reset(new linearScheme());
     }
 
     else if (name == "quadratic")
     {
-        funcPtr.set(new quadraticScheme());
+        funcPtr.reset(new quadraticScheme());
     }
 
     else if (name == "logarithmic")
     {
-        funcPtr.set(new logarithmicScheme());
+        funcPtr.reset(new logarithmicScheme());
     }
 
     else if (name == "fixedGradient")
     {
-        funcPtr.set(new fixedGradientScheme());
+        funcPtr.reset(new fixedGradientScheme());
     }
 
     else if (name == "zeroGradient")
     {
-        funcPtr.set(new zeroGradientScheme());
+        funcPtr.reset(new zeroGradientScheme());
     }
 
     else

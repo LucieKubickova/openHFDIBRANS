@@ -685,7 +685,7 @@ void ibDirichletBCs::correctAlphatAtIB
 (
     List<scalar>& alphatIB,
     const volScalarField& nu
-)   
+)
 {
     if (alphatWF_ == "alphatJayatillekeWallFunction")
     {
@@ -717,7 +717,7 @@ void ibDirichletBCs::correctAlphatAtIB
 
             // compute yPlus
             scalar yPlus = uTau*yOrtho/nu[cellI];
-    
+
             // saves for later interpolation
             yPlusi_[cellI] = yPlus;
 
@@ -806,7 +806,7 @@ void ibDirichletBCs::kAtIB
         // ensure stability of computations
         forAll(kIB, bCell)
         {
-            kIB[bCell] = max(kIB[bCell], small);
+            kIB[bCell] = max(kIB[bCell], SMALL);
         }
 
         // save
