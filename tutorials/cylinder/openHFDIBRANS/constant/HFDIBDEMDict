@@ -24,10 +24,10 @@ surfAreaType        cutEdges;
 
 wallFunctions
 {
-	nut		nutkWallFunction;
-	k		kLowReWallFunction;
-	omega	omegaWallFunction;
-	epsilon	epsilonWallFunction;
+    nut		nutkWallFunction;
+    k       kLowReWallFunction;
+    omega   omegaWallFunction;
+    epsilon epsilonWallFunction;
 }
 
 forceCoeffs 

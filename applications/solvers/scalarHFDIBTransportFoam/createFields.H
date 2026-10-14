@@ -104,10 +104,7 @@ IOdictionary transportProperties
 
 Info<< "Reading diffusivity DT\n" << endl;
 
-dimensionedScalar DT
-(
-    transportProperties.lookup("DT")
-);
+dimensionedScalar DT("DT", dimViscosity, transportProperties);
 
 #include "createPhi.H"
 

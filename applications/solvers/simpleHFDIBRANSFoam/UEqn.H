@@ -6,7 +6,7 @@ fvVectorMatrix UEqn
 (
     fvm::div(phi, U)
   + MRF.DDt(U)
-  + turbulence->divDevSigma(U)
+  + turbulence->divDevReff(U)
  ==
     fvOptions(U)
   + g
@@ -40,31 +40,6 @@ else
 // HFDIBRANS: add to U equation
 UEqn -= f;
 
-// HFDIBRANS: calculate f from under-relaxation // Note (LK): does not work well
-//~ scalar alpha = mesh.equationRelaxationFactor("U");
-//~ f = surface*(1 - alpha)/alpha*UEqn.A()*(Ui - U);
-//~ UEqn -= f;
-
-// HFDIBRANS: matrix manipulate
-//~ matrixManipulate(UEqn, Ui, surface);
-//~ {
-    //~ DynamicList<label> cells;
-    //~ DynamicList<vector> phis;
-
-    //~ forAll(lambda, cellI)
-    //~ {
-        //~ if (surface[cellI] == 1.0)
-        //~ {
-            //~ cells.append(cellI);
-            //~ phis.append(Ui[cellI]);
-        //~ }
-    //~ }
-
-    //~ labelUList UCells(cells);
-    //~ UList<vector> UPhis(phis);
-
-    //~ UEqn.setValues(UCells, UPhis);
-//~ }
 
 if (simple.momentumPredictor())
 {

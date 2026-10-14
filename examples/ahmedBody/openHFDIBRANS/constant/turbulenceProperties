@@ -1,8 +1,8 @@
-/*--------------------------------*- C++ -*----------------------------------*\
+/*---------------------------------------------------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  3.0.1                                 |
-|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|  \\    /   O peration     | Version:  2212                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -23,8 +23,10 @@ HFDIBRAS
     printCoeffs         on;
     disGSurfaceType     setValue;
     disGBoundaryValue   1.0;
-    kSurfaceType        setValue;
-    kBoundaryValue      0.0;
+    kSurfaceType        switched;
+    kBoundaryValue      1.0;
+    tolKEqn             1e-8;
+    maxKEqnIters        10;
 }
 
 // ************************************************************************* //

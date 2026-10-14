@@ -9,7 +9,7 @@
       |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-	openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -154,6 +154,7 @@ class openHFDIBRANS
     {
         return ibDirichletBCs_->getUTaui();
     }
+
 	volScalarField& getLambda() const
 	{
 		return body_;

@@ -1,9 +1,11 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2018 OpenFOAM Foundation
+   \\    /   O peration     |
+    \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
+-------------------------------------------------------------------------------
+    Copyright (C) 2011-2017 OpenFOAM Foundation
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -22,10 +24,34 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    scalarTransportFoam
+    scalarHFDIBTransportFoam
+
+Group
+    grpBasicSolvers
 
 Description
-    Solves the steady or transient transport equation for a passive scalar.
+    Passive scalar transport equation solver.
+
+    \heading Solver details
+    The equation is given by:
+
+    \f[
+        \ddt{T} + \div \left(\vec{U} T\right) - \div \left(D_T \grad T \right)
+        = S_{T}
+    \f]
+
+    Where:
+    \vartable
+        T       | Passive scalar
+        D_T     | Diffusion coefficient
+        S_T     | Source
+    \endvartable
+
+    \heading Required fields
+    \plaintable
+        T       | Passive scalar
+        U       | Velocity [m/s]
+    \endplaintable
 
 \*---------------------------------------------------------------------------*/
 
@@ -33,13 +59,18 @@ Description
 #include "fvOptions.H"
 #include "simpleControl.H"
 
-#include "triSurfaceMesh.H"
 #include "openHFDIBRANS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Passive scalar transport equation solver."
+    );
+
+    #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
@@ -71,9 +102,9 @@ int main(int argc, char *argv[])
     Ti *= 0.0;
     Ti.correctBoundaryConditions();
 
-    while (simple.loop(runTime))
+    while (simple.loop())
     {
-        Info << "Time = " << runTime.timeName() << nl << endl;
+        Info<< "Time = " << runTime.timeName() << nl << endl;
 
         // HFDIBRANS -- NOTE: this before or inside non-orthogonal loop?
         HFDIBRANS.computeTi(T, Ti, surfaceType, TIn, boundaryVal);

@@ -149,9 +149,10 @@ volVectorField f
 
 #include "readTransportProperties.H"
 
-autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
+Info<< "Creating turbulence model\n" << endl;
+autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 (
-    incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+    incompressible::HFDIBturbulenceModel::New(U, phi, laminarTransport)
 );
 
 // Kinematic density for buoyancy force
@@ -218,7 +219,14 @@ volScalarField p
 
 label pRefCell = 0;
 scalar pRefValue = 0.0;
-setRefCell(p, p_rgh, simple.dict(), pRefCell, pRefValue);
+setRefCell
+(
+    p,
+    p_rgh,
+    simple.dict(),
+    pRefCell,
+    pRefValue
+);
 
 if (p_rgh.needReference())
 {

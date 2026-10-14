@@ -24,7 +24,7 @@ gradSchemes
 {
     default         Gauss linear;
     grad(U)         cellLimited Gauss linear 1;
-    grad(lambda)    pointCellsLeastSquares;
+    grad(body)       linear;
 }
 
 divSchemes
@@ -69,7 +69,7 @@ HFDIBSchemes
 {
     outerSchemes
     {
-        U               outer quadratic;
+        U               unifunctional quadratic;
         k               switched quadratic logarithmic;
     }
 

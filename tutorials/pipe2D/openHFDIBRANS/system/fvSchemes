@@ -69,7 +69,7 @@ HFDIBSchemes
 {
     outerSchemes
     {
-        U               outer quadratic;
+        U               unifunctional quadratic;
         k               switched quadratic logarithmic;
     }
 

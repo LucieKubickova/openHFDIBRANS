@@ -9,19 +9,20 @@
       |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE
-    (LGPL).
+    This file is part of OpenFOAM.
 
-    Everyone is permitted to copy and distribute verbatim copies of this
-    license document, but changing it is not allowed.
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-    This version of the GNU Lesser General Public License incorporates the
-    terms and conditions of version 3 of the GNU General Public License,
-    supplemented by the additional permissions listed below.
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
 
-    You should have received a copy of the GNU Lesser General Public License
-    along with openHFDIBRANS. If not, see
-    <http://www.gnu.org/licenses/lgpl.html>.
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
     buoyantBoussinesqSimpleFoam
@@ -52,14 +53,13 @@ Description
 
 #include "fvCFD.H"
 #include "singlePhaseTransportModel.H"
-#include "kinematicHFDIBMomentumTransportModel.H"
+#include "HFDIBTurbulentTransportModel.H"
 #include "radiationModel.H"
-#include "noRadiation.H"
 #include "simpleControl.H"
 #include "fvOptions.H"
-#include "HFDIBMomentumTransportModel.H"
-#include "IncompressibleHFDIBMomentumTransportModel.H"
-#include "transportModel.H"
+#include "HFDIBTurbulenceModel.H"
+#include "IncompressibleHFDIBTurbulenceModel.H"
+#include "incompressible/transportModel/transportModel.H"
 #include "HFDIBRASModel.H"
 #include "HFDIBLaminarModel.H"
 
@@ -70,8 +70,15 @@ Description
 
 int main(int argc, char *argv[])
 {
+    argList::addNote
+    (
+        "Steady-state solver for buoyant, turbulent flow"
+        " of incompressible fluids."
+    );
+
     #include "postProcess.H"
 
+    #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
@@ -82,6 +89,8 @@ int main(int argc, char *argv[])
     turbulence->validate();
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+    Info << "\nStarting time loop\n" << endl;
 
     // read simple dict for U
     dictionary HFDIBSIMPLEDictU = simple.dict().subDict("HFDIB").subDict("U");
@@ -111,9 +120,7 @@ int main(int argc, char *argv[])
     Ti *= 0.0;
     Ti.correctBoundaryConditions();
 
-    Info << "\nStarting time loop\n" << endl;
-
-    while (simple.loop(runTime))
+    while (simple.loop())
     {
         Info << "Time = " << runTime.timeName() << nl << endl;
 
@@ -129,9 +136,7 @@ int main(int argc, char *argv[])
 
         runTime.write();
 
-        Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-            << nl << endl;
+        runTime.printExecutionTime(Info);
     }
 
     Info << "End\n" << endl;

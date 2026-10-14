@@ -6,7 +6,7 @@ fvVectorMatrix UEqn
 (
     fvm::div(phi, U)
   + MRF.DDt(U)
-  + turbulence->divDevSigma(U)
+  + turbulence->divDevReff(U)
  ==
     fvOptions(U)
     // NOTE: g -- nope

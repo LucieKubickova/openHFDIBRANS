@@ -85,6 +85,8 @@ Contributors
 #include "triSurfaceMesh.H"
 #include "triangleFuncs.H"
 
+#include "processorPolyPatch.H"
+
 #define ORDER 2
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

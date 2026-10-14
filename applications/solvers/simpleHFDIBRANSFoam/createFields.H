@@ -110,9 +110,9 @@ mesh.setFluxRequired(p.name());
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
-autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
+autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 (
-    incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+    incompressible::HFDIBturbulenceModel::New(U, phi, laminarTransport)
 );
 
 #include "createMRF.H"

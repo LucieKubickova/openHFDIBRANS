@@ -1,0 +1,3 @@
+incompressibleHFDIBTurbulenceModel.C
+turbulentTransportModels/HFDIBTurbulentTransportModels.C
+LIB = $(FOAM_USER_LIBBIN)/libincompressibleHFDIBTurbulenceModels

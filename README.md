@@ -20,5 +20,12 @@ For information regarding the compilation and usage of this solver, please refer
 * L. Kubíčková and M. Isoz.: Extending the hybrid fictitious domain-immersed boundary method for reynolds-averaged turbulence modeling, 2026. URL: https://arxiv.org/abs/2606.06135. arXiv:2606.06135
 * L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Immersed Boundary Method. In Proceedings of Topical Problems of Fluid Mechanics 2023, Prague, 2023, Edited by David Šimurda and Tomáš Bodnár, pp. 104–111., DOI: https://doi.org/10.14311/TPFM.2023.015
 
-## License
-openHFDIBRANS is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
+## Compatibility
+The code is prepared for compilation with OpenFOAM v2312 (https://www.openfoam.com/news/main-news/openfoam-v2312/).
+
+## Compilation
+./Allwclean && ./Allwmake
+
+## Tutorials
+cd tutorials && ./Allrun
+Note: the results for simpleFoam and HFDIB-RAS (simpleHFDIBRANSFoam) will be stored in respective folders
