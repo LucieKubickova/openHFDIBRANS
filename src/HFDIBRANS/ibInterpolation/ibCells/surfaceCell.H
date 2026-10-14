@@ -9,7 +9,7 @@
       |_|                    with R eynolds A veraged N avier S tokes equations          
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -25,25 +25,62 @@ InNamspace
     Foam
 
 Description
-    implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
-    extended by connection with RAS turbulence modeling approach and
-    wall functions (Kubickova and Isoz, 2023)
+    struct for surface cell
+
+SourceFiles
 
 Contributors
-    Federico Municchi (2016),
-    Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+    Martin Isoz (2019-*), Martin Kotouč Šourek (2019-*),
+    Ondřej Studeník (2020-*), Lucie Kubíčková (2021-*)
 \*---------------------------------------------------------------------------*/
 
-using namespace Foam;
+#ifndef surfaceCell_H
+#define surfaceCell_H
 
-//---------------------------------------------------------------------------//
-
-class interpolationInfo
+namespace Foam
 {
-    public:
-    DynamicList<point> intPoints_;
-    label order_;
-    DynamicList<label> intCells_;
-};
+    struct surfaceCell
+    {
+        // cell labels
+        label sCell_ = 0; // surface cell
 
-//---------------------------------------------------------------------------//
+        // distances
+        scalar sigma_ = 0.0; // signed distance 
+
+        // surface point and normal
+        vector sNorm_ = vector::zero; // surface normal vector
+        point sPoint_ = vector::zero; // surface point
+
+        // surface area
+        scalar sArea_ = 0.0;
+
+        // Constructor
+        surfaceCell():
+        sCell_(0),
+        sigma_(0.0),
+        sNorm_(vector::zero),
+        sPoint_(vector::zero),
+        sArea_(0.0)
+        {};
+
+        // Copy constructor
+        surfaceCell
+        (
+            label sCell,
+            scalar sigma,
+            vector sNorm,
+            point sPoint,
+            scalar sArea
+        ):
+        sCell_(sCell),
+        sigma_(sigma),
+        sNorm_(sNorm),
+        sPoint_(sPoint),
+        sArea_(sArea)
+        {};
+
+        // Destructor
+        ~surfaceCell(){};
+    };
+}
+#endif

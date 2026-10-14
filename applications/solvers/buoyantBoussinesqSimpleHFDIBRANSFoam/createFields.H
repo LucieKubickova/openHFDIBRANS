@@ -58,7 +58,7 @@ volScalarField p_rgh
     mesh
 );
 
-Info<< "Reading field U\n" << endl;
+Info << "Reading field U\n" << endl;
 volVectorField U
 (
     IOobject
@@ -94,10 +94,11 @@ volScalarField lambda
         "lambda",
         runTime.timeName(),
         mesh,
-        IOobject::MUST_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
-    mesh
+    mesh,
+	dimensionedScalar("zero", dimless, 0.0)
 );
 
 Info << "Creating field surfaceU\n" << endl;
@@ -108,7 +109,7 @@ volScalarField surfaceU
         "SIMPLE::surfaceU",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
@@ -123,7 +124,7 @@ volScalarField surfaceT
         "SIMPLE::surfaceT",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
@@ -155,11 +156,11 @@ autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 );
 
 // Kinematic density for buoyancy force
-volScalarField rhok
+volScalarField rho
 (
     IOobject
     (
-        "rhok",
+        "rho",
         runTime.timeName(),
         mesh
     ),
@@ -181,6 +182,22 @@ volScalarField alphat
     mesh
 );
 
+// effective thermal conductivity m2/s
+Info<< "Creating field alphaEff\n" << endl;
+volScalarField alphaEff
+(
+    IOobject
+    (
+        "alphaEff",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", alphat.dimensions(), 0.0)
+);
+
 
 #include "readGravitationalAcceleration.H"
 #include "readhRef.H"
@@ -197,7 +214,7 @@ volScalarField p
         IOobject::NO_READ,
         IOobject::AUTO_WRITE
     ),
-    p_rgh + rhok*gh
+    p_rgh + rho*gh
 );
 
 label pRefCell = 0;

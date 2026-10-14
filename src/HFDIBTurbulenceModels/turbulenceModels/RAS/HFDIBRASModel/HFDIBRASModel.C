@@ -75,8 +75,8 @@ Foam::HFDIBRASModel<BasicTurbulenceModel>::HFDIBRASModel
         propertiesName
     ),
     HFDIBRASDict_(this->subOrEmptyDict("HFDIBRAS")),
-    turbulence_(HFDIBRASDict_.getOrDefault<Switch>("turbulence", true)),
-    printCoeffs_(HFDIBRASDict_.getOrDefault<Switch>("printCoeffs", false)),
+    turbulence_(HFDIBRASDict_.lookupOrDefault<Switch>("turbulence", true)),
+    printCoeffs_(HFDIBRASDict_.lookupOrDefault<Switch>("printCoeffs", false)),
     coeffDict_(HFDIBRASDict_.optionalSubDict(type + "Coeffs")),
     kMin_
     (

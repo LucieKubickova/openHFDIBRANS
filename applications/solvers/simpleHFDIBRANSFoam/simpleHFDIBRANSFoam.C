@@ -6,7 +6,7 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
 openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
@@ -80,15 +80,17 @@ int main(int argc, char *argv[])
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
-    scalar tolEqn = readScalar(HFDIBSIMPLEDict.lookup("tolEqn"));
-    scalar maxEqnIters = readScalar(HFDIBSIMPLEDict.lookup("maxEqnIters"));
-    //~ scalar nUPIters = HFDIBSIMPLEDict.lookupOrDefault<scalar>("nUPIters", 1);
-    bool cutForce = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutForce", false);
-    bool cutVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutVelocity", false);
-    bool cutPhi = HFDIBSIMPLEDict.lookupOrDefault<bool>("cutPhi", false);
-    bool enforceVelocity = HFDIBSIMPLEDict.lookupOrDefault<bool>("enforceVelocity", false);
-    bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>("useNormSurface", false);
-    scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>("normalCorrectionLimit", 0.5);
+    vector UIn = HFDIBSIMPLEDict.lookupOrDefault<vector>("valInside", vector::zero);
+    bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>
+	(
+		"useNormSurface",
+		false
+	);
+    scalar normCorrLimit = HFDIBSIMPLEDict.lookupOrDefault<scalar>
+	(
+		"normalCorrectionLimit",
+		0.5
+	);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);

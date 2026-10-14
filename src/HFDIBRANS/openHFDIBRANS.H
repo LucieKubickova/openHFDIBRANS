@@ -6,10 +6,10 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -21,17 +21,21 @@ openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
     You should have received a copy of the GNU Lesser General Public License
     along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+	Foam::openHFDIBRANS
 
 Description
     implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
     extended by connection with RAS turbulence modeling approach and
     wall functions (Kubickova and Isoz, 2023)
 
+SourceFiles
+	openHFDIBRANS.C
+
 Contributors
     Federico Municchi (2016),
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef openHFDIBRANS_H
@@ -55,7 +59,7 @@ class openHFDIBRANS
     const fvMesh& mesh_;
 
     // lambda related
-    const volScalarField& body_;
+    volScalarField& body_;
     scalar thrSurf_;
 
     // dictionaries
@@ -69,11 +73,18 @@ class openHFDIBRANS
     List<DynamicList<label>> internalCells_;
     labelField isBoundaryCell_;
 
+    // mesh class with auxiliar functions
+    autoPtr<ibMesh> ibMesh_;
+
     // interpolation class
     autoPtr<ibInterpolation> ibInterpolation_;
 
     // wall functions class
     autoPtr<ibDirichletBCs> ibDirichletBCs_;
+
+    // properties of the solid
+    bool solveTInSolid_;
+    scalar alphaInSolid_;
 
     // options
     bool save_;
@@ -91,7 +102,7 @@ class openHFDIBRANS
     public:
 
     // Constructors ----------------------------------------------------
-    openHFDIBRANS(const fvMesh& mesh, const volScalarField& body);
+    openHFDIBRANS(const fvMesh& mesh, volScalarField& body);
 
     // Destructors -----------------------------------------------------
     ~openHFDIBRANS();
@@ -99,47 +110,41 @@ class openHFDIBRANS
     // Public methods --------------------------------------------------
 
     // compute imposed fields
-    void computeUi(volVectorField& U, volVectorField& Ui, word surfType);
-    void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu);
-    void computeTi(volScalarField& T, volScalarField& Ti, word surfType, scalar TIn);
+    void computeUi(volVectorField& U, volVectorField& Ui, word surfType, vector UIn, scalar boundaryVal);
+    void computeKi(volScalarField& k, volScalarField& ki, volScalarField& nu, scalar boundaryVal);
+    void computeTi(volScalarField& T, volScalarField& Ti, word surfType, scalar TIn, scalar boundaryVal);
 
     // update friction velocity
     void updateUTau(volScalarField& k);
-    
+
     // correct values
     void correctNut(volScalarField& nut, volScalarField& k, volScalarField& nu);
     void correctAlphat(volScalarField& alphat, const volScalarField& nu, volScalarField& surface);
     void correctOmegaG(volScalarField& omega, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
     void correctEpsilonG(volScalarField& epsilon, volScalarField::Internal& G, const volVectorField& U, volScalarField& k, volScalarField& nu, volScalarField& surface);
 
+    // set values inside solid
+    void setScalarInSolid(volScalarField& phi, scalar value, scalar threshold = 0.5);
+    void correctAlphaInSolid(volScalarField& alpha);
+
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
-    void updateSurface(volScalarField& surface, word surfType);
+    void updateSurface(volScalarField& surface, word surfType, scalar boundaryValue);
     void correctSurfaceByNormal(volSymmTensorField& normSurface, volScalarField& surface, scalar bodyOnLimit);
+    void calculateSurfaceArea();
 
     // calculations
-    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+    void calculateWallShearStress(volVectorField& tauw, const volVectorField& U, const volScalarField& nu);
+    void calculateForces(volVectorField& fN, volVectorField& fT, volVectorField& tauw, const volScalarField& p, dictionary forceDict);
+    void calculateForceCoeffs(scalar& Cl, scalar& Cd, volVectorField& fN, volVectorField& fT, dictionary forceDict);
 
     // correct y for blending functions in kOmegaSST
-    void correctY(volScalarField& y);
-
-    // cutting fields in normal direction 
-    void cutFInBoundaryCells(volVectorField& f);
-    void cutUInBoundaryCells(volVectorField& U);
-    void cutPhiInBoundaryCells(surfaceScalarField& phi);
-
-    // enforcing Ui
-    void enforceUiInBody(volVectorField& U, volVectorField& Ui);
+    void correctY(volScalarField& y, bool recreate);
 
     // bound fields
     void bound(volScalarField& phi, dimensionedScalar& phiMin);
 
     // get functions
-    volVectorField& getWallShearStress()
-    {
-        return ibDirichletBCs_->getWallShearStress();
-    }
-
     volScalarField& getNuti()
     {
         return ibDirichletBCs_->getNuti();
@@ -149,6 +154,11 @@ class openHFDIBRANS
     {
         return ibDirichletBCs_->getUTaui();
     }
+
+	volScalarField& getLambda() const
+	{
+		return body_;
+	}
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

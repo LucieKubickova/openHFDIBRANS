@@ -37,40 +37,11 @@ Contributors
 #ifndef ibDirichletBCs_H
 #define ibDirichletBCs_H
 
-#include "polyMesh.H"
-#include "fvCFD.H"
-#include "fvMatrices.H"
-#include "geometricOneField.H"
-
-#include "interpolationCellPoint.H"
-#include "interpolationCell.H"
-#include "SVD.H"
-#include "scalarMatrices.H"
-#include "OFstream.H"
-#include "Pstream.H"
-
-#include "dictionary.H"
-#include "coordinateSystem.H"
-#include "coordinateSystems.H"
-#include "wordList.H"
-#include "labelList.H"
-#include "dimensionedScalar.H"
-#include "dimensionedTensor.H"
-#include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
-#include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
-
-#include "meshSearch.H"
-#include "List.H"
-#include "ListOps.H"
-
-#include "cellSet.H"
-#include "addToRunTimeSelectionTable.H"
-#include "PstreamReduceOps.H"
 #include "nearWallDist.H"
 
+#include "ibMesh.H"
 #include "boundaryCell.H"
+#include "surfaceCell.H"
 
 using namespace Foam;
 
@@ -83,6 +54,7 @@ class ibDirichletBCs
 
     // mesh related parameters
     const fvMesh& mesh_;
+    ibMesh& ibMesh_;
 
     // lambda related things
     const volScalarField& body_;
@@ -98,6 +70,7 @@ class ibDirichletBCs
 
     // references to shared data
     List<DynamicList<boundaryCell>>& boundaryCells_;
+    List<DynamicList<surfaceCell>>& surfaceCells_;
     labelField& isBoundaryCell_;
 
     // dictionaries
@@ -113,11 +86,11 @@ class ibDirichletBCs
     // saves
     volScalarField yPlusi_;
     volScalarField uTaui_;
-    volVectorField tauwi_;
     volScalarField nuti_;
 
     // boundary conditions
     word UBC_;
+    word TBC_;
 
     // RAS wall function names
     word nutWF_;
@@ -172,8 +145,10 @@ class ibDirichletBCs
     ibDirichletBCs
     (
         const fvMesh& mesh,
+        ibMesh& ibMesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
+        List<DynamicList<surfaceCell>>& surfaceCells,
         labelField& isBoundaryCell
     );
 
@@ -186,10 +161,10 @@ class ibDirichletBCs
     void setSizeToLists();
 
     // velocity boundary condition
-    void UAtIB(List<vector>& UIB, volVectorField& U);
+    void UAtIB(List<vector>& UIB, volVectorField& U, vector& UIn);
 
     // scalar boundary condition
-    void TAtIB(List<scalar>& TIB, scalar TIn);
+    void TAtIB(List<scalar>& TIB, volScalarField& T, scalar& TIn);
 
     // calculate friction velocity
     void updateUTauAtIB(volScalarField& k);
@@ -258,18 +233,14 @@ class ibDirichletBCs
         return kAtIB_;
     }
 
-    // post processing of uTau
-    void postProcessUTau();
-
     // wall shear stress
-    void calculateWallShearStress(const volVectorField& U, const volScalarField& nu);
+    void calculateWallShearStress(volVectorField& tauw, const volVectorField& U, const volScalarField& nu);
+
+    // forces
+    void calculateForces(volVectorField& fN, volVectorField& fT, volVectorField& tauw, const volScalarField& p, dictionary forceDict);
+    void calculateForceCoeffs(scalar& Cl, scalar& Cd, volVectorField& fN, volVectorField& fT, dictionary forceDict);
 
     // get functions
-    volVectorField& getWallShearStress()
-    {
-        return tauwi_;
-    }
-
     volScalarField& getNuti()
     {
         return nuti_;
@@ -282,9 +253,6 @@ class ibDirichletBCs
 
     // save
     void saveUTau();
-
-    // point in cell
-    bool pointInCell(point pToCheck, label cToCheck);
 
     // surface gradient
     void snGradUAtIB(const volVectorField& U, List<DynamicList<vector>>& snGradU);

@@ -6,7 +6,7 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
 openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
@@ -48,7 +48,7 @@ namespace HFDIBRASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class HFDIBKOmega Declaration
+                          Class HFDIBKOmega Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicTurbulenceModel>
@@ -74,12 +74,11 @@ protected:
 
             volScalarField k_;
             volScalarField omega_;
-	        volScalarField lambda_;
             volScalarField kSurface_;
             volScalarField omegaGSurface_;
-	        volScalarField ki_;
+            volScalarField ki_;
             volScalarField kQ_;
-	        volScalarField nu_;
+            volScalarField nu_;
 
         // Dictionaries
 
@@ -90,8 +89,6 @@ protected:
             word omegaGSurfaceType_;
             scalar kBoundaryValue_;
             scalar omegaGBoundaryValue_;
-            scalar tolKEqn_;
-            label maxKEqnIters_;
 
         // Options
             bool useKQ_;
@@ -99,7 +96,13 @@ protected:
     // Protected Member Functions
 
         virtual void correctNut();
-        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, volScalarField& surface);
+        virtual void matrixManipulate
+		(
+			fvScalarMatrix& eqn,
+			volScalarField& phi,
+			volScalarField& surface,
+			volScalarField& lambda
+		);
 
 
 public:

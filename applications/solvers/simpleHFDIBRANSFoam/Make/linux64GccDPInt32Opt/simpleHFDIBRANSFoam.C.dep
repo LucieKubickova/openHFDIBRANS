@@ -968,10 +968,15 @@ $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/addToRunTimeSelectionTable.H \
 ../../../src/HFDIBRANS/lnInclude/zeroGradientScheme.H \
 ../../../src/HFDIBRANS/lnInclude/zeroGradientSchemeTemplates.C \
 ../../../src/HFDIBRANS/lnInclude/lineIntInfo.H \
+../../../src/HFDIBRANS/lnInclude/ibMesh.H \
+../../../src/HFDIBRANS/lnInclude/ibCutCell.H \
+../../../src/HFDIBRANS/lnInclude/convexBody.H \
+../../../src/HFDIBRANS/lnInclude/stlModel.H \
+../../../src/HFDIBRANS/lnInclude/nonConvexBody.H \
+$(WM_PROJECT_DIR)/src/meshTools/lnInclude/triangleFuncs.H \
 $(WM_PROJECT_DIR)/src/OpenFOAM/lnInclude/processorPolyPatch.H \
 ../../../src/HFDIBRANS/lnInclude/boundaryCell.H \
 ../../../src/HFDIBRANS/lnInclude/surfaceCell.H \
-$(WM_PROJECT_DIR)/src/meshTools/lnInclude/triangleFuncs.H \
 ../../../src/HFDIBRANS/lnInclude/ibInterpolationTemplates.C \
 ../../../src/HFDIBRANS/lnInclude/ibDirichletBCs.H \
 ../../../src/HFDIBTurbulenceModels/turbulenceModels/lnInclude/HFDIBTurbulenceModel.C \

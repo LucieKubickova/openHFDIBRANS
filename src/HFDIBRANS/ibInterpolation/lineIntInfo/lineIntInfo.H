@@ -37,41 +37,8 @@ Contributors
 #ifndef lineIntInfo_H
 #define lineIntInfo_H
 
-#include "polyMesh.H"
-#include "fvCFD.H"
-#include "fvMatrices.H"
-#include "geometricOneField.H"
-
-#include "interpolationCellPoint.H"
-#include "interpolationCell.H"
-#include "SVD.H"
-#include "scalarMatrices.H"
-#include "OFstream.H"
-#include "Pstream.H"
-
-#include "dictionary.H"
-#include "coordinateSystem.H"
-#include "coordinateSystems.H"
-#include "wordList.H"
-#include "labelList.H"
-#include "dimensionedScalar.H"
-#include "dimensionedTensor.H"
-#include "primitiveFieldsFwd.H"
-#include "volFieldsFwd.H"
-#include "fvMatricesFwd.H"
-#include "triSurfaceMesh.H"
-
-#include "meshSearch.H"
-#include "List.H"
-#include "ListOps.H"
-
-#include "cellSet.H"
-#include "addToRunTimeSelectionTable.H"
-#include "PstreamReduceOps.H"
-#include "addToRunTimeSelectionTable.H"
-
+#include "ibMesh.H"
 #include "intPoint.H"
-#include "processorPolyPatch.H"
 
 using namespace Foam;
 
@@ -87,6 +54,7 @@ class lineIntInfo
 
     // mesh reference
     const Foam::fvMesh& mesh_;
+    ibMesh& ibMesh_;
 
     // lists
     List<label> ibCells_;
@@ -108,24 +76,6 @@ class lineIntInfo
     (
         point ibPoint,
         intPoint& cPoint
-    );
-
-    vector getClosestPoint
-    (
-        vector ibPoint,
-        intPoint& cPoint
-    );
-
-    label getFaceInDir
-    (
-        const intPoint& retPoint,
-        const label prevFace
-    );
-
-    bool pointInCell
-    (
-        point pToCheck,
-        label cToCheck
     );
 
     void sendAndRecvIntPoints
@@ -151,6 +101,7 @@ class lineIntInfo
     lineIntInfo
     (
         const fvMesh& mesh,
+        ibMesh& ibMesh,
         List<label> ibCells,
         List<point> ibPoints,
         List<vector> ibNormals,

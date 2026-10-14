@@ -2,7 +2,7 @@ volScalarField rAU("rAU", 1.0/UEqn.A());
 surfaceScalarField rAUf("rAUf", fvc::interpolate(rAU));
 volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p_rgh));
 
-surfaceScalarField phig(-rAUf*ghf*fvc::snGrad(rhok)*mesh.magSf());
+surfaceScalarField phig(-rAUf*ghf*fvc::snGrad(rho)*mesh.magSf());
 
 surfaceScalarField phiHbyA
 (
@@ -18,11 +18,11 @@ phiHbyA += phig;
 // Update the pressure BCs to ensure flux consistency
 constrainPressure(p_rgh, U, phiHbyA, rAUf, MRF);
 
-volVectorField FbyA(rAU*f);
-surfaceScalarField phiFbyA
+// calculate lambda phi
+surfaceScalarField phiLambda
 (
-    "phiFbyA",
-    fvc::flux(FbyA)
+    "phiLambda",
+    phi*fvc::interpolate(lambda)
 );
 
 while (simple.correctNonOrthogonal())
@@ -30,7 +30,7 @@ while (simple.correctNonOrthogonal())
     fvScalarMatrix p_rghEqn
     (
         fvm::laplacian(rAUf, p_rgh) == fvc::div(phiHbyA)
-                                   + fvc::div(phiFbyA)
+                                   - fvc::div(phiLambda)
     );
 
     p_rghEqn.setReference(pRefCell, getRefCellValue(p_rgh, pRefCell));
@@ -40,14 +40,14 @@ while (simple.correctNonOrthogonal())
     if (simple.finalNonOrthogonalIter())
     {
         // Calculate the conservative fluxes
-        phi = phiHbyA - p_rghEqn.flux() + phiFbyA;
+        phi = phiHbyA - p_rghEqn.flux() - phiLambda;
 
         // Explicitly relax pressure for momentum corrector
         p_rgh.relax();
 
         // Correct the momentum source with the pressure gradient flux
         // calculated from the relaxed pressure
-        U = HbyA + rAU*fvc::reconstruct((phig - p_rghEqn.flux())/rAUf) + rAU*f;
+        U = HbyA + rAU*fvc::reconstruct((phig - p_rghEqn.flux())/rAUf);
         U.correctBoundaryConditions();
         fvOptions.correct(U);
     }
@@ -55,7 +55,7 @@ while (simple.correctNonOrthogonal())
 
 #include "continuityErrs.H"
 
-p = p_rgh + rhok*gh;
+p = p_rgh + rho*gh;
 
 if (p_rgh.needReference())
 {
@@ -65,8 +65,8 @@ if (p_rgh.needReference())
         p.dimensions(),
         pRefValue - getRefCellValue(p, pRefCell)
     );
-    p_rgh = p - rhok*gh;
+    p_rgh = p - rho*gh;
 }
 
 // Sync proc-proc boundaries
-f.correctBoundaryConditions();
+//~ f.correctBoundaryConditions();

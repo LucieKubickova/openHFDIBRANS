@@ -6,10 +6,10 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
-openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
+    openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
 
     Everyone is permitted to copy and distribute verbatim copies of this license
     document, but changing it is not allowed.
@@ -21,8 +21,8 @@ openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
     You should have received a copy of the GNU Lesser General Public License
     along with openHFDIBRANS. If not, see <http://www.gnu.org/licenses/lgpl.html>.
 
-InNamspace
-    Foam
+Class
+	Foam::openHFDIBRANS
 
 Description
     implementation of the HFDIB method (Municchi and Radl, 2016) in OpenFOAM
@@ -32,7 +32,9 @@ Description
 Contributors
     Federico Municchi (2016),
     Martin Isoz (2019-*), Martin Šourek (2019-*), Lucie Kubíčková (2021-*)
+
 \*---------------------------------------------------------------------------*/
+
 #include "openHFDIBRANS.H"
 
 using namespace Foam;
@@ -41,7 +43,7 @@ using namespace Foam;
 openHFDIBRANS::openHFDIBRANS
 (
     const fvMesh& mesh,
-    const volScalarField& body
+    volScalarField& body
 ) :
 mesh_(mesh),
 body_(body),
@@ -74,8 +76,12 @@ fvSchemes_
     internalCells_.setSize(Pstream::nProcs());
 
     // initialize classes
-    ibInterpolation_.reset(new ibInterpolation(mesh_, body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
-    ibDirichletBCs_.reset(new ibDirichletBCs(mesh_, body_, boundaryCells_, isBoundaryCell_));
+    ibMesh_.reset(new ibMesh(mesh_, body_));
+    ibInterpolation_.reset(new ibInterpolation(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, internalCells_, isBoundaryCell_));
+    ibDirichletBCs_.reset(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
+
+    // properties of the solid
+    alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
 
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
@@ -134,11 +140,22 @@ void openHFDIBRANS::computeUi
 (
     volVectorField& U,
     volVectorField& Ui,
-    word surfType // Note (LK): add UIn
+    word surfType,
+    vector UIn,
+    scalar boundaryValue
 )
 {
     // reset imposed field
     Ui *= 0.0;
+
+    // assign the values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ui[cellI] = UIn;
+        }
+    }
 
     // calculate values at the immersed boundary
     List<vector> UIB;
@@ -151,12 +168,12 @@ void openHFDIBRANS::computeUi
         UIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
     }
 
-    ibDirichletBCs_->UAtIB(UIB, U);
+    ibDirichletBCs_->UAtIB(UIB, U, UIn);
 
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
     scalar yPlusLam = ibDirichletBCs_->getYPlusLam();
-        
+
     // calculate log scales for interpolation
     List<scalar> logScales;
     logScales.setSize(UIB.size());
@@ -204,6 +221,11 @@ void openHFDIBRANS::computeUi
         ibInterpolation_->switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->outerInnerInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, yPlusLam);
@@ -225,7 +247,8 @@ void openHFDIBRANS::computeKi
 (
     volScalarField& k,
     volScalarField& ki,
-    volScalarField& nu
+    volScalarField& nu,
+    scalar boundaryValue
 )
 {
     // prepare lists
@@ -278,6 +301,11 @@ void openHFDIBRANS::computeKi
         ibInterpolation_->switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->outerInnerInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, yPlusLam);
@@ -308,7 +336,8 @@ void openHFDIBRANS::computeTi
     volScalarField& T,
     volScalarField& Ti,
     word surfType,
-    scalar TIn
+    scalar TIn,
+    scalar boundaryValue
 )
 {
     // reset imposed field
@@ -335,12 +364,12 @@ void openHFDIBRANS::computeTi
     }
 
     // compute values at the immersed boundary
-    ibDirichletBCs_->TAtIB(TIB, TIn);
+    ibDirichletBCs_->TAtIB(TIB, T, TIn);
 
     // get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
     scalar yPlusLam = ibDirichletBCs_->getYPlusLam();
-        
+
     // calculate log scales for interpolation
     List<scalar> logScales;
     logScales.setSize(TIB.size());
@@ -388,6 +417,11 @@ void openHFDIBRANS::computeTi
         ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->outerInnerInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, yPlusLam);
@@ -421,6 +455,16 @@ void openHFDIBRANS::correctNut
     volScalarField& nu
 )
 {
+    // put zero inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            nut[cellI] = SMALL;
+        }
+    }
+
+    // correct nut at immersed boundary
     ibDirichletBCs_->nutAtIB(k, nu);
 
     if (assignNut_)
@@ -467,10 +511,6 @@ void openHFDIBRANS::correctAlphat
         // assign
         alphat[cellI] = alphatIB[bCell];
     }
-
-    // NOTE: what to do inside?
-    //~ // calculate maximum omega
-    //~ scalar inOmega = max(omegaIB); // internal patch fields for walls should be included as well
 
     // assign the values in in-solid cells
     forAll(surface, cellI)
@@ -585,7 +625,7 @@ void openHFDIBRANS::correctOmegaG
             if (body_[cellI] >= 0.5)
             {
                 omega[cellI] = inOmega;
-                G[cellI] = 0.0;
+                G[cellI] = SMALL;
             }
         }
     }
@@ -719,11 +759,45 @@ void openHFDIBRANS::correctEpsilonG
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::setScalarInSolid
+(
+    volScalarField& phi,
+    scalar value,
+    scalar threshold
+)
+{
+    // set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= threshold)
+        {
+            phi[cellI] = value;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctAlphaInSolid
+(
+    volScalarField& alpha
+)
+{
+    // set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            alpha[cellI] = alphaInSolid_;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::createBaseSurface
 (
     volScalarField& surface,
     word surfType,
-    scalar boundaryVal
+    scalar boundaryValue
 )
 {
     if (surfType == "readOnly")
@@ -731,19 +805,24 @@ void openHFDIBRANS::createBaseSurface
         return;
     }
 
-    else if (surfType == "setValue" or surfType == "switched")
+    else if (surfType == "setValue" or surfType == "switched" or surfType == "switchedValue")
     {
-        ibInterpolation_->setUpSurface(surface, boundaryVal);
+        ibInterpolation_->setUpSurface(surface, boundaryValue);
     }
 
     else if (surfType == "lambdaBased")
     {
-        ibInterpolation_->setLambdaBasedSurface(surface, boundaryVal);
+        ibInterpolation_->setLambdaBasedSurface(surface, boundaryValue);
     }
 
     else if (surfType == "onlyInnerValue")
     {
-        ibInterpolation_->setOnlyInnerSurface(surface, boundaryVal);
+        ibInterpolation_->setOnlyInnerSurface(surface, boundaryValue);
+    }
+
+    else if (surfType == "onlyBoundaryCells")
+    {
+        ibInterpolation_->setOnlyBoundarySurface(surface, boundaryValue);
     }
 
     else
@@ -756,12 +835,18 @@ void openHFDIBRANS::createBaseSurface
 void openHFDIBRANS::updateSurface
 (
     volScalarField& surface,
-    word surfType
+    word surfType,
+    scalar boundaryValue
 )
 {
     if (surfType == "switched")
     {
         ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), ibDirichletBCs_->getYPlusLam());
+    }
+
+    else if (surfType == "switchedValue")
+    {
+        ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), boundaryValue);
     }
 }
 
@@ -777,101 +862,59 @@ void openHFDIBRANS::correctSurfaceByNormal
 }
 
 //---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateSurfaceArea
+(
+)
+{
+    ibInterpolation_->calculateSurfArea();
+}
+
+//---------------------------------------------------------------------------//
 void openHFDIBRANS::calculateWallShearStress
 (
+    volVectorField& tauw,
     const volVectorField& U,
     const volScalarField& nu
 )
 {
-    ibDirichletBCs_->calculateWallShearStress(U, nu);
+    ibDirichletBCs_->calculateWallShearStress(tauw, U, nu);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateForces
+(
+    volVectorField& fN,
+    volVectorField& fT,
+    volVectorField& tauw,
+    const volScalarField& p,
+    dictionary forceDict
+)
+{
+    ibDirichletBCs_->calculateForces(fN, fT, tauw, p, forceDict);
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::calculateForceCoeffs
+(
+    scalar& Cl,
+    scalar& Cd,
+    volVectorField& fN,
+    volVectorField& fT,
+    dictionary forceDict
+)
+{
+    ibDirichletBCs_->calculateForceCoeffs(Cl, Cd, fN, fT, forceDict);
 }
 
 //---------------------------------------------------------------------------//
 void openHFDIBRANS::correctY
 (
-    volScalarField& y
+    volScalarField& y,
+    bool recreate
 )
 {
-    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    {
-        // get cell label
-        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-        // assign distance to boundary
-        if (useYEff_)
-        {
-            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
-        }
-        else
-        {
-            y[cellI] = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-        }
-    }
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::cutFInBoundaryCells
-(
-    volVectorField& f
-)
-{
-    ibInterpolation_->cutFInBoundaryCells(f);
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::cutUInBoundaryCells
-(
-    volVectorField& U
-)
-{
-    ibInterpolation_->cutUInBoundaryCells(U);
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::cutPhiInBoundaryCells
-(
-    surfaceScalarField& phi
-)
-{
-    ibInterpolation_->cutPhiInBoundaryCells(phi);
-}
-
-//---------------------------------------------------------------------------//
-void openHFDIBRANS::enforceUiInBody
-(
-    volVectorField& U,
-    volVectorField& Ui
-)
-{
-    // loop over cells
-    forAll(mesh_.C(), cellI)
-    {
-        if (body_[cellI] < 1.0)
-        {
-            continue;
-        }
-
-        // check if cellI is an inner boundary cell
-        // Note (LK): needs fixing in parallel, but not used now
-        bool toCont = false;
-        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        {
-            // get the cell label
-            label cellB = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
-
-            // check
-            if (cellB == cellI)
-            {
-                toCont = true;
-                break;
-            }
-        }
-
-        if (not toCont)
-        {
-            U[cellI] = Ui[cellI];
-        }
-    }
+    ibInterpolation_->correctYInBoundaryCells(y, useYEff_);
+    ibMesh_->correctY(y, recreate);
 }
 
 //---------------------------------------------------------------------------//

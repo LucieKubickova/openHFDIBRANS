@@ -1,1 +1,1 @@
-../ibInterpolation/boundaryCell.H
+../ibInterpolation/ibCells/boundaryCell.H

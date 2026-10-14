@@ -38,6 +38,7 @@ using namespace Foam;
 lineIntInfo::lineIntInfo
 (
     const fvMesh& mesh,
+    ibMesh& ibMesh,
     List<label> ibCells,
     List<point> ibPoints,
     List<vector> ibNormals,
@@ -45,6 +46,7 @@ lineIntInfo::lineIntInfo
 )
 :
 mesh_(mesh),
+ibMesh_(ibMesh),
 ibCells_(ibCells),
 ibPoints_(ibPoints),
 ibNormals_(ibNormals),
@@ -74,7 +76,6 @@ void lineIntInfo::setIntpInfo
     {
         // get surface cell label
         label cellI = ibCells_[sCell];
-        //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
 
         // save first interpolation point (surfPoint)
         intPoints[sCell].setSize(ORDER+1);
@@ -84,8 +85,7 @@ void lineIntInfo::setIntpInfo
             cellI,
             Pstream::myProcNo(), // current processor
             Pstream::myProcNo(), // processor of origin (same for the first int point)
-            sCell,               // label of the cell of origin
-            false                // if its the last int point
+            sCell                // label of the cell of origin
         );
         intPoints[sCell][0] = cIntPoint;
 
@@ -117,11 +117,12 @@ void lineIntInfo::setIntpInfo
                 // latest interpolation point
                 intPoint cIntPoint = intPointsToSolve[proci][iInfo];
                 point cPoint = cIntPoint.iPoint_;
-                scalar intDist = Foam::pow(mesh_.V()[cIntPoint.iCell_],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
+                scalar intDist = ibMesh_.getCellSize(cIntPoint.iCell_, ibNormalsToSolve[proci][iInfo]);
+                intDist /= 2.0;
 
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
-                } while(pointInCell(cPoint, cIntPoint.iCell_));
+                } while(ibMesh_.pointInCell(cPoint, cIntPoint.iCell_));
 
                 // new interpolation points
                 intPoint nIntPoint = findIntPoint(cIntPoint, cPoint);
@@ -133,7 +134,9 @@ void lineIntInfo::setIntpInfo
                 // check for cells at domain boundary
                 if (nIntPoint.iProc_ == -1)
                 {
-                    intPoints[cIntPoint.oLabel_][i].last_ = true;
+                    // pass to next interpolation point, keeping default iProc_ at -1
+                    // iProc_ check by getIntOrder function
+                    continue;
                 }
 
                 // check if to send or keep
@@ -213,11 +216,9 @@ void lineIntInfo::setIntpInfo
                     cellI,
                     Pstream::myProcNo(),
                     intPointsRecv[proci][iInfo].oProc_,
-                    intPointsRecv[proci][iInfo].oLabel_,
-                    intPointsRecv[proci][iInfo].last_
+                    intPointsRecv[proci][iInfo].oLabel_
                 );
 
-                //~ scalar intDist = Foam::pow(mesh_.V()[cellI],0.333); // Note (LK): int dist has to be bigger the 0.5*dX, but I am not sure about full dX, HFDIBDEM has full dX
                 vector dir = cIntPoint.iPoint_ - ibPointsRecv[proci][iInfo];
                 dir /= mag(dir);
 
@@ -297,9 +298,9 @@ void lineIntInfo::correctIntPoint
         return;
     }
 
-    vector closestPoint = getClosestPoint(ibPoint, cPoint);
+    vector closestPoint = ibMesh_.getClosestPoint(ibPoint, cPoint);
 
-    if(pointInCell(closestPoint, cPoint.iCell_))
+    if(ibMesh_.pointInCell(closestPoint, cPoint.iCell_))
     {
         cPoint.iPoint_ = closestPoint;
     }
@@ -323,7 +324,7 @@ void lineIntInfo::correctIntPoint
                 vector newP = 0.95*(pHit.hitPoint() - cPoint.iPoint_);
                 newP += cPoint.iPoint_;
 
-                if(pointInCell(newP, cPoint.iCell_))
+                if(ibMesh_.pointInCell(newP, cPoint.iCell_))
                 {
                     cPoint.iPoint_ = newP;
                     break;
@@ -331,21 +332,6 @@ void lineIntInfo::correctIntPoint
             }
         }
     }
-}
-
-//---------------------------------------------------------------------------//
-vector lineIntInfo::getClosestPoint
-(
-    vector ibPoint,
-    intPoint& cPoint
-)
-{
-    vector dir = cPoint.iPoint_ - ibPoint;
-    dir /= mag(dir);
-
-    vector dirToC = mesh_.C()[cPoint.iCell_] - ibPoint;
-
-    return ibPoint + dir*(dirToC&dir);
 }
 
 //---------------------------------------------------------------------------//
@@ -366,16 +352,20 @@ intPoint lineIntInfo::findIntPoint
         fromP.iCell_,
         fromP.iProc_,
         fromP.oProc_,
-        fromP.oLabel_,
-        fromP.last_
+        fromP.oLabel_
     );
 
     if(fromP.iProc_ == Pstream::myProcNo())
     {
         label faceInDir = -1;
-        while(!pointInCell(retP.iPoint_, retP.iCell_))
+        label kMax(100);
+        label kI(0);
+        while(!ibMesh_.pointInCell(retP.iPoint_, retP.iCell_))
         {
-            faceInDir = getFaceInDir(retP, faceInDir);
+            //~ faceInDir = ibMesh_.getFaceInDir(retP, faceInDir);
+            vector dir = retP.iPoint_ - mesh_.C()[retP.iCell_];
+            dir /= mag(dir);
+            faceInDir = ibMesh_.getFaceInDir(retP.iCell_, dir, faceInDir);
             if (!mesh_.isInternalFace(faceInDir))
             {
                 label facePatchId(mesh_.boundaryMesh().whichPatch(faceInDir));
@@ -403,68 +393,21 @@ intPoint lineIntInfo::findIntPoint
             label owner(mesh_.owner()[faceInDir]);
             label neighbour(mesh_.neighbour()[faceInDir]);
             retP.iCell_ = (retP.iCell_ == neighbour) ? owner : neighbour;
+
+            // safety net exit
+            kI++;
+            if (kI > kMax)
+            {
+                Info << "Missing cell to interpolation point " << retP.iPoint_ << " starting from " << fromP.iPoint_ << endl;
+                retP.iProc_ = -1;
+                return retP;
+            }
         }
 
         return retP;
     }
 
     return retP;
-}
-
-//---------------------------------------------------------------------------//
-label lineIntInfo::getFaceInDir
-(
-    const intPoint& retPoint,
-    const label prevFace
-)
-{
-    label faceToReturn = -1;
-    vector dir = retPoint.iPoint_ - mesh_.C()[retPoint.iCell_];
-
-    const labelList& cellFaces(mesh_.cells()[retPoint.iCell_]);
-    scalar dotProd(-GREAT);
-
-    forAll (cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        if(fI != prevFace)
-        {
-            vector outNorm = (mesh_.faceOwner()[fI] == retPoint.iCell_)
-                ? mesh_.Sf()[fI] : (-1*mesh_.Sf()[fI]);
-            outNorm /= mag(outNorm); // LK: this should be there, no?
-
-            scalar auxDotProd(outNorm & dir);
-            if (auxDotProd > dotProd)
-            {
-                dotProd = auxDotProd;
-                faceToReturn = fI;
-            }
-        }
-    }
-
-    return faceToReturn;
-}
-
-//---------------------------------------------------------------------------//
-bool lineIntInfo::pointInCell
-(
-    point pToCheck,
-    label cToCheck
-)
-{
-    const labelList& cellFaces(mesh_.cells()[cToCheck]);
-    forAll(cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Sf()[fI];
-        outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-
-        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 //---------------------------------------------------------------------------//

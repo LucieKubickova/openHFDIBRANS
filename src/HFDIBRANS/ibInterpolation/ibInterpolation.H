@@ -48,9 +48,7 @@ Contributors
 #include "lineIntInfo.H"
 #include "boundaryCell.H"
 #include "surfaceCell.H"
-
-#include "triSurfaceMesh.H"
-#include "triangleFuncs.H"
+#include "ibCutCell.H"
 
 #define ORDER 2
 
@@ -65,6 +63,7 @@ class ibInterpolation
 
     // mesh related parameters
     const fvMesh& mesh_;
+    ibMesh& ibMesh_;
     scalar VAve_;
 
     // lambda related things
@@ -75,25 +74,22 @@ class ibInterpolation
 
     // options
     word boundarySearch_;
-    word stlName_;
+    //~ word stlName_;
     bool excludeWalls_;
+    word excludePatch_;
     bool readSurfNorm_;
     bool aveYOrtho_;
     bool totalYOrthoAve_;
     scalar aveCoeff_;
     label nAveYOrtho_;
-    bool averageV_;
-    bool readL_;
-    scalar valueL_;
+    //~ bool averageV_;
+    //~ bool readL_;
+    //~ scalar valueL_;
     scalar innerThres_; // LK: experimental
     bool sdBasedLambda_;
     bool correctIntPoints_;
-
-    // stl things
-    word stlPath_;
-    autoPtr<triSurfaceMesh> bodySurfMesh_;
-    autoPtr<triSurface> triSurf_;
-    autoPtr<triSurfaceSearch> triSurfSearch_;
+    //~ word surfAreaType_;
+    bool yFromCutEdges_; // LK: experimental
 
     // saves
     volScalarField iProci_;
@@ -126,6 +122,7 @@ class ibInterpolation
     ibInterpolation
     (
         const fvMesh& mesh,
+        ibMesh& ibMesh,
         const volScalarField& body,
         List<DynamicList<boundaryCell>>& boundaryCells,
         List<DynamicList<surfaceCell>>& surfaceCells,
@@ -170,17 +167,17 @@ class ibInterpolation
 
     // auxiliar functions
     void findNeighborInBody(label& cellI, scalar threshold, label& iCell, label& iFace, label& iProc, bool& isBoundary);
-    bool isWallCell(label& cellI);
 
     // best instance in direction
-    label getFaceInDir(label cellI, vector dir);
-    label getEdgeInDir(label faceI, label cellI, vector dir);
-    label getVertInDir(label edgeI, label cellI, vector dir);
+    //~ label getFaceInDir(label cellI, vector dir);
+    //~ label getEdgeInDir(label faceI, label cellI, vector dir);
+    //~ label getVertInDir(label edgeI, label cellI, vector dir);
 
     // surface creation
     void setUpSurface(volScalarField& surface, scalar boundaryVal);
     void setLambdaBasedSurface(volScalarField& surface, scalar boundaryVal);
     void setOnlyInnerSurface(volScalarField& surface, scalar boundaryVal);
+    void setOnlyBoundarySurface(volScalarField& surface, scalar boundaryVal);
     void updateSwitchSurface(volScalarField& surface, volScalarField& yPlusi, scalar yPlusLam);
     // TODO: blended surface
 
@@ -191,29 +188,31 @@ class ibInterpolation
     void calculateBoundaryDist();
     void calculateSurfaceDist();
 
+    // correct distance from surface
+    void correctYInBoundaryCells(volScalarField& y, bool useYEff);
+
     // post processing of distance
-    scalar getCellSize(label cellI);
+    //~ scalar getCellSize(label cellI);
     void postProcessYOrtho();
     
     // calculate interpolation points
     void calculateInterpolationPoints();
 
-    // surface normals
+    // surface calculations
     void calculateSurfNorm();
+    void calculateSurfArea();
 
-    // get closest point and normal from stl file
-    void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
+    // work with stl file
+    //~ void getClosestPointAndNormal(const point& startPoint, const vector& span, point& closestPoint, vector& normal);
+    //~ scalar createCutCellAndSurface(label cellI, vector& normal, point& surfPoint);
+    //~ scalar calculateTriangleArea(point p0, point p1, point p2);
+    //~ void createCutCellAndCenter(label cellI, vector& surfNorm, point& surfPoint);
 
     // save
     void saveInterpolationInfo(word outDir, word fileName);
     void saveBoundaryCells();
     void saveSurfaceCells();
     void saveCellSet(List<label>& listToSave, word fileName);
-
-    // cutting fields in normal direction
-    void cutFInBoundaryCells(volVectorField& f);
-    void cutUInBoundaryCells(volVectorField& U);
-    void cutPhiInBoundaryCells(surfaceScalarField& phi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -1,1 +1,1 @@
-../ibInterpolation/surfaceCell.H
+../ibInterpolation/ibCells/surfaceCell.H

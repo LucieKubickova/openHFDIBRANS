@@ -48,10 +48,11 @@ volScalarField lambda
         "lambda",
         runTime.timeName(),
         mesh,
-        IOobject::MUST_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
-    mesh
+    mesh,
+	dimensionedScalar("zero", dimless, 0.0)
 );
 
 Info << "Creating field surface\n" << endl;
@@ -116,6 +117,3 @@ autoPtr<incompressible::HFDIBturbulenceModel> turbulence
 
 #include "createMRF.H"
 #include "createFvOptions.H"
-
-// dummy time
-dimensionedScalar dummyTime = dimensionedScalar("dummy", dimTime, 1.0);

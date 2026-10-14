@@ -19,7 +19,7 @@ if (simple.consistent())
     HbyA -= (rAU - rAtU())*fvc::grad(p);
 }
 
-UEqn.clear();
+//~ UEqn.clear();
 
 // Update the pressure BCs to ensure flux consistency
 constrainPressure(p, U, phiHbyA, rAtU(), MRF);
@@ -31,36 +31,23 @@ surfaceScalarField phiLambda
     phi*fvc::interpolate(lambda)
 );
 
-//~ volVectorField FbyA(rAU*f);
-//~ surfaceScalarField phiFbyA
-//~ (
-    //~ "phiFbyA",
-    //~ fvc::flux(FbyA)
-//~ );
-
 // Non-orthogonal pressure corrector loop
 while (simple.correctNonOrthogonal())
 {
     fvScalarMatrix pEqn
     (
         fvm::laplacian(rAtU(), p) == fvc::div(phiHbyA)
-                                   //~ + fvc::div(phiFbyA)
-                                    - fvc::div(phiLambda)
+                                   - fvc::div(phiLambda)
     );
 
     pEqn.setReference(pRefCell, pRefValue);
-    
+
     pEqn.solve();
 
     if (simple.finalNonOrthogonalIter())
     {
-        phi = phiHbyA - pEqn.flux() - phiLambda; //~ + phiFbyA;
+        phi = phiHbyA - pEqn.flux() - phiLambda;
     }
-}
-
-if (cutPhi)
-{
-    HFDIBRANS.cutPhiInBoundaryCells(phi);
 }
 
 #include "continuityErrs.H"
@@ -69,17 +56,6 @@ if (cutPhi)
 p.relax();
 
 // Momentum corrector
-U = HbyA - rAtU()*fvc::grad(p); //~ + rAU*f;
+U = HbyA - rAtU()*fvc::grad(p);
 U.correctBoundaryConditions();
 fvOptions.correct(U);
-
-// HFDIBRANS
-if (cutVelocity)
-{
-    HFDIBRANS.cutUInBoundaryCells(U);
-}
-
-if (enforceVelocity)
-{
-    HFDIBRANS.enforceUiInBody(U, Ui);
-}

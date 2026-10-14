@@ -6,7 +6,7 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
 openHFDIBRANS is licensed under the GNU LESSER GENERAL PUBLIC LICENSE (LGPL).
@@ -61,7 +61,7 @@ tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F
     );
 
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -89,7 +89,7 @@ template<class BasicHFDIBTurbulenceModel>
 tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F2() const
 {
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -113,7 +113,7 @@ template<class BasicHFDIBTurbulenceModel>
 tmp<volScalarField> HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST::F3() const
 {
     // HFDIB: correct value
-    tmp<volScalarField> y = max // NOTE: wrong
+    tmp<volScalarField> y = min
     (
         y_,
         yIB_
@@ -267,13 +267,14 @@ void HFDIBKOmegaSST<BasicTurbulenceModel>::matrixManipulate
 (
     fvScalarMatrix& eqn,
     volScalarField& phi,
-    volScalarField& surface
+    volScalarField& surface,
+	volScalarField& lambda
 )
 {
     DynamicList<label> cells;
     DynamicList<scalar> phis;
 
-    forAll(lambda_, cellI)
+    forAll(lambda, cellI)
     {
         if (surface[cellI] == 1.0)
         {
@@ -444,8 +445,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        this->mesh_,
-        dimensionedScalar("zero",y_.dimensions(),0.0)
+        y_
     ),
     k_
     (
@@ -501,18 +501,6 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
             0
         )
     ),
-    lambda_
-    (
-    	IOobject
-	    (
-	        "lambda",
-            this->runTime_.timeName(),
-            this->mesh_,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-	    ),
-	    this->mesh_
-    ),
     kSurface_
     (
         IOobject
@@ -543,7 +531,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
     (
         IOobject
         (
-	        "ki",
+            "ki",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::NO_READ,
@@ -556,7 +544,7 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
     (
         IOobject
         (
-	        "kQ",
+            "kQ",
             this->runTime_.timeName(),
             this->mesh_,
             IOobject::READ_IF_PRESENT,
@@ -583,8 +571,6 @@ HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::HFDIBKOmegaSST
     HFDIBRASDict.readEntry("disGSurfaceType", omegaGSurfaceType_);
     HFDIBRASDict.readEntry("kBoundaryValue", kBoundaryValue_);
     HFDIBRASDict.readEntry("disGBoundaryValue", omegaGBoundaryValue_);
-    HFDIBRASDict.readEntry("tolKEqn", tolKEqn_);
-    HFDIBRASDict.readEntry("maxKEqnIters", maxKEqnIters_);
     useKQ_ = HFDIBRASDict.lookupOrDefault<bool>("useKSource", true);
     correctFs_ = HFDIBRASDict.lookupOrDefault<bool>("correctFs", true);
 
@@ -666,16 +652,27 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     volScalarField& nut = this->nut_;
     fv::options& fvOptions(fv::options::New(this->mesh_));
 
+    // correct distance from surface
+    if (correctFs_)
+    {
+        HFDIBRANS.correctY(yIB_, false); // false to not redo once created
+    }
+
     BasicHFDIBTurbulenceModel::correct();
 
     // HFDIBRANS: create surface for k
     HFDIBRANS.createBaseSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
-    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_);
+    HFDIBRANS.updateSurface(kSurface_, kSurfaceType_, kBoundaryValue_);
     kSurface_.correctBoundaryConditions();
 
     // HFDIBRANS: create surface for omega
-    HFDIBRANS.createBaseSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
-    HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_);
+    HFDIBRANS.createBaseSurface
+	(
+		omegaGSurface_,
+		omegaGSurfaceType_,
+		omegaGBoundaryValue_
+	);
+    HFDIBRANS.updateSurface(omegaGSurface_, omegaGSurfaceType_, omegaGBoundaryValue_);
     omegaGSurface_.correctBoundaryConditions();
 
     const volScalarField::Internal divU
@@ -695,12 +692,6 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     (
         (2*alphaOmega2_)*(fvc::grad(k_) & fvc::grad(omega_))/omega_
     );
-
-    // HFDIB: correct y_
-    if (correctFs_)
-    {
-        HFDIBRANS.correctY(yIB_);
-    }
 
     const volScalarField F1(this->F1(CDkOmega));
     const volScalarField F23(this->F23());
@@ -729,7 +720,6 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     // HFDIB: correct omega and G
     HFDIBRANS.correctOmegaG(omega_, G, U, k_, nu_, omegaGSurface_);
     omega_.correctBoundaryConditions();
-    //~ G.correctBoundaryConditions(); // G does not have this function
 
     // Turbulent frequency equation
     tmp<fvScalarMatrix> omegaEqn
@@ -757,15 +747,20 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     // HFDIBRANS: matrix manipulate
-    matrixManipulate(omegaEqn.ref(), omega_, omegaGSurface_);
+    matrixManipulate
+	(
+		omegaEqn.ref(),
+		omega_,
+		omegaGSurface_,
+		HFDIBRANS.getLambda()
+	);
 
     solve(omegaEqn);
     fvOptions.correct(omega_);
     bound(omega_, this->omegaMin_);
-    //~ HFDIBRANS.bound(omega_, this->omegaMin_);
 
     // HFDIBRANS: compute imposed field for the turbulent kinetic energy
-    HFDIBRANS.computeKi(k_, ki_, nu_);
+    HFDIBRANS.computeKi(k_, ki_, nu_, kBoundaryValue_);
     ki_.correctBoundaryConditions();
 
     // Turbulent kinetic energy equation
@@ -790,33 +785,32 @@ void HFDIBKOmegaSST<BasicHFDIBTurbulenceModel>::correct(openHFDIBRANS& HFDIBRANS
 
     if (useKQ_)
     {
-        for (label nCorr = 0; nCorr < maxKEqnIters_; nCorr++)
-        {
-            kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
-            kQ_.correctBoundaryConditions();
-            solve(kEqn == kQ_);
+        kQ_ = kSurface_*(kEqn.A()*ki_ - kEqn.H());
+        kQ_.correctBoundaryConditions();
 
-            Info << "HFDIBRANS: Max error in k -> ki is " << (max(kSurface_*(ki_ - k_)).value()) << endl;
-
-            if (max(kSurface_*(ki_ - k_)).value() < tolKEqn_)
-            {
-                Info << "HFDIBRANS: k converged to ki within max tolerance " << tolKEqn_ << endl;
-                break;
-            }
-
-            // apply correction
-            k_ += 1.0*kSurface_*(ki_ - k_);
-        }
+        // HFDIBRANS: add to k equation
+        kEqn -= kQ_;
     }
 
-    else
+    // HFDIBRANS: matrix manipulate
+    if (!useKQ_)
     {
-        solve(kEqn);
+        matrixManipulate(kEqn, ki_, kSurface_, HFDIBRANS.getLambda());
+    }
+
+    // solve
+    solve(kEqn);
+
+    // HFDIBRANS: correction
+    if (useKQ_)
+    {
+        Info << "HFDIBRANS: Max error in k -> ki is "
+			 << (max(kSurface_*(ki_ - k_)).value()) << endl;
+        k_ += 1.0*kSurface_*(ki_ - k_);
     }
 
     fvOptions.correct(k_);
     bound(k_, this->kMin_);
-    //~ HFDIBRANS.bound(k_, this->kMin_);
 
     correctNut(S2);
     HFDIBRANS.correctNut(this->nut_, k_, nu_);

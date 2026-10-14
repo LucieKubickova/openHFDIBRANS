@@ -16,66 +16,57 @@ UEqn.relax();
 
 fvOptions.constrain(UEqn);
 
-HFDIBRANS.computeUi(U, Ui, surfaceType);
+// HFDIBRANS: set up imposed velocity
+HFDIBRANS.computeUi(U, Ui, surfaceType, UIn, boundaryVal);
 Ui.correctBoundaryConditions();
-HFDIBRANS.updateSurface(surface, surfaceType);
+
+// HFDIBRANS: set up surfaces
+HFDIBRANS.updateSurface(surface, surfaceType, boundaryVal);
 surface.correctBoundaryConditions();
 HFDIBRANS.correctSurfaceByNormal(normSurface, surface, normCorrLimit);
 normSurface.correctBoundaryConditions();
 
+// HFDIBRANS: immersed boundary induced source term
+if (useNormSurface)
+{
+    f = normSurface & (UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+}
+
+else
+{
+    f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+}
+
+// HFDIBRANS: add to U equation
+UEqn -= f;
+
 
 if (simple.momentumPredictor())
 {
-    for (label nCorr = 0; nCorr < maxEqnIters; nCorr++)
-    {
-        if (useNormSurface)
-        {
-            f = normSurface & (UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
-        }
-        
-        else
-        {
-            f = surface*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
-        }
-
-        if (cutForce)
-        {
-            HFDIBRANS.cutFInBoundaryCells(f);
-        }
-        solve(UEqn == -fvc::grad(p) + f);
-
-        scalar error(0.0);
-        if (useNormSurface)
-        {
-            error = max(mag(normSurface & (Ui - U))).value();
-        }
-
-        else
-        {
-            error = max(mag(surface*(Ui - U))).value();
-        }
-        Info << "HFDIBRANS: Max error in U -> Ui is " << error << endl;
-
-        if (error < tolEqn)
-        {
-            Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolEqn << endl;
-            break;
-        }
-
-        // apply correction 
-        if (useNormSurface)
-        {
-            U += 1.0*normSurface & (Ui - U);
-        }
-
-        else
-        {
-            U += 1.0*surface*(Ui - U);
-        }
-    }
-
+    solve(UEqn == -fvc::grad(p));
     fvOptions.correct(U);
 }
 
-// Asign the current f as RHS for momentum equation
-UEqn -= f;
+// calculate error
+scalar error(0.0);
+if (useNormSurface)
+{
+    error = max(mag(normSurface & (Ui - U))).value();
+}
+
+else
+{
+    error = max(mag(surface*(Ui - U))).value();
+}
+Info << "HFDIBRANS: Max error in U -> Ui is " << error << endl;
+
+// apply correction
+if (useNormSurface)
+{
+    U += 1.0*normSurface & (Ui - U);
+}
+
+else
+{
+    U += 1.0*surface*(Ui - U);
+}

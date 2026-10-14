@@ -98,8 +98,6 @@ protected:
             word epsilonGSurfaceType_;
             scalar kBoundaryValue_;
             scalar epsilonGBoundaryValue_;
-            scalar tolKEqn_;
-            label maxKEqnIters_;
 
         // Options
             bool useKQ_;
@@ -109,7 +107,13 @@ protected:
         virtual void correctNut();
         virtual tmp<fvScalarMatrix> kSource() const;
         virtual tmp<fvScalarMatrix> epsilonSource() const;
-        virtual void matrixManipulate(fvScalarMatrix& eqn, volScalarField& phi, volScalarField& surface);
+        virtual void matrixManipulate
+		(
+			fvScalarMatrix& eqn,
+			volScalarField& phi,
+			volScalarField& surface,
+			volScalarField& lambda
+		);
 
 
 public:

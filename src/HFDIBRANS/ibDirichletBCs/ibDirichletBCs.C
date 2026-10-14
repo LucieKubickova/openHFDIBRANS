@@ -42,14 +42,18 @@ using namespace Foam;
 ibDirichletBCs::ibDirichletBCs
 (
     const fvMesh& mesh,
+    ibMesh& ibMesh,
     const volScalarField& body,
     List<DynamicList<boundaryCell>>& boundaryCells,
+    List<DynamicList<surfaceCell>>& surfaceCells,
     labelField& isBoundaryCell
 )
 :
 mesh_(mesh),
+ibMesh_(ibMesh),
 body_(body),
 boundaryCells_(boundaryCells),
+surfaceCells_(surfaceCells),
 isBoundaryCell_(isBoundaryCell),
 turbulenceProperties_
 (
@@ -63,9 +67,9 @@ turbulenceProperties_
     )
 ),
 transportProperties_
-(
+(   
     IOobject
-    (
+    (       
         "transportProperties",
         "constant",
         mesh_,
@@ -121,19 +125,6 @@ uTaui_
     mesh_,
     dimensionedScalar("zero", dimless, 0.0)
 ),
-tauwi_
-(
-    IOobject
-    (
-        "tauwi",
-        mesh_.time().timeName(),
-        mesh_,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    mesh_,
-    dimensionedVector("zero", dimless, vector::zero)
-),
 nuti_
 (
     IOobject
@@ -168,9 +159,10 @@ beta1_(0.075)
     uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
     uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
 
-    // read boundary condition for velocity
+    // read boundary conditions
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
+    TBC_ = HFDIBBCsDict_.lookupOrDefault<word>("T", "fixedValue");
 
     // read simulation type
     if (simulationType_ != "laminar")
@@ -246,25 +238,23 @@ void ibDirichletBCs::setSizeToLists
 (
 )
 {
-    if (simulationType_ != "laminar")
-    {
-        // set size
-        nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
-        kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
-        uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    // set size
+    nutAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    kAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
+    uTauAtIB_[Pstream::myProcNo()].setSize(boundaryCells_[Pstream::myProcNo()].size());
 
-        // reset
-        nutAtIB_[Pstream::myProcNo()] = 0.0;
-        kAtIB_[Pstream::myProcNo()] = 0.0;
-        uTauAtIB_[Pstream::myProcNo()] = 0.0;
-    }
+    // reset
+    nutAtIB_[Pstream::myProcNo()] = 0.0;
+    kAtIB_[Pstream::myProcNo()] = 0.0;
+    uTauAtIB_[Pstream::myProcNo()] = 0.0;
 }
 
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
-    volVectorField& U
+    volVectorField& U,
+    vector& UIn
 )
 {
     if (simulationType_ == "laminar" or UBC_ == "noSlip")
@@ -272,7 +262,8 @@ void ibDirichletBCs::UAtIB
         forAll(UIB, uCell)
         {
             // assign zero
-            UIB[uCell] = ibZero(UIB[uCell]);
+            //~ UIB[uCell] = ibZero(UIB[uCell]);
+            UIB[uCell] = UIn;
         }
     }
 
@@ -308,13 +299,42 @@ void ibDirichletBCs::UAtIB
 void ibDirichletBCs::TAtIB
 (
     List<scalar>& TIB,
-    scalar TIn
+    volScalarField& T,
+    scalar& TIn
 )
 {
-    forAll(TIB, bCell)
+    if (TBC_ == "fixedValue")
     {
-        // assign value
-        TIB[bCell] = TIn;
+        forAll(TIB, tCell)
+        {
+            // assign value
+            TIB[tCell] = TIn;
+        }
+    }
+
+    else if (TBC_ == "zeroGradient")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            if (Pstream::nProcs() == 1)
+            {
+                // get cell label
+                label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+                // Note (LK): works only single core
+                TIB[bCell] = T[inCellI];
+            }
+            else
+            {
+                FatalError << "zeroGradient condition for T is not implemented for multiple processors" << exit(FatalError);
+            }
+        }
+    }
+
+    else
+    {
+        FatalError << TBC_ << " condition for T in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -376,7 +396,7 @@ void ibDirichletBCs::updateUTauAtIB
             }
             else if (uTauType_ == "cellDistance")
             {
-                dist = Foam::pow(mesh_.V()[cellI],0.333);
+                dist = ibMesh_.getCellSize(cellI, sNorm);
             }
             else if (uTauType_ == "coeffDistance")
             {
@@ -389,12 +409,12 @@ void ibDirichletBCs::updateUTauAtIB
             // check in which cell the point is
             label kCell;
             label kProc;
-            if (pointInCell(distPoint, cellI))
+            if (ibMesh_.pointInCell(distPoint, cellI))
             {
                 kCell = cellI;
                 kProc = Pstream::myProcNo();
             }
-            else //~ if (pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
+            else //~ if (ibMesh_.pointInCell(yEffPoint, fCell1)) // Note (LK): the distPoint should not be farther than one cell away
             {
                 kCell = fCell1;
                 kProc = fProc1;
@@ -476,6 +496,13 @@ void ibDirichletBCs::updateUTauAtIB
                     uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[fCell]);
                 }
             }
+
+            else if (fProc == -1)
+            {
+                // get uTau from the boundary cell itself
+                uTauAtIB_[Pstream::myProcNo()][bCell] = Cmu25_*Foam::sqrt(k[cellI]);
+            }
+
             else
             {
                 fCellsToSync[fProc].append(fCell);
@@ -525,7 +552,7 @@ void ibDirichletBCs::updateUTauAtIB
                 point recPoint = recFPoints[rCell];
 
                 scalar uTau;
-                if (uTauType_ == "firstInterpPoint" or uTauType_ == "effectiveDistance")
+                if (uTauType_ == "interpPoint" or uTauType_ == "effectiveDistance")
                 {
                     // interpolate k
                     scalar kPoint = interpK->interpolate(recPoint, recCell);
@@ -585,9 +612,6 @@ void ibDirichletBCs::updateUTauAtIB
         }
     }
 
-    // post processing
-    postProcessUTau();
-
     // save
     saveUTau();
 }
@@ -599,7 +623,16 @@ void ibDirichletBCs::nutAtIB
     volScalarField& nu
 )
 {
-    if (nutWF_ == "nutkWallFunction")
+    if (simulationType_ == "laminar")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            nutAtIB_[Pstream::myProcNo()][bCell] = 0.0;
+        }
+    }
+
+    else if (nutWF_ == "nutkWallFunction")
     {
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
@@ -781,59 +814,6 @@ void ibDirichletBCs::kAtIB
         {
             kAtIB_[Pstream::myProcNo()][bCell] = kIB[bCell];
         }
-
-        // save kIB
-        //~ word fileName = "k.dat";
-        //~ word outDir = mesh_.time().rootPath() + "/" + mesh_.time().globalCaseName() + "/ZZ_python";
-
-        //~ // prepare outFile
-        //~ autoPtr<OFstream> outFilePtr;
-        //~ outFilePtr.reset(new OFstream(outDir/fileName));
-        //~ outFilePtr() << "cellI,x,y,z,V,k" << endl;
-
-        //~ // loop over cells
-        //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-        //~ {
-            //~ // get cell label
-            //~ label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
-
-            //~ // get distance to the surface
-            //~ scalar yOrtho;
-            //~ if (useYEff_)
-            //~ {
-            //~     yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
-            //~ }
-            //~ else
-            //~ {
-            //~     yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
-            //~ }
-
-            //~ // get coordinates and volume
-            //~ scalar x = mesh_.C()[cellI].x();
-            //~ scalar y = mesh_.C()[cellI].y();
-            //~ if (y < 0.0) // UGLYYYYYYYYYYYY
-            //~ {
-                //~ y -= yOrtho;
-            //~ }
-            //~ else
-            //~ {
-                //~ y += yOrtho;
-            //~ }
-            //~ scalar z = mesh_.C()[cellI].z();
-            //~ scalar V = mesh_.V()[cellI];
-
-            //~ // get the fields value
-            //~ scalar kk = kIB[bCell];
-
-            //~ // write
-            //~ outFilePtr() << cellI
-                //~ << "," << x
-                //~ << "," << y
-                //~ << "," << z
-                //~ << "," << V
-                //~ << "," << kk
-                //~ << endl;
-        //~ }
     }
 
     else
@@ -1025,124 +1005,16 @@ void ibDirichletBCs::epsilonGAtIB
     }
 }
 
-
-//---------------------------------------------------------------------------//
-// Note (LK): not parallelized, but not really used either
-void ibDirichletBCs::postProcessUTau
-(
-)
-{
-    //~ // initialize
-    //~ scalar totA(0.0);
-
-    //~ // loop over faces
-    //~ forAll(mesh_.cells()[cellI], fI)
-    //~ {
-        //~ // get face label
-        //~ label faceI = mesh_.cells()[cellI][fI];
-
-        //~ // skip boundary faces
-        //~ if (faceI >= mesh_.faceNeighbour().size())
-        //~ {
-            //~ continue;
-        //~ }
-
-        //~ // get cell labels
-        //~ label owner = mesh_.faceOwner()[faceI];
-        //~ label neighbor = mesh_.faceNeighbour()[faceI];
-
-        //~ // skip in-solid cells
-        //~ if (body_[owner] >= 0.5 or body_[neighbor] >= 0.5)
-        //~ {
-            //~ continue;
-        //~ }
-
-        //~ // get uTau values
-        //~ scalar uTauO = Cmu25_*Foam::sqrt(k[owner]);
-        //~ scalar uTauN = Cmu25_*Foam::sqrt(k[neighbor]);
-
-        //~ // calculate the average value
-        //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[neighbor]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[owner]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[neighbor]) + mag(mesh_.Cf()[faceI] - mesh_.C()[owner]));
-
-        //~ // add face area to total
-        //~ totA += mag(mesh_.Sf()[faceI]);
-    //~ }
-
-    //~ // loop over boundary cells -- does not make a difference
-    //~ forAll(boundaryCells_[Pstream::myProcNo()], bCell)
-    //~ {
-        //~ // get the cell label
-        //~ label cellN = boundaryCells_[Pstream::myProcNo()][nCell].bCell_;
-
-        //~ // flag
-        //~ bool isNeigh = false;
-
-        //~ // loop over neighbor cells
-        //~ forAll(mesh_.cellCells()[cellN], cN)
-        //~ {
-            //~ if (cellI == mesh_.cellCells()[cellN][cN])
-            //~ {
-                //~ isNeigh = true;
-                //~ break;
-            //~ }
-        //~ }
-
-        //~ // for neighbors add to uTau
-        //~ if (isNeigh)
-        //~ {
-            //~ // find common face
-            //~ label faceI;
-            //~ forAll(mesh_.cells()[cellI], fI)
-            //~ {
-                //~ // flag
-                //~ bool found = false;
-
-                //~ // get the face label
-                //~ faceI = mesh_.cells()[cellI][fI];
-
-                //~ forAll(mesh_.cells()[cellN], fN)
-                //~ {
-                    //~ // get the face label
-                    //~ label faceN = mesh_.cells()[cellN][fN];
-
-                    //~ if (faceI == faceN)
-                    //~ {
-                        //~ found = true;
-                        //~ break;
-                    //~ }
-                //~ }
-
-                //~ if (found)
-                //~ {
-                    //~ break;
-                //~ }
-            //~ }
-
-            //~ // compute uTau for each cell
-            //~ scalar uTauO = Cmu25_*Foam::sqrt(k[cellI]);
-            //~ scalar uTauN = Cmu25_*Foam::sqrt(k[cellN]);
-
-            //~ // add to total uTau
-            //~ uTauAtIB_[Pstream::myProcNo()][bCell] += mag(mesh_.Sf()[faceI])*(uTauO*mag(mesh_.Cf()[faceI]-mesh_.C()[cellN]) + uTauN*mag(mesh_.Cf()[faceI]-mesh_.C()[cellI]))/(mag(mesh_.Cf()[faceI] - mesh_.C()[cellN]) + mag(mesh_.Cf()[faceI] - mesh_.C()[cellI]));
-
-            //~ // add face area to total
-            //~ totA += mag(mesh_.Sf()[faceI]);
-        //~ }
-    //~ }
-
-    //~ // divide by total area
-    //~ uTauAtIB_[Pstream::myProcNo()][bCell] /= totA;
-}
-
 //---------------------------------------------------------------------------//
 void ibDirichletBCs::calculateWallShearStress
 (
+    volVectorField& tauw,
     const volVectorField& U,
     const volScalarField& nu
 )
 {
     // reset
-    tauwi_ *= 0.0;
+    tauw *= 0.0;
 
     // prepare list
     List<vector> tauwIB;
@@ -1174,8 +1046,236 @@ void ibDirichletBCs::calculateWallShearStress
         tauwIB[bCell] = -normal & devTau;
 
         // save
-        tauwi_[cellI] = tauwIB[bCell];
+        tauw[cellI] = tauwIB[bCell];
     }
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateForces
+(
+    volVectorField& fN,
+    volVectorField& fT,
+    volVectorField& tauw,
+    const volScalarField& p,
+    dictionary forceDict
+)
+{
+    // reset fields
+    fN *= 0.0;
+    fT *= 0.0;
+
+    // save for check
+    volScalarField surfAdded
+    (
+        IOobject
+        (
+            "surfAdded",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("zero", dimless, 0.0)
+    );
+
+    volVectorField surfPoints
+    (
+        IOobject
+        (
+            "surfPoints",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
+    volVectorField tauws
+    (
+        IOobject
+        (
+            "tauws",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("zero", dimless, vector::zero)
+    );
+
+    // read dict
+    scalar rhoInf = forceDict.lookupOrDefault<scalar>("rhoInf", 1000.0);
+    scalar pRef = forceDict.lookupOrDefault<scalar>("pRef", 0.0);
+
+    // go through boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // save to added
+        if (body_[outCellI] < 0.5 && body_[outCellI] >= thrSurf_) // Note (LK): type 0
+        {
+            surfAdded[outCellI] += 1.0;
+        }
+        else if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_) // Note (LK): type 1
+        {
+            surfAdded[inCellI] += 1.0;
+        }
+        else // Note (LK): type 2
+        {
+            surfAdded[outCellI] += 1.0;
+        }
+    }
+
+    // go through boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell label
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // decide where to put
+        label whereI(outCellI);
+
+        if (body_[outCellI] < thrSurf_ && body_[inCellI] < 1.0 - thrSurf_)
+        {
+            whereI = inCellI;
+        }
+
+        else
+        {
+            whereI = outCellI;
+        }
+
+        // get and save surf point
+        surfPoints[whereI] = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
+
+        // add wall shear stress
+        tauws[whereI] += tauw[outCellI]/surfAdded[whereI];
+
+        // get surface normal
+        vector normal = -1*boundaryCells_[Pstream::myProcNo()][bCell].sNorm_;
+
+        // get surface area
+        scalar sA = boundaryCells_[Pstream::myProcNo()][bCell].sArea_;
+
+        // calculate normal force
+        fN[whereI] += rhoInf*normal*sA*(p[outCellI] - pRef/rhoInf)/surfAdded[whereI]; // Note (LK): zero gradient considered
+
+        // calculate tangential force
+        fT[whereI] += -1*sA*rhoInf*tauw[outCellI]/surfAdded[whereI]; // Note (LK): minus in calculation of tauw
+    }
+
+    // check if some surface cells were skipped
+    forAll(surfaceCells_[Pstream::myProcNo()], sCell)
+    {
+        // get cell label
+        label cellI = surfaceCells_[Pstream::myProcNo()][sCell].sCell_;
+
+        // cell already added
+        if (surfAdded[cellI] > 0.1)
+        {
+            continue;
+        }
+
+        // prepare surf point and normal
+        vector normal = -1*surfaceCells_[Pstream::myProcNo()][sCell].sNorm_;
+        point surfPoint = surfaceCells_[Pstream::myProcNo()][sCell].sPoint_;
+
+        // get surface area
+        scalar sA = surfaceCells_[Pstream::myProcNo()][sCell].sArea_;
+
+        // prepare total weight and value
+        scalar totWeight(0.0);
+        vector totTauws(vector::zero);
+
+        // get values from neighbors
+        forAll(mesh_.cells()[cellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[cellI][fI];
+
+            // skip boundary faces
+            if (!mesh_.isInternalFace(faceI))
+            {
+                continue;
+            }
+            
+            // get owner and neighbor
+            label owner(mesh_.owner()[faceI]);
+            label neighbor(mesh_.neighbour()[faceI]);
+
+            // get cell neighbor
+            label nI(neighbor);
+            if (neighbor == cellI)
+            {
+                nI = owner;
+            }
+
+            // check if added from boundary cells
+            if (surfAdded[nI] > 0.1)
+            {
+                point nSurfPoint = surfPoints[nI];
+                scalar dist = mag(nSurfPoint - surfPoint);
+                scalar weight = 1.0/dist;
+
+                // add
+                totWeight += weight;
+                totTauws += weight*tauws[nI];
+            }
+        }
+
+        // divide by total weight
+        totTauws /= totWeight;
+
+        // calculate forces
+        fN[cellI] += rhoInf*normal*sA*(p[cellI] - pRef/rhoInf);
+        fT[cellI] += -1*sA*rhoInf*totTauws;
+
+        // check as added
+        surfAdded[cellI] += 1.0;
+    }
+
+    // Note (LK): check what was added
+    surfAdded.write();
+}
+
+//---------------------------------------------------------------------------//
+void ibDirichletBCs::calculateForceCoeffs
+(
+    scalar& Cl,
+    scalar& Cd,
+    volVectorField& fN,
+    volVectorField& fT,
+    dictionary forceDict
+)
+{
+    // read dict
+    scalar rhoInf = forceDict.lookupOrDefault<scalar>("rhoInf", 1000.0);
+    scalar magUInf = forceDict.lookupOrDefault<scalar>("magUInf", 1.0);
+    scalar ARef = forceDict.lookupOrDefault<scalar>("ARef", 1.0);
+    vector liftDir = forceDict.lookupOrDefault<vector>("liftDir", vector(0,1,0));
+    vector dragDir = forceDict.lookupOrDefault<vector>("dragDir", vector(1,0,0));
+
+    // calculate dynamic pressure
+    scalar pDyn = 0.5*rhoInf*magUInf*magUInf;
+
+    // calculate total force
+    Field<vector> totForce = fN + fT;
+
+    // calculate coeffs fields
+    Field<scalar> fieldCl = (totForce & liftDir)/(ARef*pDyn);
+    Field<scalar> fieldCd = (totForce & dragDir)/(ARef*pDyn);
+    
+    // calculate coefficients
+    Cl = sum(fieldCl);
+    Cd = sum(fieldCd);
 }
 
 //---------------------------------------------------------------------------//
@@ -1195,28 +1295,6 @@ void ibDirichletBCs::saveUTau
         // save
         uTaui_[cellI] = uTauAtIB_[Pstream::myProcNo()][bCell];
     }
-}
-
-//---------------------------------------------------------------------------//
-bool ibDirichletBCs::pointInCell // copy from lineIntInfo
-(
-    point pToCheck,
-    label cToCheck
-)
-{
-    const labelList& cellFaces(mesh_.cells()[cToCheck]);
-    forAll(cellFaces, faceI)
-    {
-        label fI = cellFaces[faceI];
-        vector outNorm = mesh_.Sf()[fI];
-        outNorm = (mesh_.faceOwner()[fI] == cToCheck) ? outNorm : (-1*outNorm);
-
-        if (((pToCheck - mesh_.Cf()[fI]) & outNorm) > 0)
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 //---------------------------------------------------------------------------//

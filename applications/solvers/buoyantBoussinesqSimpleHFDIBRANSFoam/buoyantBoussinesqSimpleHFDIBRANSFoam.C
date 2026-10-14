@@ -6,7 +6,7 @@
 | (_) | |_) |  __/ | | | | | | |  | |/ / | |_| |_/ / | \ \ | | | |\ \ |/ |_|  |
  \___/| .__/ \___|_| |_\_| |_\_|  |___/ \___/\____/|_/  \_|| |_|_| \__|\_____/
       | |                     H ybrid F ictitious D omain - I mmersed B oundary
-      |_|                    with R eynolds A veraged N avier S tokes equations          
+      |_|                    with R eynolds A veraged N avier S tokes equations
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -35,11 +35,11 @@ Description
 
     Uses the Boussinesq approximation:
     \f[
-        rho_{k} = 1 - beta(T - T_{ref})
+        rho = 1 - beta(T - T_{ref})
     \f]
 
     where:
-        \f$ rho_{k} \f$ = the effective (driving) density
+        \f$ rho \f$ = the effective (driving) density
         beta = thermal expansion coefficient [1/K]
         T = temperature [K]
         \f$ T_{ref} \f$ = reference temperature [K]
@@ -55,8 +55,8 @@ Description
 #include "singlePhaseTransportModel.H"
 #include "HFDIBTurbulentTransportModel.H"
 #include "radiationModel.H"
-#include "fvOptions.H"
 #include "simpleControl.H"
+#include "fvOptions.H"
 #include "HFDIBTurbulenceModel.H"
 #include "IncompressibleHFDIBTurbulenceModel.H"
 #include "incompressible/transportModel/transportModel.H"
@@ -97,22 +97,23 @@ int main(int argc, char *argv[])
     word surfaceTypeU;
     HFDIBSIMPLEDictU.lookup("surfaceType") >> surfaceTypeU;
     scalar boundaryValU = readScalar(HFDIBSIMPLEDictU.lookup("boundaryValue"));
-    scalar tolEqnU = readScalar(HFDIBSIMPLEDictU.lookup("tolEqn"));
-    scalar maxEqnItersU = readScalar(HFDIBSIMPLEDictU.lookup("maxEqnIters"));
+    vector UIn = HFDIBSIMPLEDictU.lookupOrDefault<vector>("valInside", vector::zero);
 
     // read dict for T
     dictionary HFDIBSIMPLEDictT = simple.dict().subDict("HFDIB").subDict("T");
     word surfaceTypeT;
     HFDIBSIMPLEDictT.lookup("surfaceType") >> surfaceTypeT;
     scalar boundaryValT = readScalar(HFDIBSIMPLEDictT.lookup("boundaryValue"));
-    scalar tolEqnT = readScalar(HFDIBSIMPLEDictT.lookup("tolEqn"));
-    scalar maxEqnItersT = readScalar(HFDIBSIMPLEDictT.lookup("maxEqnIters"));
     scalar TIn = readScalar(HFDIBSIMPLEDictT.lookup("valInside"));
+    scalar solveTInSolid = HFDIBSIMPLEDictT.lookupOrDefault<bool>("solveTInSolid", false);
 
     // prepare HFDIBRANS
     openHFDIBRANS HFDIBRANS(mesh, lambda);
     HFDIBRANS.createBaseSurface(surfaceU, surfaceTypeU, boundaryValU);
+    surfaceU.correctBoundaryConditions();
     HFDIBRANS.createBaseSurface(surfaceT, surfaceTypeT, boundaryValT);
+    surfaceT.correctBoundaryConditions();
+    HFDIBRANS.setScalarInSolid(T, TIn);
 
     Ui *= 0.0;
     Ui.correctBoundaryConditions();

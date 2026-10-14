@@ -16,40 +16,46 @@ UEqn.relax();
 
 fvOptions.constrain(UEqn);
 
-HFDIBRANS.computeUi(U, Ui, surfaceTypeU);
-HFDIBRANS.updateSurface(surfaceU, surfaceTypeU);
+// HFDIBRANS: set up imposed velocity
+HFDIBRANS.computeUi(U, Ui, surfaceTypeU, UIn, boundaryValU);
+Ui.correctBoundaryConditions();
+
+// HFDIBRANS: set up surfaces
+HFDIBRANS.updateSurface(surfaceU, surfaceTypeU, boundaryValU);
+surfaceU.correctBoundaryConditions();
+
+// HFDIBRANS: immersed boundary induced source term
+f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
+
+// HFDIBRANS: add to U equation
+UEqn -= f;
 
 if (simple.momentumPredictor())
 {
-    for (label nCorr = 0; nCorr < maxEqnItersU; nCorr++)
-    {
-        //~ f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::grad(p));
-        f = surfaceU*(UEqn.A()*Ui - UEqn.H() + fvc::reconstruct((ghf*fvc::snGrad(rhok) + fvc::snGrad(p_rgh))*mesh.magSf()));
-        solve
-        (
-            UEqn
-          ==
-            fvc::reconstruct
-            (
-                (
-                  - ghf*fvc::snGrad(rhok)
-                  - fvc::snGrad(p_rgh)
-                )*mesh.magSf()
-            )
-          + f
-        );
+    solve(UEqn == -fvc::grad(p));
 
-        Info << "HFDIBRANS: Max error in U -> Ui is " << (max(mag(surfaceU*(Ui - U))).value()) << endl;
-
-        if (max(mag(surfaceU*(Ui - U))).value() < tolEqnU)
-        {
-            Info << "HFDIBRANS: U converged to Ui within max tolerance " << tolEqnU << endl;
-            break;
-        }
-
-        // apply correction 
-        U += 1.0*surfaceU*(Ui - U);
-    }
+    // Note (LK): following reconstruct needs fixing of ghf
+    // and check of snGrad and magSf at immersed boundary
+    //~ solve
+    //~ (
+    //~     UEqn
+    //~   ==
+    //~     fvc::reconstruct
+    //~     (
+    //~         (
+    //~           - ghf*fvc::snGrad(rho)
+    //~           - fvc::snGrad(p_rgh)
+    //~         )*mesh.magSf()
+    //~     )
+    //~ );
 
     fvOptions.correct(U);
 }
+
+// calculate error
+scalar error(0.0);
+error = max(mag(surfaceU*(Ui - U))).value();
+Info << "HFDIBRANS: Max error in U -> Ui is " << error << endl;
+
+// apply correction
+U += 1.0*surfaceU*(Ui - U);
