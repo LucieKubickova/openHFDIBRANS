@@ -74,7 +74,7 @@ Foam::HFDIBRASModel<BasicHFDIBMomentumTransportModel>::HFDIBRASModel
     ),
 
     HFDIBRASDict_(this->subOrEmptyDict("HFDIBRAS")),
-    turbulence_(HFDIBRASDict_.lookup("turbulence")),
+    turbulence_(HFDIBRASDict_.lookupOrDefault<Switch>("turbulence", true)),
     printCoeffs_(HFDIBRASDict_.lookupOrDefault<Switch>("printCoeffs", false)),
     coeffDict_(HFDIBRASDict_.optionalSubDict(type + "Coeffs")),
 

@@ -167,11 +167,11 @@ beta1_(0.075)
     // read simulation type
     if (simulationType_ != "laminar")
     {
-        HFDIBBCsDict_.lookup("nut") >> nutWF_;
+        nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "undefined");
         alphatWF_ = HFDIBBCsDict_.lookupOrDefault<word>("alphat", "undefined");
-        HFDIBBCsDict_.lookup("k") >> kWF_;
-        HFDIBBCsDict_.lookup("omega") >> omegaWF_;
-        HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+        kWF_ = HFDIBBCsDict_.lookupOrDefault<word>("k", "undefined");
+        omegaWF_ = HFDIBBCsDict_.lookupOrDefault<word>("omega", "undefined");
+        epsilonWF_ = HFDIBBCsDict_.lookupOrDefault<word>("epsilon", "undefined");
     }
 
     // compute turbulence parameters
