@@ -85,6 +85,8 @@ class openHFDIBRANS
     // properties of the solid
     bool solveTInSolid_;
     scalar alphaInSolid_;
+    scalar cpInSolid_;
+    scalar rhoInSolid_;
 
     // options
     bool save_;
@@ -126,6 +128,7 @@ class openHFDIBRANS
     // set values inside solid
     void setScalarInSolid(volScalarField& phi, scalar value, scalar threshold = 0.5);
     void correctAlphaInSolid(volScalarField& alpha);
+    void correctKappaInSolid(volScalarField& kappa, volScalarField& alpha);
 
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);
