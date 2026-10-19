@@ -19,7 +19,7 @@ from rewriteLambdaBoundary import *
 
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
-outFolder = '../ZZ_cases/99_V2/'
+outFolder = '../ZZ_cases/99_V3_onlyRect/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================

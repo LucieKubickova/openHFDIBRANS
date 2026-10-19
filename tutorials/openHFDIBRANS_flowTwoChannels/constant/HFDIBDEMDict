@@ -19,7 +19,7 @@ FoamFile
 surfaceThreshold    1e-4;
 sdBasedLambda       false;
 // stlName             rectangle;
-stlName             geometry;
+stlName             geometryOnlyRect;
 geomModel           convex;
 interfaceSpan       1.0;
 saveIntInfo         true;

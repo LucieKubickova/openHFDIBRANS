@@ -632,11 +632,11 @@ def createMeshLamBet(baseCase):
     solidLeft = list()
     solidLeft.append(leftSolid.retFYZ0())
 
-    fvMesh.addPatch("solidLeft", "patch", solidLeft)
+    fvMesh.addPatch("solidLeft", "wall", solidLeft)
 
     solidRight = list()
     solidRight.append(rightSolid.retFYZE())
 
-    fvMesh.addPatch("solidRight", "patch", solidRight)
+    fvMesh.addPatch("solidRight", "wall", solidRight)
 
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
