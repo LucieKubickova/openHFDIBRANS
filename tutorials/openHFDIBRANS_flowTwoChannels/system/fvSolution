@@ -137,7 +137,7 @@ relaxationFactors
     }
     equations
     {
-        ".*" 0.85;
+        ".*" 0.75;
     }
 }
 
