@@ -317,17 +317,45 @@ void ibDirichletBCs::TAtIB
         // loop over boundary cells
         forAll(boundaryCells_[Pstream::myProcNo()], bCell)
         {
-            if (Pstream::nProcs() == 1)
-            {
-                // get cell label
-                label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+            // get cell label
+            label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
-                // Note (LK): works only single core
+            // get processor number
+            label iProc = boundaryCells_[Pstream::myProcNo()][bCell].iProc_;
+
+            if (iProc == Pstream::myProcNo())
+            {
                 TIB[bCell] = T[inCellI];
             }
+
             else
             {
-                FatalError << "zeroGradient condition for T is not implemented for multiple processors" << exit(FatalError);
+                // get shared face
+                label iFace = boundaryCells_[Pstream::myProcNo()][bCell].iFace_;
+
+                // access shared patch
+                forAll(mesh_.boundaryMesh(), patchI)
+                {
+                    if (isA<processorPolyPatch>(mesh_.boundaryMesh()[patchI]))
+                    {
+                        const processorPolyPatch& procPatch
+                            = refCast<const processorPolyPatch>(mesh_.boundaryMesh()[patchI]);
+
+                        // get the neighboring processor id
+                        label sProc = (Pstream::myProcNo() == procPatch.myProcNo())
+                            ? procPatch.neighbProcNo() : procPatch.myProcNo();
+
+                        if (sProc == iProc)
+                        {
+                            // access neighbor processor patch
+                            const tmp<scalarField> tTN(T.boundaryField()[patchI].patchNeighbourField());
+                            const scalarField& TN = tTN();
+
+                            // assign value
+                            TIB[bCell] = TN[iFace];
+                        }
+                    }
+                }
             }
         }
     }
