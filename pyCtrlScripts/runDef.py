@@ -9,7 +9,7 @@
 import sys
 from OF_caseClass import OpenFOAMCase
 import numpy as np
-# from blockMeshDictClassV8 import *
+from blockMeshDictClassV8 import *
 # from meshGeneration import *
 # from myAddFcs import *
 import re
@@ -21,6 +21,13 @@ baseCaseDir = '../tutorials/openHFDIBRANS_noGap/' # -- base case for simulation
 outFolder = '../ZZ_cases/openHFDIBRANS_noGap_def_IB/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
+# WHAT TO RUN===========================================================
+flowRun = True
+# flowRun = False
+
+defRun = True
+defRun = False
+
 # SIMULATION INPUTS=====================================================
 # -- cluster settings
 slurmRun = True
@@ -30,6 +37,7 @@ slurmRun = False
 nProc = 1
 
 # -- solvers
+solverFlow = 'buoyantBoussinesqSimpleHFDIBRANSFoam' 
 solverDef = 'solids4Foam' 
 
 # -- numerics
@@ -56,20 +64,42 @@ baseCase.setParameters(
     ]
 )
 
-# -- run deformation simulation
-if nProc > 1:
-    if slurmRun:
-        pass
+# -- run flow simulation
+if flowRun:
+    if nProc > 1:
+        if slurmRun:
+            pass
+        else:
+            baseCase.runCommands(
+                [
+                    'decomposePar > log.decomposePar',
+                    'foamJob -parallel -screen %s > log.%s' % (solverFlow, solverFlow)
+                ]
+            )
     else:
         baseCase.runCommands(
             [
-                'decomposePar > log.decomposePar',
-                'foamJob -parallel -screen %s > log.%s' % (solverDef, solverDef)
+                'chmod 755 ./Allclean && chmod 755 ./Allrun-serialAll',
+                './Allclean',
+                './Allrun-serialAll',
             ]
         )
-else:
-    baseCase.runCommands(
-        [
-            '%s > log.%s' % (solverDef, solverDef)
-        ]
-    )
+
+# -- run deformation simulation
+if defRun:
+    if nProc > 1:
+        if slurmRun:
+            pass
+        else:
+            baseCase.runCommands(
+                [
+                    'decomposePar > log.decomposePar',
+                    'foamJob -parallel -screen %s > log.%s' % (solverDef, solverDef)
+                ]
+            )
+    else:
+        baseCase.runCommands(
+            [
+                '%s > log.%s' % (solverDef, solverDef)
+            ]
+        )
