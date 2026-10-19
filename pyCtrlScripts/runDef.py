@@ -19,7 +19,7 @@ from rewriteLambdaBoundary import *
 
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
-outFolder = '../ZZ_cases/99_V3_onlyRect/'
+outFolder = '../ZZ_cases/99_V3_onlyRect_par/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -42,7 +42,7 @@ Iper /= 100
 Cmu = 0.09
 
 # -- decomposition
-nProc = 1
+nProc = 2
 
 # -- solvers
 solverFlow = 'buoyantBoussinesqSimpleHFDIBRANSFoam' 
