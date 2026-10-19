@@ -1,1 +1,0 @@
-../alphatJayatillekeWallFunctionFvPatchScalarField.C
