@@ -17,7 +17,7 @@ FoamFile
 
 dimensions      [0 0 -1 0 0 0 0];
 
-internalField   uniform 0.004898979485566355;
+internalField   uniform 4.90e+2;
 
 boundaryField
 {
@@ -38,7 +38,7 @@ boundaryField
         value           $internalField;
     }
     
-    wallInsideLambda
+    "(wallInsideLambda|solidLeft|solidRight)"
     {
         type            zeroGradient;
         //~ type            omegaWallFunction;

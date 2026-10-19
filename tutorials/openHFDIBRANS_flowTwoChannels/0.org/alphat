@@ -40,11 +40,9 @@ boundaryField
         value           uniform 0;
     }
 
-    wallInsideLambda
+    "(wallInsideLambda|solidLeft|solidRight)"
     {
-        type            alphatJayatillekeWallFunction;
-        Prt             0.85;
-        value           uniform 0;
+        type            zeroGradient;
     }
 
     frontAndBack

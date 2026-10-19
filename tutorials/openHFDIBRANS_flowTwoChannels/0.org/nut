@@ -17,7 +17,7 @@ FoamFile
 
 dimensions      [0 2 -1 0 0 0 0];
 
-internalField   uniform 1.2247448713915895e-07;
+internalField   uniform 1.22e-2;
 
 boundaryField
 {
@@ -39,7 +39,7 @@ boundaryField
         value           $internalField;
     }
     
-    wallInsideLambda
+    "(wallInsideLambda|solidLeft|solidRight)"
     {
         type            zeroGradient;
         //~ type            nutkWallFunction;
@@ -51,3 +51,6 @@ boundaryField
         type            empty;
     }
 }
+
+
+// ************************************************************************* //

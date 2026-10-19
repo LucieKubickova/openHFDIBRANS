@@ -38,11 +38,11 @@ boundaryField
     walls
     {
         type            fixedFluxPressure;
-        rho             rho;
+        rho             rho
         value           uniform 0;
     }
 
-    wallInsideLambda
+    "(wallInsideLambda|solidLeft|solidRight)"
     {
         type            fixedFluxPressure;
         rho             rho;
