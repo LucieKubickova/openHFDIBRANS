@@ -81,7 +81,13 @@ fvSchemes_
     ibDirichletBCs_.reset(new ibDirichletBCs(mesh_, ibMesh_(), body_, boundaryCells_, surfaceCells_, isBoundaryCell_));
 
     // properties of the solid
-    alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
+    if (HFDIBDEMDict_.found("solidProperties"))
+    {
+        dictionary HFDIBDEMSolidDict = HFDIBDEMDict_.subDict("solidProperties");
+        alphaInSolid_ = HFDIBDEMSolidDict.lookupOrDefault<scalar>("alpha", SMALL);
+        cpInSolid_ = HFDIBDEMSolidDict.lookupOrDefault<scalar>("cp", SMALL);
+        rhoInSolid_ = HFDIBDEMSolidDict.lookupOrDefault<scalar>("rho", SMALL);
+    }
 
     // read HFDIBDEM dictionary
     save_ = HFDIBDEMDict_.lookupOrDefault<bool>("saveIntInfo", false);
@@ -788,6 +794,23 @@ void openHFDIBRANS::correctAlphaInSolid
         if (body_[cellI] >= 0.5)
         {
             alpha[cellI] = alphaInSolid_;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctKappaInSolid
+(
+    volScalarField& kappa,
+    volScalarField& alpha
+)
+{
+    // set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            kappa[cellI] = alpha[cellI]*cpInSolid_*rhoInSolid_;
         }
     }
 }

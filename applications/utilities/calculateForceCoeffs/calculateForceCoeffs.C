@@ -25,13 +25,13 @@ License
 
 #include "fvCFD.H"
 #include "singlePhaseTransportModel.H"
-#include "kinematicHFDIBMomentumTransportModel.H"
+#include "HFDIBTurbulentTransportModel.H"
 #include "fvOptions.H"
 
 #include "addToRunTimeSelectionTable.H"
-#include "HFDIBMomentumTransportModel.H"
-#include "IncompressibleHFDIBMomentumTransportModel.H"
-#include "transportModel.H"
+#include "HFDIBTurbulenceModel.H"
+#include "IncompressibleHFDIBTurbulenceModel.H"
+#include "incompressible/transportModel/transportModel.H"
 #include "HFDIBRASModel.H"
 #include "HFDIBLaminarModel.H"
 
@@ -197,9 +197,9 @@ int main(int argc, char *argv[])
     // prepare turbulence model
     singlePhaseTransportModel laminarTransport(U, phi);
 
-    autoPtr<incompressible::HFDIBmomentumTransportModel> turbulence
+    autoPtr<incompressible::HFDIBturbulenceModel> turbulence
     (
-        incompressible::HFDIBmomentumTransportModel::New(U, phi, laminarTransport)
+        incompressible::HFDIBturbulenceModel::New(U, phi, laminarTransport)
     );
 
     // prepare HFDIBRANS

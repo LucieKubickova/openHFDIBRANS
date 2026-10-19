@@ -182,7 +182,7 @@ volScalarField alphat
     mesh
 );
 
-// effective thermal conductivity m2/s
+// effective thermal diffusivity m2/s
 Info<< "Creating field alphaEff\n" << endl;
 volScalarField alphaEff
 (
@@ -196,6 +196,22 @@ volScalarField alphaEff
     ),
     mesh,
     dimensionedScalar("zero", alphat.dimensions(), 0.0)
+);
+
+// effective thermal conductivity m2/s
+Info<< "Creating field kappa\n" << endl;
+volScalarField kappa
+(
+    IOobject
+    (
+        "kappa",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", dimMass*dimLength/dimTime/dimTime/dimTime/dimTemperature, 1.0)
 );
 
 

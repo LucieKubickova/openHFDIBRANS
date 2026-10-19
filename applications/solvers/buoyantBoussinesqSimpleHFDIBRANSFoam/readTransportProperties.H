@@ -11,6 +11,10 @@ dimensionedScalar beta
 // Reference temperature [K]
 dimensionedScalar TRef("TRef", dimTemperature, laminarTransport);
 
+dimensionedScalar cpRef("cpRef", dimLength*dimLength/dimTime/dimTime/dimTemperature, laminarTransport);
+
+dimensionedScalar rhoRef("rhoRef", dimMass/dimLength/dimLength/dimLength, laminarTransport);
+
 // Laminar Prandtl number
 dimensionedScalar Pr("Pr", dimless, laminarTransport);
 

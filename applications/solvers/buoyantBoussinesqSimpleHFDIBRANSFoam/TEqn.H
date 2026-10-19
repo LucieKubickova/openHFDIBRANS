@@ -57,3 +57,6 @@ radiation->correct();
 fvOptions.correct(T);
 
 rho = 1.0 - beta*(T - TRef);
+
+kappa = alphaEff*cpRef*rhoRef;
+HFDIBRANS.correctKappaInSolid(kappa, alphaEff);
