@@ -20,6 +20,9 @@ cd $cwd/applications/solvers/scalarHFDIBTransportFoam
 cd $cwd/applications/solvers/buoyantBoussinesqSimpleHFDIBRANSFoam
 ./Allwmake
 
+cd $cwd/applications/solvers/chtMultiRegionBuoyantBoussinesqSimpleFoam
+./Allwmake
+
 cd $cwd/applications/utilities/calculateWallShearStress
 ./Allwmake
 

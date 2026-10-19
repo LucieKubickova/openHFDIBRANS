@@ -1,0 +1,27 @@
+#!/bin/bash
+# make sure about my position
+cd $(dirname $0)
+
+# just to have notion
+date "+%d/%m/%Y %T"
+
+# source openfoam run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# create base mesh 
+python3 mesher.py
+runApplication blockMesh
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# split mesh regions
+runApplication splitMeshRegions -cellZones -overwrite
+
+# create files for postprocessing
+paraFoam -touch
+paraFoam -builtin -touch

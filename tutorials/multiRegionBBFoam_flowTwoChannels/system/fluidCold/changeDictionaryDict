@@ -1,0 +1,344 @@
+
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      changeDictionaryDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+U
+{
+internalField   uniform (0.001 0 0);
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+    
+    "(outletTop|outletBot)"
+    {
+        type            zeroGradient;
+    }
+
+    walls
+    {
+        type            noSlip;
+    }
+    
+    wallInsideLambda
+    {
+        type            noSlip;
+    }
+    
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+}
+
+}
+
+T
+{
+internalField   uniform 200.0;
+
+boundaryField
+{
+    inletTop
+    {
+        type            fixedValue;
+        value           uniform 100.0;
+    }
+    
+    inletBot
+    {
+        type            fixedValue;
+        value           uniform 300.0;
+    }
+    
+    "(outletTop|outletBot)"
+    {
+        type            zeroGradient;
+    }
+
+    walls
+    {
+        type            zeroGradient;
+    }
+
+    wallInsideLambda
+    {
+        type            zeroGradient;
+    }
+
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            compressible::turbulentTemperatureRadCoupledMixed;
+        Tnbr            T;
+        kappaMethod     lookup;
+        kappa           kappa;
+        value           uniform 200;
+        verbose         true;
+    }
+}
+
+}
+
+omega
+{
+internalField   uniform 0.004898979485566355;
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+
+    "(outletTop|outletBot)"
+    {
+        type            zeroGradient;
+    }
+
+    wall
+    {
+        type            omegaWallFunction;
+        value           $internalField;
+    }
+    
+    wallInsideLambda
+    {
+        type            zeroGradient;
+        //~ type            omegaWallFunction;
+        //~ value           $internalField;
+    }
+    
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            omegaWallFunction;
+        value           $internalField;
+    }
+}
+
+
+}
+
+nut
+{
+internalField   uniform 1.2247448713915895e-07;
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            calculated;
+        value           $internalField;
+    }
+
+    "(outletTop|outletBot)"
+    {
+	    type		    calculated;
+	    value		    $internalField;
+    }
+
+    wall
+    {
+        type            nutkWallFunction;
+        value           $internalField;
+    }
+    
+    wallInsideLambda
+    {
+        type            zeroGradient;
+        //~ type            nutkWallFunction;
+        //~ value           $internalField;
+    }
+    
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            nutkWallFunction;
+        value           $internalField;
+    }
+}
+
+
+}
+
+k
+{
+internalField   uniform 6e-10;
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+    
+    "(outletTop|outletBot)"
+    {
+        type            zeroGradient;
+    }
+
+    wall
+    {
+        type            kLowReWallFunction;
+        value           $internalField;
+    }
+    
+    wallInsideLambda
+    {
+        type            zeroGradient;
+        //~ type            kLowReWallFunction;
+        //~ value           $internalField;
+    }
+    
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            kLowReWallFunction;
+        value           $internalField;
+    }
+}
+
+
+}
+
+alphat
+{
+internalField   uniform 0;
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            calculated;
+        value           $internalField;
+    }
+    
+    "(outletTop|outletBot)"
+    {
+        type            calculated;
+        value           $internalField;
+    }
+
+    walls
+    {
+        type            compressible::alphatJayatillekeWallFunction;
+        Prt             0.85;
+        value           uniform 0;
+    }
+
+    wallInsideLambda
+    {
+        type            compressible::alphatJayatillekeWallFunction;
+        Prt             0.85;
+        value           uniform 0;
+    }
+
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid
+    {
+        type            compressible::alphatJayatillekeWallFunction;
+        Prt             0.85;
+        value           uniform 0;
+    }
+}
+
+}
+
+p_rgh
+{
+internalField   uniform 0;
+
+boundaryField
+{
+    "(inletTop|inletBot)"
+    {
+        type            fixedFluxPressure;
+        rho             rho;
+        value           uniform 0;
+    }
+    
+    "(outletTop|outletBot)"
+    {
+        type            prghPressure;
+        p               $internalField;
+        value           $internalField;
+        rho             rho;
+    }
+
+    walls
+    {
+        type            fixedFluxPressure;
+        rho             rho;
+        value           uniform 0;
+    }
+
+    wallInsideLambda
+    {
+        type            fixedFluxPressure;
+        rho             rho;
+        value           uniform 0;
+    }
+
+    frontAndBack
+    {
+        type            empty;
+    }
+
+    fluidCold_to_solid 
+    {
+        type            fixedFluxPressure;
+        rho             rho;
+        value           uniform 0;
+    }
+}
+
+}
+
+
+// ************************************************************************* //

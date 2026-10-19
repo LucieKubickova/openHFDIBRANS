@@ -1,0 +1,51 @@
+#!/bin/bash
+# make sure about my position
+cd $(dirname $0)
+
+# just to have notion
+date "+%d/%m/%Y %T"
+
+# source openfoam run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# create base mesh 
+python3 mesher.py
+runApplication blockMesh
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# set initial turbulence
+python3 setInletTurbulence.py
+
+# create change dictionary dicts
+python3 writeChangeDictDict.py
+
+# split mesh regions
+runApplication splitMeshRegions -cellZones -overwrite
+
+# create files for postprocessing
+paraFoam -touch
+paraFoam -builtin -touch
+
+# set boundary conditions on inter-region patches
+for region in $(foamListRegions)
+do
+    runApplication -s "$region" changeDictionary -region "$region"
+done
+
+# get the solver application
+application=`getApplication`
+
+# run the application
+runApplication $application
+
+# post-processing
+python3 mergeRegionFields.py
+runApplication readAndWriteScalar
+runApplication readAndWriteVelocity
+runApplication readAndWriteScalarName kappa
