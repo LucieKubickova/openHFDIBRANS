@@ -1,3 +1,0 @@
-SOURCE = \
-incompressibleHFDIBMomentumTransportModel.C \
-kinematicMomentumTransportModels/kinematicHFDIBMomentumTransportModels.C 
