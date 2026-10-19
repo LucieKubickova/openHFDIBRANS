@@ -11,5 +11,10 @@ OpenHFDIB-RANS requires [OpenFOAM 8](https://openfoam.org/release/8/) installed 
 * L. Kubíčková and M. Isoz.: Extending the hybrid fictitious domain-immersed boundary method for reynolds-averaged turbulence modeling, 2026. URL: https://arxiv.org/abs/2606.06135. arXiv:2606.06135
 * L. Kubíčková and M. Isoz.: On Reynolds-Averaged Turbulence Modeling with Immersed Boundary Method. In Proceedings of Topical Problems of Fluid Mechanics 2023, Prague, 2023, Edited by David Šimurda and Tomáš Bodnár, pp. 104–111., DOI: https://doi.org/10.14311/TPFM.2023.015
 
+## Archived snapshots
+* v1.0.0
+
+ [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22917049-blue.svg)](https://doi.org/10.5281/zenodo.22917049)
+
 ## License
 OpenHFDIB-RANS is licensed under the GNU General Public License v3 or later. See http://www.gnu.org/licenses/, for a description of the GNU General Public License terms under which you can copy the files.
