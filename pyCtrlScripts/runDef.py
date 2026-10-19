@@ -18,8 +18,8 @@ from mesher import *
 from rewriteLambdaBoundary import *
 
 # CASE FOLDERS==========================================================
-baseCaseDir = '../tutorials/openHFDIBRANS_kappa30/' # -- base case for simulation
-outFolder = '../ZZ_cases/openHFDIBRANS_noGap_def_IB_par/'
+baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
+outFolder = '../ZZ_cases/99_V2/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -98,7 +98,7 @@ baseCase.setParameters(
 )
 
 # -- create mesh and lambda field
-createMesh(baseCase)
+createMeshLamBet(baseCase)
 baseCase.runCommands(
     [
         'blockMesh > log.blockMesh',
