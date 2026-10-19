@@ -1,4 +1,0 @@
-SOURCE = \
-buoyantBoussinesqSimpleHFDIBRANSFoam.C \
-
-# sources
