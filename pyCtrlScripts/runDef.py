@@ -68,7 +68,7 @@ names = ["k", "epsilon", "omega", "nut"]
 
 # 1) boundary conditions
 # -- turbulence variables
-ls0 = os.listdir(baseCase.dir)
+ls0 = os.listdir('%s/0.org/'%(baseCase.dir))
 for name in names:
     if name in ls0:
         baseCase.setParameters(
