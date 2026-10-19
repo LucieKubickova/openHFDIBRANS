@@ -1,5 +1,0 @@
-SOURCE = \
-incompressibleHFDIBTurbulenceModel.C \
-turbulentTransportModels/HFDIBTurbulentTransportModels.C \
-
-# sources
