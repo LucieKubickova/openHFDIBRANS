@@ -1,5 +1,7 @@
 
-def mesh():
+from blockMeshDictClassV8 import *
+
+def createMesh(baseCase):
     # parameters
     lPipe = 0.3
     wPipe = 0.05
@@ -202,7 +204,7 @@ def mesh():
     # create the block
     botThird = fvMesh.addBlock(vertices, neighbours, nCells, grading)
 
-    # -- mid lambda block
+    # -- lambda block
     xC, yC, zC = x0+cStart, y0-wSkip, z0
     xE, yE, zE = xC+cLen, y0, zC+dZ
 
@@ -219,7 +221,7 @@ def mesh():
         ]
 
     # neighbouring blocks
-    neighbours = [topFirst, topSecond, topThird]
+    neighbours = [topFirst, topSecond, topThird, botFirst, botSecond, botThird]
 
     # number of cells
     nCX = int(round(abs(xE-xC)/dX))
@@ -230,67 +232,7 @@ def mesh():
     grading = [grX, grY, grZ]
 
     # create the block
-    midSolid = fvMesh.addBlock(vertices, neighbours, nCells, grading)
-
-    # -- left solid block
-    xC, yC, zC = x0, y0-wSkip, z0
-    xE, yE, zE = x0+cStart, y0, zC+dZ
-
-    # vertices
-    vertices = [
-            [xC, yC, zC],
-            [xE, yC, zC],
-            [xE, yE, zC],
-            [xC, yE, zC],
-            [xC, yC, zE],
-            [xE, yC, zE],
-            [xE, yE, zE],
-            [xC, yE, zE],
-        ]
-
-    # neighbouring blocks
-    neighbours = [midSolid, topFirst, topSecond, botFirst, botSecond]
-
-    # number of cells
-    nCX = int(round(abs(xE-xC)/dX))
-    nCY = int(round(abs(yE-yC)/dY))
-    nCells = [nCX, nCY, nCZ]
-
-    # grading
-    grading = [grX, grY, grZ]
-
-    # create the block
-    leftSolid = fvMesh.addBlock(vertices, neighbours, nCells, grading)
-
-    # -- right solid block
-    xC, yC, zC = x0+cEnd, y0-wSkip, z0
-    xE, yE, zE = x0+lPipe, y0, zC+dZ
-
-    # vertices
-    vertices = [
-            [xC, yC, zC],
-            [xE, yC, zC],
-            [xE, yE, zC],
-            [xC, yE, zC],
-            [xC, yC, zE],
-            [xE, yC, zE],
-            [xE, yE, zE],
-            [xC, yE, zE],
-        ]
-
-    # neighbouring blocks
-    neighbours = [midSolid, topFirst, topSecond, botFirst, botSecond]
-
-    # number of cells
-    nCX = int(round(abs(xE-xC)/dX))
-    nCY = int(round(abs(yE-yC)/dY))
-    nCells = [nCX, nCY, nCZ]
-
-    # grading
-    grading = [grX, grY, grZ]
-
-    # create the block
-    rightSolid = fvMesh.addBlock(vertices, neighbours, nCells, grading)
+    lambdaBlock = fvMesh.addBlock(vertices, neighbours, nCells, grading)
 
     ### PATCHES ###
     # -- empty
@@ -325,26 +267,27 @@ def mesh():
 
     # -- walls
     walls = list()
+    walls.append(topFirst.retFXZ0())
     walls.append(topFirst.retFXZE())
+
     walls.append(topSecond.retFXZE())
+
+    walls.append(topThird.retFXZ0())
     walls.append(topThird.retFXZE())
 
     walls.append(botFirst.retFXZ0())
+    walls.append(botFirst.retFXZE())
+
     walls.append(botSecond.retFXZ0())
+
     walls.append(botThird.retFXZ0())
+    walls.append(botThird.retFXZE())
+
+    walls.append(lambdaBlock.retFYZ0())
+    walls.append(lambdaBlock.retFYZE())
 
     fvMesh.addPatch("walls", "wall", walls)
 
-    # -- solid walls
-    solidLeft = list()
-    solidLeft.append(leftSolid.retFYZ0())
-
-    fvMesh.addPatch("solidLeft", "patch", solidLeft)
-
-    solidRight = list()
-    solidRight.append(rightSolid.retFYZE())
-
-    fvMesh.addPatch("solidRight", "patch", solidRight)
-
     ### WRITE ###
-    fvMesh.writeBMD("./system/")
+    # fvMesh.writeBMD("./system/")
+    fvMesh.writeBMD("%s/system/" % baseCase.dir)
