@@ -1,2 +1,5 @@
 ZZ_cases/*
 *__pycache__*
+*linux64GccDPInt32Opt*
+src/*/lnInclude/*
+src/*/*/lnInclude/*
