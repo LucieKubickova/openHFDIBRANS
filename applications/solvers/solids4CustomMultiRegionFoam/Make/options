@@ -1,4 +1,4 @@
-SOLIDS4FOAM_ROOT := ../../../../solids4foam
+SOLIDS4FOAM_ROOT := ../../../../solids4foamOld
 
 sinclude $(SOLIDS4FOAM_ROOT)/etc/wmake-options
 sinclude $(SOLIDS4FOAM_ROOT)/../etc/wmake-options
