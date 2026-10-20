@@ -1487,26 +1487,26 @@ def createMeshMulRegOnlyChannels(baseCase):
 
     # -- inlets
     inletTop = list()
-    inletTop.append(fluidCold.retFYZ0())
+    inletTop.append(fluidHot.retFYZ0())
     # inletTop.append(aboveFirst.retFYZ0())
 
     fvMesh.addPatch("inletTop", "patch", inletTop)
 
     inletBot = list()
-    inletBot.append(fluidHot.retFYZ0())
+    inletBot.append(fluidCold.retFYZ0())
     # inletBot.append(belFirst.retFYZ0())
 
     fvMesh.addPatch("inletBot", "patch", inletBot)
 
     # -- outlets
     outletTop = list()
-    outletTop.append(fluidCold.retFYZE())
+    outletTop.append(fluidHot.retFYZE())
     # outletTop.append(aboveFifth.retFYZE())
 
     fvMesh.addPatch("outletTop", "patch", outletTop)
 
     outletBot = list()
-    outletBot.append(fluidHot.retFYZE())
+    outletBot.append(fluidCold.retFYZE())
     # outletBot.append(belFifth.retFYZE())
 
     fvMesh.addPatch("outletBot", "patch", outletBot)
