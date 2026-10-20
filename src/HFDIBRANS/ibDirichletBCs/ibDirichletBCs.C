@@ -64,6 +64,17 @@ ibDirichletBCs::ibDirichletBCs
 			IOobject::NO_WRITE
 		)
 	),
+    transportProperties_
+    (
+        IOobject
+        (
+            "transportProperties",
+            "constant",
+            mesh_,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
+        )
+    ),
 	HFDIBDEMDict_
 	(
 		IOobject
@@ -127,6 +138,7 @@ ibDirichletBCs::ibDirichletBCs
 	),
 	kappa_(0.41),
 	E_(9.8),
+    Prt_(0.85),
 	Cmu_(0.09),
 	Ceps2_(1.9),
 	beta1_(0.075)
@@ -145,17 +157,19 @@ ibDirichletBCs::ibDirichletBCs
     uTauType_ = HFDIBDEMDict_.lookupOrDefault<word>("uTauType", "freeStreamCell");
     uTauCoeff_ = HFDIBDEMDict_.lookupOrDefault<scalar>("uTauCoeff", 1.0);
 
-    // Read boundary condition for velocity
+    // Read boundary conditions
     HFDIBBCsDict_ = HFDIBDEMDict_.subDict("wallFunctions");
     UBC_ = HFDIBBCsDict_.lookupOrDefault<word>("U", "noSlip");
+    TBC_ = HFDIBBCsDict_.lookupOrDefault<word>("T", "fixedValue");
 
     // Read simulation type
     if (simulationType_ != "laminar")
     {
-        HFDIBBCsDict_.lookup("nut") >> nutWF_;
-        HFDIBBCsDict_.lookup("k") >> kWF_;
-        HFDIBBCsDict_.lookup("omega") >> omegaWF_;
-        HFDIBBCsDict_.lookup("epsilon") >> epsilonWF_;
+        nutWF_ = HFDIBBCsDict_.lookupOrDefault<word>("nut", "undefined");
+        alphatWF_ = HFDIBBCsDict_.lookupOrDefault<word>("alphat", "undefined");
+        kWF_ = HFDIBBCsDict_.lookupOrDefault<word>("k", "undefined");
+        omegaWF_ = HFDIBBCsDict_.lookupOrDefault<word>("omega", "undefined");
+        epsilonWF_ = HFDIBBCsDict_.lookupOrDefault<word>("epsilon", "undefined");
     }
 
     // Compute turbulence parameters
@@ -184,6 +198,40 @@ void ibDirichletBCs::calcYPlusLam()
     }
 }
 
+//---------------------------------------------------------------------------//
+
+scalar ibDirichletBCs::yPlusTherm
+(
+    const scalar P,
+    const scalar Prat
+) const
+{
+    scalar ypt = 11;
+    scalar tolerance = 0.01;
+    label maxIters = 10;
+
+    for (int iter = 0; iter < maxIters; ++iter)
+    {
+        const scalar f = ypt - (Foam::log(E_*ypt)/kappa_ + P)/Prat;
+        const scalar df = 1.0 - 1.0/(ypt*kappa_*Prat);
+        const scalar yptNew = ypt - f/df;
+
+        if (yptNew < VSMALL)
+        {
+            return 0;
+        }
+        else if (mag(yptNew - ypt) < tolerance)
+        {
+            return yptNew;
+        }
+        else
+        {
+            ypt = yptNew;
+        }
+     }
+
+    return ypt;
+}
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -214,15 +262,17 @@ void ibDirichletBCs::setSizeToLists()
 void ibDirichletBCs::UAtIB
 (
     List<vector>& UIB,
-    volVectorField& U
+    volVectorField& U,
+    vector& UIn
 )
 {
     if (simulationType_ == "laminar" or UBC_ == "noSlip")
     {
         forAll(UIB, uCell)
         {
-            // Assign zero
-            UIB[uCell] = ibZero(UIB[uCell]);
+            // assign zero
+            //~ UIB[uCell] = ibZero(UIB[uCell]);
+            UIB[uCell] = UIn;
         }
     }
     else if (UBC_ == "partialSlip")
@@ -259,13 +309,42 @@ void ibDirichletBCs::UAtIB
 void ibDirichletBCs::TAtIB
 (
     List<scalar>& TIB,
-    scalar TIn
+    volScalarField& T,
+    scalar& TIn
 )
 {
-    forAll(TIB, bCell)
+    if (TBC_ == "fixedValue")
     {
-        // Assign value
-        TIB[bCell] = TIn;
+        forAll(TIB, tCell)
+        {
+            // assign value
+            TIB[tCell] = TIn;
+        }
+    }
+
+    else if (TBC_ == "zeroGradient")
+    {
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            if (Pstream::nProcs() == 1)
+            {
+                // get cell label
+                label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+                // Note (LK): works only single core
+                TIB[bCell] = T[inCellI];
+            }
+            else
+            {
+                FatalError << "zeroGradient condition for T is not implemented for multiple processors" << exit(FatalError);
+            }
+        }
+    }
+
+    else
+    {
+        FatalError << TBC_ << " condition for T in " << simulationType_ << " not implemented at the IB" << exit(FatalError);
     }
 }
 
@@ -626,7 +705,80 @@ void ibDirichletBCs::nutAtIB
     }
 }
 
-// ------------------------------------------------------------------------- //
+//---------------------------------------------------------------------------//
+
+void ibDirichletBCs::correctAlphatAtIB
+(
+    List<scalar>& alphatIB,
+    const volScalarField& nu
+)
+{
+    if (alphatWF_ == "alphatJayatillekeWallFunction")
+    {
+        // Molecular Prandtl number
+        const scalar Pr
+        (
+            dimensionedScalar("Pr", dimless, transportProperties_).value()
+        );
+
+        // loop over boundary cells
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            // get cell label
+            label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+            // get distance to the surface
+            scalar yOrtho;
+            if (useYEff_)
+            {
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yEff_;
+            }
+            else
+            {
+                yOrtho = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+            }
+
+            // get the friction velocity
+            scalar uTau = uTauAtIB_[Pstream::myProcNo()][bCell];
+
+            // compute yPlus
+            scalar yPlus = uTau*yOrtho/nu[cellI];
+
+            // saves for later interpolation
+            yPlusi_[cellI] = yPlus;
+
+            // Molecular-to-turbulent Prandtl number ratio
+            const scalar Prat = Pr/Prt_;
+
+            // Thermal sublayer thickness
+            const scalar P = 9.24*(Foam::pow(Prat, 0.75) - 1.0)*(1.0 + 0.28*Foam::exp(-0.007*Prat)); // Psmooth function in source
+            const scalar yPlusTherm = this->yPlusTherm(P, Prat);
+
+            // Update turbulent thermal conductivity
+            if (yPlus > yPlusTherm)
+            {
+                const scalar kt =
+                    nu[cellI]*(yPlus/(Prt_*(Foam::log(E_*yPlus)/kappa_ + P)) - 1.0/Pr);
+
+                alphatIB[bCell] = max(scalar(0), kt);
+            }
+            else
+            {
+                alphatIB[bCell] = 0.0;
+            }
+        }
+    }
+
+    else if (simulationType_ == "laminar")
+    {
+        forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+        {
+            alphatIB[bCell] = 0.0;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 
 void ibDirichletBCs::kAtIB
 (
@@ -680,7 +832,7 @@ void ibDirichletBCs::kAtIB
         // Ensure stability of computations
         forAll(kIB, bCell)
         {
-            kIB[bCell] = max(kIB[bCell], small);
+            kIB[bCell] = max(kIB[bCell], SMALL);
         }
 
         // Save

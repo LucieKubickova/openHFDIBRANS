@@ -76,8 +76,8 @@ int main(int argc, char *argv[])
         Info << "Time = " << runTime.timeName() << nl << endl;
 
         // HFDIBRANS -- NOTE: this before or inside non-orthogonal loop?
-        HFDIBRANS.computeTi(T, Ti, surfaceType, TIn);
-        HFDIBRANS.updateSurface(surface, surfaceType);
+        HFDIBRANS.computeTi(T, Ti, surfaceType, TIn, boundaryVal);
+        HFDIBRANS.updateSurface(surface, surfaceType, boundaryVal);
 
         while (simple.correctNonOrthogonal())
         {

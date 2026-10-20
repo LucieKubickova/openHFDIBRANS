@@ -73,12 +73,12 @@ private:
 		//- Threshold surface
 		scalar thrSurf_;
 
-		//- Dictionaries
+		// Dictionaries
 		IOdictionary HFDIBDEMDict_;
 		IOdictionary fvSchemes_;
 		dictionary HFDIBOuterSchemes_;
 
-		//- Lists of cells relevant to imposed fields
+		// Lists of cells relevant to imposed fields
 		List<DynamicList<boundaryCell>> boundaryCells_;
 		List<DynamicList<surfaceCell>> surfaceCells_;
 		List<DynamicList<label>> internalCells_;
@@ -90,10 +90,14 @@ private:
 		//- Interpolation class
 		autoPtr<ibInterpolation> ibInterpolation_;
 
+        // Properties of the solid
+        bool solveTInSolid_;
+        scalar alphaInSolid_;
+
 		//- Wall functions class
 		autoPtr<ibDirichletBCs> ibDirichletBCs_;
 
-		//- Options
+		// Options
 		bool save_;
 		bool cpDisToInner_;
 		bool scaleDisG_;
@@ -119,20 +123,22 @@ public:
 
     // Member Functions
 
-		//- Compute imposed U field
+        //- Compute imposed U field
 		void computeUi
 		(
 			volVectorField& U,
 			volVectorField& Ui,
-			word surfType
+			word surfType,
+            vector UIn,
+            scalar boundaryVal
 		);
-
 		//- Compute imposed k field
 		void computeKi
 		(
 			volScalarField& k,
 			volScalarField& ki,
-			volScalarField& nu
+			volScalarField& nu,
+            scalar boundaryVal
 		);
 
 		//- Compute imposed T field
@@ -141,7 +147,8 @@ public:
 			volScalarField& T,
 			volScalarField& Ti,
 			word surfType,
-			scalar TIn
+			scalar TIn,
+            scalar boundaryVal
 		);
 
 		//- Update friction velocity
@@ -155,7 +162,15 @@ public:
 			volScalarField& nu
 		);
 
-		//- Correct omegaG values
+        //- Correct alphat values
+        void correctAlphat
+        (
+            volScalarField& alphat,
+            const volScalarField& nu,
+            volScalarField& surface
+        );
+
+        //- Correct omegaG values
 		void correctOmegaG
 		(
 			volScalarField& omega,
@@ -177,7 +192,13 @@ public:
 			volScalarField& surface
 		);
 
-		//- Create and return base surface field
+        //- Set scalar inside solid
+        void setScalarInSolid(volScalarField& phi, scalar value, scalar threshold = 0.5);
+
+        //- Correct alphat in solid
+        void correctAlphaInSolid(volScalarField& alpha);
+
+        //- Create and return base surface field
 		void createBaseSurface
 		(
 			volScalarField& surface,
@@ -186,7 +207,12 @@ public:
 		);
 
 		//- Update surface field
-		void updateSurface(volScalarField& surface, word surfType);
+		void updateSurface
+        (
+            volScalarField& surface,
+            word surfType,
+            scalar boundaryValue
+        );
 
 		//- Correct surface field by normal
 		void correctSurfaceByNormal

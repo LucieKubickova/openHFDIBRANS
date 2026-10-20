@@ -1,0 +1,37 @@
+#!/bin/bash
+# set openFoam environment
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Clear old IC
+rm -rf 0
+
+# create base mesh
+runApplication blockMesh
+
+# copy IC
+mkdir -p 0
+cp -rf 0.org/* 0
+
+# create new patch from boundary faces inside lambda
+runApplication createLambdaBoundary
+runApplication createPatch -overwrite -dict system/createPatchDictNewPatch
+
+# correct the lambda field based on the new boundary
+python3 rewriteLambdaBoundary.py
+runApplication correctLambdaBoundary
+
+# create files for postprocessing
+paraFoam -touch
+paraFoam -builtin -touch
+
+# decompose
+runApplication decomposePar
+
+# get the solver application
+application=`getApplication`
+
+# run the application
+runParallel $application
+
+# reconstruct
+runApplication reconstructPar -newTimes

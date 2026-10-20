@@ -120,8 +120,9 @@ openHFDIBRANS::openHFDIBRANS
     useYEff_ = HFDIBDEMDict_.lookupOrDefault<bool>("useEffectiveDist", false);
     thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
     assignNut_ = HFDIBDEMDict_.lookupOrDefault<bool>("assignNut", false);
+    alphaInSolid_ = HFDIBDEMDict_.lookupOrDefault<scalar>("alphaInSolid", SMALL);
 
-	// Read fvSchemes
+    // Read fvSchemes
     HFDIBOuterSchemes_ =
 		fvSchemes_.subDict("HFDIBSchemes").subDict("outerSchemes");
 
@@ -178,11 +179,22 @@ void openHFDIBRANS::computeUi
 (
     volVectorField& U,
     volVectorField& Ui,
-    word surfType // Note (LK): add UIn
+    word surfType,
+    vector UIn,
+    scalar boundaryValue
 )
 {
     // Reset imposed velocity field
     Ui *= 0.0;
+
+    // Assign values in in-solid cells
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            Ui[cellI] = UIn;
+        }
+    }
 
     // Calculate values at the immersed boundary
     List<vector> UIB;
@@ -195,7 +207,7 @@ void openHFDIBRANS::computeUi
         UIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
     }
 
-    ibDirichletBCs_->UAtIB(UIB, U);
+    ibDirichletBCs_->UAtIB(UIB, U, UIn);
 
     // Get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
@@ -274,6 +286,11 @@ void openHFDIBRANS::computeUi
 			);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<vector, volVectorField>(UIBScheme, U, Ui, UIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->
@@ -318,7 +335,8 @@ void openHFDIBRANS::computeKi
 (
     volScalarField& k,
     volScalarField& ki,
-    volScalarField& nu
+    volScalarField& nu,
+    scalar boundaryValue
 )
 {
     // Prepare lists
@@ -389,6 +407,11 @@ void openHFDIBRANS::computeKi
 			);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(kIBScheme, k, ki, kIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->
@@ -429,7 +452,7 @@ void openHFDIBRANS::computeKi
     // Bound ki
     forAll(ki, cellI)
     {
-        ki[cellI] = max(ki[cellI], small);
+        ki[cellI] = max(ki[cellI], SMALL);
     }
 
     // TODO: blended interpolation
@@ -442,7 +465,8 @@ void openHFDIBRANS::computeTi
     volScalarField& T,
     volScalarField& Ti,
     word surfType,
-    scalar TIn
+    scalar TIn,
+    scalar boundaryValue
 )
 {
     // Reset imposed field
@@ -469,7 +493,7 @@ void openHFDIBRANS::computeTi
     }
 
     // Compute values at the immersed boundary
-    ibDirichletBCs_->TAtIB(TIB, TIn);
+    ibDirichletBCs_->TAtIB(TIB, T, TIn);
 
     // Get references
     volScalarField& yPlusi = ibDirichletBCs_->getYPlusi();
@@ -548,6 +572,11 @@ void openHFDIBRANS::computeTi
 			);
     }
 
+    else if (interpType == "switchedValue")
+    {
+        ibInterpolation_->switchedInterp<scalar, volScalarField>(TIBScheme, T, Ti, TIB, logScales, yPlusi, boundaryValue);
+    }
+
     else if (interpType == "outerInner")
     {
         ibInterpolation_->
@@ -610,7 +639,7 @@ void openHFDIBRANS::correctNut
     {
         if (body_[cellI] >= 0.5)
         {
-            nut[cellI] = small;
+            nut[cellI] = SMALL;
         }
     }
 
@@ -637,7 +666,46 @@ void openHFDIBRANS::correctNut
     }
 }
 
-// ------------------------------------------------------------------------- //
+//---------------------------------------------------------------------------//
+
+void openHFDIBRANS::correctAlphat
+(
+    volScalarField& alphat,
+    const volScalarField& nu,
+    volScalarField& surface
+)
+{
+    // Prepare lists
+    List<scalar> alphatIB;
+    alphatIB.setSize(boundaryCells_[Pstream::myProcNo()].size());
+
+    // Calculate values at the immersed boundary
+    ibDirichletBCs_->correctAlphatAtIB(alphatIB, nu);
+
+    // Assign the values for boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // Get cell label
+        label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+
+        // Assign
+        alphat[cellI] = alphatIB[bCell];
+    }
+
+    // Assign the values in in-solid cells
+    forAll(surface, cellI)
+    {
+        if (surface[cellI] == 1.0)
+        {
+            if (body_[cellI] >= 0.5)
+            {
+                alphat[cellI] = SMALL;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 
 void openHFDIBRANS::correctOmegaG
 (
@@ -739,7 +807,7 @@ void openHFDIBRANS::correctOmegaG
             if (body_[cellI] >= 0.5)
             {
                 omega[cellI] = inOmega;
-                G[cellI] = small;
+                G[cellI] = SMALL;
             }
         }
     }
@@ -874,13 +942,49 @@ void openHFDIBRANS::correctEpsilonG
     }
 }
 
-// ------------------------------------------------------------------------- //
+//---------------------------------------------------------------------------//
+
+void openHFDIBRANS::setScalarInSolid
+(
+    volScalarField& phi,
+    scalar value,
+    scalar threshold
+)
+{
+    // Set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= threshold)
+        {
+            phi[cellI] = value;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+
+void openHFDIBRANS::correctAlphaInSolid
+(
+    volScalarField& alpha
+)
+{
+    // Set values inside solid
+    forAll(body_, cellI)
+    {
+        if (body_[cellI] >= 0.5)
+        {
+            alpha[cellI] = alphaInSolid_;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
 
 void openHFDIBRANS::createBaseSurface
 (
     volScalarField& surface,
     word surfType,
-    scalar boundaryVal
+    scalar boundaryValue
 )
 {
     if (surfType == "readOnly")
@@ -888,19 +992,24 @@ void openHFDIBRANS::createBaseSurface
         return;
     }
 
-    else if (surfType == "setValue" or surfType == "switched")
+    else if (surfType == "setValue" or surfType == "switched" or surfType == "switchedValue")
     {
-        ibInterpolation_->setUpSurface(surface, boundaryVal);
+        ibInterpolation_->setUpSurface(surface, boundaryValue);
     }
 
     else if (surfType == "lambdaBased")
     {
-        ibInterpolation_->setLambdaBasedSurface(surface, boundaryVal);
+        ibInterpolation_->setLambdaBasedSurface(surface, boundaryValue);
     }
 
     else if (surfType == "onlyInnerValue")
     {
-        ibInterpolation_->setOnlyInnerSurface(surface, boundaryVal);
+        ibInterpolation_->setOnlyInnerSurface(surface, boundaryValue);
+    }
+
+    else if (surfType == "onlyBoundaryCells")
+    {
+        ibInterpolation_->setOnlyBoundarySurface(surface, boundaryValue);
     }
 
     else
@@ -916,7 +1025,8 @@ void openHFDIBRANS::createBaseSurface
 void openHFDIBRANS::updateSurface
 (
     volScalarField& surface,
-    word surfType
+    word surfType,
+    scalar boundaryValue
 )
 {
     if (surfType == "switched")
@@ -928,6 +1038,11 @@ void openHFDIBRANS::updateSurface
 				ibDirichletBCs_->getYPlusi(),
 				ibDirichletBCs_->getYPlusLam()
 			);
+    }
+
+    else if (surfType == "switchedValue")
+    {
+        ibInterpolation_->updateSwitchSurface(surface, ibDirichletBCs_->getYPlusi(), boundaryValue);
     }
 }
 

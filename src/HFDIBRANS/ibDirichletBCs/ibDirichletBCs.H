@@ -75,60 +75,71 @@ private:
 		//- Lambda field
 		const volScalarField& body_;
 
-		//- Options
+		// Options
 		scalar thrSurf_;
 		bool useYEff_;
 		word uTauType_;
 		scalar uTauCoeff_;
 
-		//- Fields
+        // References to shared data
+        List<DynamicList<boundaryCell>>& boundaryCells_;
+        List<DynamicList<surfaceCell>>& surfaceCells_;
+        labelField& isBoundaryCell_;
+
+        // Dictionaries
+        IOdictionary turbulenceProperties_;
+        IOdictionary transportProperties_;
+        IOdictionary HFDIBDEMDict_;
+        IOdictionary fvSchemes_;
+        dictionary HFDIBBCsDict_;
+
+		// Fields
 		List<List<scalar>> nutAtIB_;
 		List<List<scalar>> kAtIB_;
 		List<List<scalar>> uTauAtIB_;
 
-		//- References to shared data
-		List<DynamicList<boundaryCell>>& boundaryCells_;
-		List<DynamicList<surfaceCell>>& surfaceCells_;
-		labelField& isBoundaryCell_;
-
-		//- Dictionaries
-		IOdictionary turbulenceProperties_;
-		IOdictionary HFDIBDEMDict_;
-		IOdictionary fvSchemes_;
-		dictionary HFDIBBCsDict_;
-
 		//- Simulation type
 		word simulationType_;
 
-		//- Saves
+		// Saves
 		volScalarField yPlusi_;
 		volScalarField uTaui_;
 		volScalarField nuti_;
 
-		//- Boundary conditions
-		word UBC_;
+		// Boundary conditions
+        word UBC_;
+        word TBC_;
 
-		//- RAS wall function names
-		word nutWF_;
-		word kWF_;
-		word omegaWF_;
-		word epsilonWF_;
+        // RAS wall function names
+        word nutWF_;
+        word alphatWF_;
+        word kWF_;
+        word omegaWF_;
+        word epsilonWF_;
 
-		//- RAS parameters
-		const scalar kappa_;
-		const scalar E_;
-		const scalar Cmu_;
-		const scalar Ceps2_;
-		const scalar beta1_;
-		scalar Cmu75_;
-		scalar Cmu25_;
-		scalar Cmu5_;
-		scalar yPlusLam_;
+        // RAS parameters
+        const scalar kappa_;
+        const scalar E_;
+        const scalar Prt_;
+        const scalar Cmu_;
+        const scalar Ceps2_;
+        const scalar beta1_;
+        scalar Cmu75_;
+        scalar Cmu25_;
+        scalar Cmu5_;
+        scalar yPlusLam_;
 
     // Private Member Functions
 
 		//- Calculate laminar y+
 		void calcYPlusLam();
+
+        //- Calculate thermal y+??
+        scalar yPlusTherm
+        (
+            const scalar P,
+            const scalar Prat
+        ) const;
 
 		//- Get zero scalar
 		inline scalar ibZero(scalar dummy);
@@ -166,11 +177,11 @@ public:
 		//- Set size to list
 		void setSizeToLists();
 
-		//- Velocity boundary condition
-		void UAtIB(List<vector>& UIB, volVectorField& U);
+        //- Velocity boundary condition
+        void UAtIB(List<vector>& UIB, volVectorField& U, vector& UIn);
 
-		//- Scalar boundary condition
-		void TAtIB(List<scalar>& TIB, scalar TIn);
+        //- Scalar boundary condition
+        void TAtIB(List<scalar>& TIB, volScalarField& T, scalar& TIn);
 
 		//- Calculate friction velocity
 		void updateUTauAtIB(volScalarField& k);
@@ -178,24 +189,27 @@ public:
 		//- Correct nut at the immersed boundary
 		void nutAtIB(volScalarField& k, volScalarField& nu);
 
-		//- k boundary condition
-		void kAtIB
-		(
-			List<scalar>& kIB,
-			volScalarField& k,
-			volScalarField& nu
-		);
+        //- Correct alphat at the immersed boundary
+        void correctAlphatAtIB(List<scalar>& alphatIB, const volScalarField& nu);
+
+        //- k boundary conditions
+        void kAtIB
+        (
+            List<scalar>& kIB,
+            volScalarField& k,
+            volScalarField& nu
+        );
 
 		//- omegaG boundary condition
-		void omegaGAtIB
-		(
-			List<scalar>& omegaIB,
-			List<scalar>& GIB,
-			volScalarField::Internal& G,
-			const volVectorField& U,
-			volScalarField& k,
-			volScalarField& nu
-		);
+        void omegaGAtIB
+        (
+            List<scalar>& omegaIB,
+            List<scalar>& GIB,
+            volScalarField::Internal& G,
+            const volVectorField& U,
+            volScalarField& k,
+            volScalarField& nu
+        );
 
 		//- epsilonG boundary condition
 		void epsilonGAtIB

@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
     word surfaceType;
     HFDIBSIMPLEDict.lookup("surfaceType") >> surfaceType;
     scalar boundaryVal = readScalar(HFDIBSIMPLEDict.lookup("boundaryValue"));
+    vector UIn = HFDIBSIMPLEDict.lookupOrDefault<vector>("valInside", vector::zero);
     bool useNormSurface = HFDIBSIMPLEDict.lookupOrDefault<bool>
 	(
 		"useNormSurface",
