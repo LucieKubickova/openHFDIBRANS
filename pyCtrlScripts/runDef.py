@@ -19,9 +19,10 @@ from rewriteLambdaBoundary import *
 
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
+# baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/97_V5_onlyRect_par_DefIncl/'
 # baseCaseDir = '../ZZ_cases/94_VIB_flow/'
-outFolder = '../ZZ_cases/90_VIB_def_SIMP_par/'
+outFolder = '../ZZ_cases/88_VIB_def_SIMP_par_H_2/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -46,8 +47,14 @@ Iper = 2.0
 Iper /= 100
 Cmu = 0.09
 
+solidP = 1e7
+
 # -- decomposition
 nProc = 2
+
+# -- name of the stl for lambda generation
+stlLambda = "geometryHBeam" 
+# stlLambda = "geometryOnlyRect"
 
 # -- fields to copy for postProcessing
 fldsToCopy = ["T", "U"]
@@ -92,6 +99,13 @@ baseCase.setParameters(
     ]
 )
 
+# -- solid presure
+baseCase.replace(
+    [
+        ['0.org/D', ['PRESSURE_SOLID'], [str(solidP)]],
+    ]
+)
+
 # 2) constant/solidProperties
 baseCase.setParameters(
     [
@@ -110,6 +124,13 @@ baseCase.setParameters(
 baseCase.setParameters(
     [
         ["system/controlDict", "endTime", str(flowEndTime), ""],
+    ]
+)
+
+# 5) constant/HFDIBDEMDict
+baseCase.setParameters(
+    [
+        ['constant/HFDIBDEMDict', "stlName", stlLambda, '']
     ]
 )
 
