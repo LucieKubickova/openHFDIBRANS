@@ -149,10 +149,10 @@ relaxationFactors
         k           0.8;
         omega       0.8;
     }
-    equations
-    {
-        ".*" 0.85;
-    }
+    // equations
+    // {
+    //     ".*" 0.85;
+    // }
 }
 
 PISO

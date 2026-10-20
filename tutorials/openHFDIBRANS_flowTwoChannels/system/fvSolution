@@ -156,9 +156,13 @@ relaxationFactors
         k           0.8;
         omega       0.8;
     }
+    // equations
+    // {
+    //     ".*" 0.75;
+    // }
     equations
     {
-        ".*" 0.75;
+        "(p|p_rgh|U|T|k|omega)" 0.85;
     }
 }
 

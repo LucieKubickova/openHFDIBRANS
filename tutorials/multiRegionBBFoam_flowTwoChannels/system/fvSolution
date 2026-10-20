@@ -151,7 +151,7 @@ relaxationFactors
     }
     equations
     {
-        ".*" 0.85;
+        "(p|p_rgh|U|T|k|omega)" 0.85;
     }
 }
 
