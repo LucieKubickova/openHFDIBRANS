@@ -19,15 +19,19 @@ from rewriteLambdaBoundary import *
 
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
-outFolder = '../ZZ_cases/99_V3_onlyRect_par/'
+# baseCaseDir = '../ZZ_cases/97_V5_onlyRect_par_DefIncl/'
+outFolder = '../ZZ_cases/95_V5_onlyRect_par_DefIncl/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
+crtMesh = True
+# crtMesh = False
+
 flowRun = True  # -- simulation of flow
 # flowRun = False
 
 defRun = True   # -- simulation of deformation
-defRun = False
+# defRun = False
 
 # SIMULATION INPUTS=====================================================
 # -- cluster settings
@@ -42,7 +46,10 @@ Iper /= 100
 Cmu = 0.09
 
 # -- decomposition
-nProc = 2
+nProc = 1
+
+# -- fields to copy for postProcessing
+fldsToCopy = ["T", "U"]
 
 # -- solvers
 solverFlow = 'buoyantBoussinesqSimpleHFDIBRANSFoam' 
@@ -50,6 +57,7 @@ solverDef = 'solids4Foam'
 
 # -- numerics
 nDefTIters = 10000  # -- number of solid/temperature iterations at each time level
+flowEndTime = 1000
 
 # SCRIPT ITSELF (DO NOT EDIT)===========================================                       
 # -- create OpenFOAMCase object to change values in dictionaries
@@ -97,25 +105,33 @@ baseCase.setParameters(
     ]
 )
 
+# 4) system/controlDict
+baseCase.setParameters(
+    [
+        ["system/controlDict", "endTime", str(flowEndTime), ""],
+    ]
+)
+
 # -- create mesh and lambda field
-createMeshLamBet(baseCase)
-baseCase.runCommands(
-    [
-        'blockMesh > log.blockMesh',
-        'mkdir -p 0',
-        'cp -rf 0.org/* 0/',
-        'generateLambda > log.generateLambda',
-        'createLambdaBoundary > log.createLambdaBoundary',
-        'createPatch -overwrite -dict system/createPatchDictNewPatch > log.createPatch',
-    ]
-)
-rewriteBoundary('%s/constant/polyMesh/boundary' % (baseCase.dir), '%s/0/lambda' % (baseCase.dir))
-baseCase.runCommands(
-    [
-        'correctLambdaBoundary > log.correctLambdaBoundary',
-        'paraFoam -touch',
-    ]
-)
+if crtMesh:
+    createMeshLamBet(baseCase)
+    baseCase.runCommands(
+        [
+            'blockMesh > log.blockMesh',
+            'mkdir -p 0',
+            'cp -rf 0.org/* 0/',
+            'generateLambda > log.generateLambda',
+            'createLambdaBoundary > log.createLambdaBoundary',
+            # 'createPatch -overwrite -dict system/createPatchDictNewPatch > log.createPatch',
+        ]
+    )
+    rewriteBoundary('%s/constant/polyMesh/boundary' % (baseCase.dir), '%s/0/lambda' % (baseCase.dir))
+    baseCase.runCommands(
+        [
+            'correctLambdaBoundary > log.correctLambdaBoundary',
+            'paraFoam -touch',
+        ]
+    )
 
 # -- run flow simulation
 if flowRun:
@@ -139,19 +155,37 @@ if flowRun:
 
 # -- run deformation simulation
 if defRun:
+    baseCase.setParameters(
+        [
+            ['system/controlDict', 'endTime', str(flowEndTime + 1),''],
+        ]
+    )
     if nProc > 1:
+        baseCase.updateTimesParallel()
         if slurmRun:
             pass
         else:
             baseCase.runCommands(
                 [
-                    'decomposePar > log.decomposePar',
+                    'mkdir %g' % (baseCase.latestParTime),
+                    'cp 0.org/D %g/'% (baseCase.latestParTime),
+                    'decomposePar -fields > log.decomposePar',
                     'foamJob -parallel -screen %s > log.%s' % (solverDef, solverDef)
                 ]
             )
     else:
+        baseCase.updateTimes()
+        latestTimeOld = baseCase.latestTime
         baseCase.runCommands(
             [
+                'cp 0.org/D %g/'% (baseCase.latestTime),
                 '%s > log.%s' % (solverDef, solverDef)
             ]
         )
+        baseCase.updateTimes()
+        for fldToCopy in fldsToCopy:
+            baseCase.runCommands(
+                [
+                    'cp %g/%s %g' % (latestTimeOld, fldToCopy, baseCase.latestTime)
+                ]
+            )
