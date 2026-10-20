@@ -33,7 +33,7 @@ boundaryField
         value           uniform 300.0;
     }
     
-    "(outletTop|outletBot)"
+    "(outletTop|outletBot|solidLeft|solidRight)"
     {
         type            zeroGradient;
     }

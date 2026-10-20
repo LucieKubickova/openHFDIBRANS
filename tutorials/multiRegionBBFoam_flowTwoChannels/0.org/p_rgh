@@ -27,7 +27,7 @@ boundaryField
         value           uniform 0;
     }
     
-    "(outletTop|outletBot)"
+    "(outletTop|outletBot|solidLeft|solidRight)"
     {
         type            prghPressure;
         p               $internalField;

@@ -27,7 +27,7 @@ boundaryField
         value           $internalField;
     }
 
-    "(outletTop|outletBot)"
+    "(outletTop|outletBot|solidLeft|solidRight)"
     {
         type            zeroGradient;
     }
