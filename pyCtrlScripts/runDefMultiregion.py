@@ -20,7 +20,8 @@ from writeChangeDictDict import *
 
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/multiRegionBBFoam_flowTwoChannels/' # -- base case for simulation
-outFolder = '../ZZ_cases/94_V5_multiRegion/'
+# baseCaseDir = '../ZZ_cases/94_V5_multiRegion_par/'
+outFolder = '../ZZ_cases/93_V5_multiRegion_par/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -46,7 +47,9 @@ Iper /= 100
 Cmu = 0.09
 
 # -- regions
-regions = ["fluidCold", "fluidHot", "solid"]
+# regions = ["fluidCold", "fluidHot", "solid"]
+flRegions = ["fluidCold", "fluidHot"]
+solRegions = ["solid"]
 fldInReg = [
     ["U", "T", "omega", "nut", "k", "alphat", "p_rgh"], # fluidCol
     ["U", "T", "omega", "nut", "k", "alphat", "p_rgh"], # fluidHot
@@ -54,7 +57,7 @@ fldInReg = [
 ]
 
 # -- decomposition
-nProc = 1
+nProc = 2
 
 # -- fields to copy for postProcessing
 fldsToCopy = ["T", "U"]
@@ -124,6 +127,13 @@ baseCase.setParameters(
         ["system/decomposeParDict", "numberOfSubdomains", str(nProc), ""],
     ]
 )
+for region in [*flRegions, *solRegions]:
+    baseCase.setParameters(
+        [
+            ["system/%s/decomposeParDict" % (region), "numberOfSubdomains", str(nProc), ""],
+        ]
+)
+
 
 
 # 4) system/controlDict
@@ -144,18 +154,16 @@ if crtMesh:
             'paraFoam -touch',
         ]
     )
-    writeChangeDict(baseCase, regions, fldInReg)
+    writeChangeDict(baseCase, [*flRegions, *solRegions], fldInReg)
     baseCase.runCommands(
         [
             'splitMeshRegions -cellZones -overwrite > log.splitMeshRegions',
         ]
     )
-    for region in regions:
+    for region in [*flRegions, *solRegions]:
         baseCase.runCommands(
             [
-                'changeDictionary -region %s > log.changeDictionary' %(region),
-                # './Allrun-serialAll',
-                # 'runApplication -s %s changeDictionary -region %s' %(region, region)
+                'changeDictionary -region %s > log.changeDictionary_reg_%s' %(region, region),
             ]
         )
     baseCase.runCommands(
@@ -170,9 +178,15 @@ if flowRun:
         if slurmRun:
             pass
         else:
+            # for region in regions:
+            #     baseCase.runCommands(
+            #         [
+            #             'decomposePar -region %s > log.decom_reg_%s' %(region, region)
+            #         ]
+            #     )
             baseCase.runCommands(
                 [
-                    'decomposePar > log.decomposePar',
+                    'decomposePar -allRegions > log.decomposePar', 
                     'foamJob -parallel -screen %s > log.%s' % (solverFlow, solverFlow)
                 ]
             )
@@ -193,17 +207,39 @@ if defRun:
     )
     if nProc > 1:
         baseCase.updateTimesParallel()
+        latestTimeOld = baseCase.latestParTime
         if slurmRun:
             pass
         else:
             baseCase.runCommands(
                 [
                     'mkdir %g' % (baseCase.latestParTime),
-                    'cp 0.org/D %g/'% (baseCase.latestParTime),
-                    'decomposePar > log.decomposePar',
+                    'mkdir %g/solid'% (baseCase.latestParTime),
+                    'cp 0.org/solid/D %g/solid/'% (baseCase.latestParTime),
+                ]
+            )
+            baseCase.runCommands(
+                [
+                    'decomposePar -fields -allRegions > log.decomposePar',
                     'foamJob -parallel -screen %s > log.%s' % (solverDef, solverDef)
                 ]
             )
+        for procI in range(nProc):
+            baseCase.updateTimesParallel()
+            for fldToCopy in fldsToCopy:
+                for region in flRegions:
+                    baseCase.runCommands(
+                        [
+                            # 'cp processor%d/%g/%s processor%d/%g' % (procI, latestTimeOld, fldToCopy, procI, baseCase.latestParTime)
+                            'cp processor%d/%g/%s/%s processor%d/%g/%s/' % (procI, latestTimeOld, region, fldToCopy, procI, baseCase.latestParTime, region),
+                        ]
+                    )
+            for region in solRegions:
+                baseCase.runCommands(
+                    [
+                        'cp processor%d/%g/%s/T processor%d/%g/%s/' % (procI, latestTimeOld, region, procI, baseCase.latestParTime, region),
+                    ]
+                )
     else:
         baseCase.updateTimes()
         latestTimeOld = baseCase.latestTime
@@ -215,15 +251,15 @@ if defRun:
         )
         baseCase.updateTimes()
         for fldToCopy in fldsToCopy:
+            for region in flRegions:
+                baseCase.runCommands(
+                    [
+                        'cp %g/%s/%s %g' % (latestTimeOld, region, fldToCopy, baseCase.latestTime),
+                    ]
+                )
+        for region in solRegions:
             baseCase.runCommands(
                 [
-                    'cp %g/fluidCold/%s %g' % (latestTimeOld, fldToCopy, baseCase.latestTime),
-                    'cp %g/fluidHot/%s %g' % (latestTimeOld, fldToCopy, baseCase.latestTime)
+                    'cp %g/%s/T %g' % (latestTimeOld, region, baseCase.latestTime),
                 ]
             )
-        baseCase.runCommands(
-            [
-                'cp %g/solid/T %g' % (latestTimeOld, baseCase.latestTime),
-                'cp %g/solid/T %g' % (latestTimeOld, baseCase.latestTime)
-            ]
-        )

@@ -20,7 +20,8 @@ from rewriteLambdaBoundary import *
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/97_V5_onlyRect_par_DefIncl/'
-outFolder = '../ZZ_cases/95_V5_onlyRect_par_DefIncl/'
+# baseCaseDir = '../ZZ_cases/94_VIB_flow/'
+outFolder = '../ZZ_cases/90_VIB_def_SIMP_par/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -46,7 +47,7 @@ Iper /= 100
 Cmu = 0.09
 
 # -- decomposition
-nProc = 1
+nProc = 2
 
 # -- fields to copy for postProcessing
 fldsToCopy = ["T", "U"]
@@ -56,7 +57,7 @@ solverFlow = 'buoyantBoussinesqSimpleHFDIBRANSFoam'
 solverDef = 'solids4Foam' 
 
 # -- numerics
-nDefTIters = 10000  # -- number of solid/temperature iterations at each time level
+nDefTIters = 5000  # -- number of solid/temperature iterations at each time level
 flowEndTime = 1000
 
 # SCRIPT ITSELF (DO NOT EDIT)===========================================                       
@@ -162,6 +163,7 @@ if defRun:
     )
     if nProc > 1:
         baseCase.updateTimesParallel()
+        latestTimeOld = baseCase.latestParTime
         if slurmRun:
             pass
         else:
@@ -169,10 +171,18 @@ if defRun:
                 [
                     'mkdir %g' % (baseCase.latestParTime),
                     'cp 0.org/D %g/'% (baseCase.latestParTime),
-                    'decomposePar -fields > log.decomposePar',
+                    'decomposePar -fields > log.decomposeParFields',
                     'foamJob -parallel -screen %s > log.%s' % (solverDef, solverDef)
                 ]
             )
+        for procI in range(nProc):
+            baseCase.updateTimesParallel()
+            for fldToCopy in fldsToCopy:
+                baseCase.runCommands(
+                    [
+                        'cp processor%d/%g/%s processor%d/%g' % (procI, latestTimeOld, fldToCopy, procI, baseCase.latestParTime)
+                    ]
+                )
     else:
         baseCase.updateTimes()
         latestTimeOld = baseCase.latestTime

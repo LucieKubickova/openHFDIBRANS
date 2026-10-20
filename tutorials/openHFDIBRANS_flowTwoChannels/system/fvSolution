@@ -162,7 +162,7 @@ relaxationFactors
     // }
     equations
     {
-        "(p|p_rgh|U|T|k|omega)" 0.85;
+        "(p|p_rgh|U|T|k|omega|h)" 0.75;
     }
 }
 
