@@ -449,7 +449,7 @@ scalar ibCutCell::yOrthoEst()
         const face& f = mesh_.faces()[inCell_[facei]];
         
         point   fC(f.centre(mesh_.points()));
-        vector  fN(f.normal(mesh_.points()));
+        vector  fN(f.unitNormal(mesh_.points()));
         
         if ((fN & (fC - CIn_)) < -SMALL) {fN *= -1.0;};                 //flip normals if required
         
