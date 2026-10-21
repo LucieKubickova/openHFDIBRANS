@@ -408,9 +408,9 @@ void ibDirichletBCs::updateUTauAtIB
             // get cell label
             label cellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
             label fCell1 = boundaryCells_[Pstream::myProcNo()][bCell].fCell1_;
-            label fCell2 = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
             label fProc1 = boundaryCells_[Pstream::myProcNo()][bCell].fProc1_;
-            label fProc2 = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
+            //~ label fCell2 = boundaryCells_[Pstream::myProcNo()][bCell].fCell2_;
+            //~ label fProc2 = boundaryCells_[Pstream::myProcNo()][bCell].fProc2_;
 
             // get surface point and normal
             point sPoint = boundaryCells_[Pstream::myProcNo()][bCell].sPoint_;
