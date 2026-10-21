@@ -22,7 +22,7 @@ baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for s
 # baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/97_V5_onlyRect_par_DefIncl/'
 # baseCaseDir = '../ZZ_cases/94_VIB_flow/'
-outFolder = '../ZZ_cases/87_VIB_def_SIMP_par_H/'
+outFolder = '../ZZ_cases/85_VIB_def_SIMP_par_curvedRect/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -37,11 +37,12 @@ defRun = True   # -- simulation of deformation
 
 # SIMULATION INPUTS=====================================================
 # -- geometry
-dA = 1e-3
+dA = 2e-3
 
 # -- name of the stl for lambda generation
-stlLambda = "geometryHBeam" 
+# stlLambda = "geometryHBeam" 
 # stlLambda = "geometryOnlyRect"
+stlLambda = "curvedRectangle"
 
 # -- cluster settings
 slurmRun = True

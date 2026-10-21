@@ -641,7 +641,7 @@ def createMeshLamBet(baseCase, dA = 1e-3):
 
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
 
-def createMeshMulReg(baseCase):
+def createMeshMulReg(baseCase, dA = 1e-3):
     # parameters
     lPipe = 0.3
     wPipe = 0.05
@@ -658,7 +658,7 @@ def createMeshMulReg(baseCase):
 
     cLen = cEnd - cStart
 
-    dX = dY = dZ = 1.0e-3
+    dX = dY = dZ = dA
 
     nCZ = 1
 
@@ -1366,7 +1366,7 @@ def createMeshMulReg(baseCase):
     ### WRITE ###
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
 
-def createMeshMulRegOnlyChannels(baseCase):
+def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
     # parameters
     lPipe = 0.3
     wPipe = 0.05

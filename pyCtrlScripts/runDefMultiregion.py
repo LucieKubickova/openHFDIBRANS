@@ -21,7 +21,7 @@ from writeChangeDictDict import *
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/multiRegionBBFoam_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/94_V5_multiRegion_par/'
-outFolder = '../ZZ_cases/87_multiRegion_par_H/'
+outFolder = '../ZZ_cases/85_multiRegion_par_curvedRect/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -39,7 +39,12 @@ defRun = True   # -- simulation of deformation
 
 # SIMULATION INPUTS=====================================================
 # -- geometry
-dA = 1e-3
+dA = 2e-3
+
+# -- name of the stl for lambda generation
+# stlLambda = "geometryHBeam" 
+# stlLambda = "geometryOnlyRect"
+stlLambda = "curvedRectangle.stl"
 
 # -- cluster settings
 slurmRun = True
@@ -56,7 +61,7 @@ solidP = 1e7
 
 # -- regions
 # regions = ["fluidCold", "fluidHot", "solid"]
-splMeshRegions = ["domain0", "domain1"]
+splMeshRegions = ["domain0", "domain2"]
 flRegions = ["fluidCold", "fluidHot"]
 solRegions = ["solid"]
 fldInReg = [
@@ -158,8 +163,16 @@ baseCase.setParameters(
     ]
 )
 
+# 5) system/snappyHexMeshDict
+baseCase.setParameters(
+    [
+        ["system/snappyHexMeshDict", "file", '"%s"' % stlLambda, ""],
+    ]
+)
+
 # -- create mesh 
 if crtMesh:
+    # createMeshMulRegOnlyChannels(baseCase, dA=dA)
     createMeshLamBet(baseCase, dA=dA)
     baseCase.runCommands(
         [

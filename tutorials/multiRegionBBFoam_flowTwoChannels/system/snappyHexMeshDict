@@ -86,12 +86,7 @@ castellatedMeshControls
     // This is a featureEdgeMesh, read from constant/triSurface for now.
     features
     (
-        // rashigs
-        // {
-        //     // file "rashigs.stl";
-        //     file "rashigsVTK.vtk";
-        //     level 3;
-        // }
+
     );
 
 
@@ -137,12 +132,12 @@ castellatedMeshControls
 
     refinementRegions
     {
-        rashigs
-        {
-            mode inside;
-            levels ((1e-5 2));
-           // cellZone rashigs;
-        }
+        // rashigs
+        // {
+        //     mode inside;
+        //     levels ((1e-5 2));
+        //    // cellZone rashigs;
+        // }
     }
 
 
