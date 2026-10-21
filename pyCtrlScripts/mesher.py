@@ -292,7 +292,7 @@ def createMesh(baseCase):
     # fvMesh.writeBMD("./system/")
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
 
-def createMeshLamBet(baseCase):
+def createMeshLamBet(baseCase, dA = 1e-3):
     # parameters
     lPipe = 0.3
     wPipe = 0.05
@@ -304,7 +304,7 @@ def createMeshLamBet(baseCase):
     cEnd = 0.11
     cLen = cEnd - cStart
 
-    dX = dY = dZ = 1.0e-3
+    dX = dY = dZ = dA
 
     nCZ = 1
 

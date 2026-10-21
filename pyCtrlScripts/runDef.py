@@ -22,7 +22,7 @@ baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for s
 # baseCaseDir = '../tutorials/openHFDIBRANS_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/97_V5_onlyRect_par_DefIncl/'
 # baseCaseDir = '../ZZ_cases/94_VIB_flow/'
-outFolder = '../ZZ_cases/88_VIB_def_SIMP_par_H_2/'
+outFolder = '../ZZ_cases/87_VIB_def_SIMP_par_H/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
@@ -36,6 +36,13 @@ defRun = True   # -- simulation of deformation
 # defRun = False
 
 # SIMULATION INPUTS=====================================================
+# -- geometry
+dA = 1e-3
+
+# -- name of the stl for lambda generation
+stlLambda = "geometryHBeam" 
+# stlLambda = "geometryOnlyRect"
+
 # -- cluster settings
 slurmRun = True
 slurmRun = False
@@ -51,10 +58,6 @@ solidP = 1e7
 
 # -- decomposition
 nProc = 2
-
-# -- name of the stl for lambda generation
-stlLambda = "geometryHBeam" 
-# stlLambda = "geometryOnlyRect"
 
 # -- fields to copy for postProcessing
 fldsToCopy = ["T", "U"]
@@ -136,7 +139,7 @@ baseCase.setParameters(
 
 # -- create mesh and lambda field
 if crtMesh:
-    createMeshLamBet(baseCase)
+    createMeshLamBet(baseCase, dA=dA)
     baseCase.runCommands(
         [
             'blockMesh > log.blockMesh',

@@ -21,12 +21,15 @@ from writeChangeDictDict import *
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/multiRegionBBFoam_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/94_V5_multiRegion_par/'
-outFolder = '../ZZ_cases/93_V5_multiRegion_par/'
+outFolder = '../ZZ_cases/87_multiRegion_par_H/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
 crtMesh = True
 # crtMesh = False
+
+cutRegionFromStl = True
+# cutRegionFromStl = False
 
 flowRun = True  # -- simulation of flow
 # flowRun = False
@@ -35,6 +38,9 @@ defRun = True   # -- simulation of deformation
 # defRun = False
 
 # SIMULATION INPUTS=====================================================
+# -- geometry
+dA = 1e-3
+
 # -- cluster settings
 slurmRun = True
 slurmRun = False
@@ -46,8 +52,11 @@ Iper = 2.0
 Iper /= 100
 Cmu = 0.09
 
+solidP = 1e7
+
 # -- regions
 # regions = ["fluidCold", "fluidHot", "solid"]
+splMeshRegions = ["domain0", "domain1"]
 flRegions = ["fluidCold", "fluidHot"]
 solRegions = ["solid"]
 fldInReg = [
@@ -67,7 +76,7 @@ solverFlow = 'chtMultiRegionBuoyantBoussinesqSimpleFoam'
 solverDef = 'solids4CustomMultiRegionFoam' 
 
 # -- numerics
-nDefTIters = 10000  # -- number of solid/temperature iterations at each time level
+nDefTIters = 5000  # -- number of solid/temperature iterations at each time level
 flowEndTime = 1000
 
 # SCRIPT ITSELF (DO NOT EDIT)===========================================                       
@@ -113,6 +122,12 @@ baseCase.setParameters(
         ['0.org/fluidHot/U', 'internalField', 'uniform (%s 0 0)'%(uIn), ''],
     ]
 )
+# -- solid presure
+baseCase.replace(
+    [
+        ['0.org/solid/D', ['PRESSURE_SOLID'], [str(solidP)]],
+    ]
+)
 
 # 2) constant/solidProperties
 baseCase.setParameters(
@@ -145,29 +160,59 @@ baseCase.setParameters(
 
 # -- create mesh 
 if crtMesh:
-    createMeshMulRegOnlyChannels(baseCase)
+    createMeshLamBet(baseCase, dA=dA)
     baseCase.runCommands(
         [
             'blockMesh > log.blockMesh',
-            'mkdir -p 0',
-            'cp -rf 0.org/* 0/',
-            'paraFoam -touch',
         ]
     )
+if cutRegionFromStl:
+    baseCase.runCommands(
+        [
+            'snappyHexMesh -overwrite > log.snappyHexMesh',
+        ]
+    )
+if crtMesh:
     writeChangeDict(baseCase, [*flRegions, *solRegions], fldInReg)
     baseCase.runCommands(
         [
             'splitMeshRegions -cellZones -overwrite > log.splitMeshRegions',
         ]
     )
+if cutRegionFromStl:
+    for i in range(len(splMeshRegions)):
+        baseCase.runCommands(
+            [
+                'mv constant/%s/polyMesh constant/%s/polyMesh' %(splMeshRegions[i], flRegions[i]),
+                'rm -rf constant/%s/' % splMeshRegions[i],
+                'rm -rf 0/%s/' % splMeshRegions[i],
+            ]
+        )
+        baseCase.replace(
+            [
+                ['constant/%s/polyMesh/boundary' % flRegions[i], [splMeshRegions[i]], [flRegions[i]]],
+                ['constant/solid/polyMesh/boundary', [splMeshRegions[i]], [flRegions[i]]],
+            ]
+        )
     for region in [*flRegions, *solRegions]:
         baseCase.runCommands(
             [
-                'changeDictionary -region %s > log.changeDictionary_reg_%s' %(region, region),
+                'rm -rf 0/%s/cellLevel' %(region),
+                'rm -rf 0/%s/cellToRegion' %(region),
             ]
         )
+if crtMesh:
+    # for region in [*flRegions, *solRegions]:
+    #     baseCase.runCommands(
+    #         [
+    #             'changeDictionary -region %s > log.changeDictionary_reg_%s' %(region, region),
+    #         ]
+    #     )
     baseCase.runCommands(
         [
+            'rm -rf 0'
+            'mkdir -p 0',
+            'cp -rf 0.org/* 0/',
             'paraFoam -touch',
         ]
     )
