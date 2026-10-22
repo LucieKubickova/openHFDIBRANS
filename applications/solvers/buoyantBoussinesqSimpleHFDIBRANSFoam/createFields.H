@@ -219,6 +219,22 @@ volScalarField kappa
 #include "readhRef.H"
 #include "gh.H"
 
+// rhoCp field
+Info<< "Creating field rhoCp\n" << endl;
+volScalarField rhoCp
+(
+    IOobject
+    (
+        "rhoCp",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    rhoRef*cpRef
+);
+
 
 volScalarField p
 (
