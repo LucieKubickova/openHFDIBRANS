@@ -799,18 +799,115 @@ void openHFDIBRANS::correctAlphaInSolid
 }
 
 //---------------------------------------------------------------------------//
-void openHFDIBRANS::correctKappaInSolid
+void openHFDIBRANS::correctAlphaSurface
 (
+    surfaceScalarField& alphaSurface,
+    volScalarField& alphaEff,
+    volScalarField& rhoCp
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell labels
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // get kappa in each cell
+        scalar kappaOut = alphaEff[outCellI]*rhoCp[outCellI];
+        scalar kappaIn = alphaEff[inCellI]*rhoCp[inCellI];
+
+        // get distances
+        scalar deltaL = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        scalar deltaLS = mag(mesh_.C()[inCellI] - mesh_.C()[outCellI]);
+        scalar deltaS = mag(deltaLS - deltaL);
+
+        // calculate kappa at the surface
+        scalar kappaFace = deltaLS/(deltaL/kappaOut + deltaS/kappaIn);
+
+        // interpolate rhoCp to the surface
+        scalar rhoCpFace = (deltaL*rhoCp[outCellI] + deltaS*rhoCp[inCellI])/deltaLS;
+        //~ scalar rhoCpFace = deltaLS/(deltaL/rhoCp[outCellI] + deltaS/rhoCp[inCellI]);
+
+        // calculate alpha at the surface
+        scalar alphaFace = kappaFace/rhoCpFace;
+
+        // assign at shared face
+        forAll(mesh_.cells()[outCellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[outCellI][fI];
+
+            // check if the face is shared with the inner cell
+            if (mesh_.faceOwner()[faceI] == inCellI or mesh_.faceNeighbour()[faceI] == inCellI)
+            {
+                // assign alpha
+                alphaSurface[faceI] = alphaFace;
+                break;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctKappaSurface
+(
+    surfaceScalarField& kappaSurface,
     volScalarField& kappa,
-    volScalarField& alpha
+    volScalarField& kappaEff
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell labels
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // skip correction if turbulence effect is substantial
+        if (kappaEff[outCellI] > kappa[outCellI])
+        {
+            return;
+        }
+
+        // get distances
+        scalar deltaL = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        scalar deltaLS = mag(mesh_.C()[inCellI] - mesh_.C()[outCellI]);
+        scalar deltaS = mag(deltaLS - deltaL);
+
+        // calculate kappa at the surface
+        scalar kappaFace = deltaLS/(deltaL/kappaEff[outCellI] + deltaS/kappaEff[inCellI]);
+
+        // assign at shared face
+        forAll(mesh_.cells()[outCellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[outCellI][fI];
+
+            // check if the face is shared with the inner cell
+            if (mesh_.faceOwner()[faceI] == inCellI or mesh_.faceNeighbour()[faceI] == inCellI)
+            {
+                // assign kappa
+                kappaSurface[faceI] = kappaFace;
+                break;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctRhoCpInSolid
+(
+    volScalarField& rhoCp,
+    scalar threshold
 )
 {
     // set values inside solid
     forAll(body_, cellI)
     {
-        if (body_[cellI] >= 0.5)
+        if (body_[cellI] >= threshold)
         {
-            kappa[cellI] = alpha[cellI]*cpInSolid_*rhoInSolid_;
+            rhoCp[cellI] = cpInSolid_*rhoInSolid_;
         }
     }
 }

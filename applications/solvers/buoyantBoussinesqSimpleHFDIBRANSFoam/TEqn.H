@@ -13,17 +13,22 @@ alphat.correctBoundaryConditions();
 // HFDIBRANS: correct alphat
 const tmp<volScalarField> tnu = turbulence->nu();
 const volScalarField& nu = tnu();
+
 HFDIBRANS.correctAlphat(alphat, nu, surfaceT);
 
-//~ volScalarField alphaEff("alphaEff", turbulence->nu()/Pr + alphat);
+// calculate thermal diffusivity
 alphaEff = turbulence->nu()/Pr + alphat;
 HFDIBRANS.correctAlphaInSolid(alphaEff);
 alphaEff.correctBoundaryConditions();
 
+// interpolate alpha and correct
+surfaceScalarField alphaSurface = fvc::interpolate(alphaEff);
+HFDIBRANS.correctAlphaSurface(alphaSurface, alphaEff, rhoCp);
+
 fvScalarMatrix TEqn
 (
     (1 - lambda)*fvm::div(phi, T)
-  - fvm::laplacian(alphaEff, T)
+  - fvm::laplacian(alphaSurface, T)
  ==
     radiation->ST(rhoCpRef, T)
   + fvOptions(T)
@@ -58,5 +63,4 @@ fvOptions.correct(T);
 
 rho = 1.0 - beta*(T - TRef);
 
-kappa = alphaEff*cpRef*rhoRef;
-HFDIBRANS.correctKappaInSolid(kappa, alphaEff);
+kappa = alphaEff*rhoCp;
