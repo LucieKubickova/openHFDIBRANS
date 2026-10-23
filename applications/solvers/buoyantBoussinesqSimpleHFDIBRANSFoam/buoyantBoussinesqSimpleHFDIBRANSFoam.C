@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
     // correct solid fields
     HFDIBRANS.setScalarInSolid(T, TIn);
     HFDIBRANS.correctRhoCpInSolid(rhoCp);
+    rhoCp.correctBoundaryConditions();
 
     Ui *= 0.0;
     Ui.correctBoundaryConditions();

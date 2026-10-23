@@ -865,10 +865,10 @@ void openHFDIBRANS::correctKappaSurface
         label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
 
         // skip correction if turbulence effect is substantial
-        if (kappaEff[outCellI] > kappa[outCellI])
-        {
-            return;
-        }
+        //~ if (kappaEff[outCellI] > kappa[outCellI])
+        //~ {
+        //~     return;
+        //~ }
 
         // get distances
         scalar deltaL = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
@@ -889,6 +889,45 @@ void openHFDIBRANS::correctKappaSurface
             {
                 // assign kappa
                 kappaSurface[faceI] = kappaFace;
+                break;
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------//
+void openHFDIBRANS::correctRhoCpSurface
+(
+    surfaceScalarField& rhoCpSurface,
+    volScalarField& rhoCp
+)
+{
+    // loop over boundary cells
+    forAll(boundaryCells_[Pstream::myProcNo()], bCell)
+    {
+        // get cell labels
+        label outCellI = boundaryCells_[Pstream::myProcNo()][bCell].bCell_;
+        label inCellI = boundaryCells_[Pstream::myProcNo()][bCell].iCell_;
+
+        // get distances
+        scalar deltaL = boundaryCells_[Pstream::myProcNo()][bCell].yOrtho_;
+        scalar deltaLS = mag(mesh_.C()[inCellI] - mesh_.C()[outCellI]);
+        scalar deltaS = mag(deltaLS - deltaL);
+
+        // calculate rhoCp at the surface
+        scalar rhoCpFace = (deltaL*rhoCp[outCellI] + deltaS*rhoCp[inCellI])/deltaLS;
+
+        // assign at shared face
+        forAll(mesh_.cells()[outCellI], fI)
+        {
+            // get face label
+            label faceI = mesh_.cells()[outCellI][fI];
+
+            // check if the face is shared with the inner cell
+            if (mesh_.faceOwner()[faceI] == inCellI or mesh_.faceNeighbour()[faceI] == inCellI)
+            {
+                // assign rhoCp
+                rhoCpSurface[faceI] = rhoCpFace;
                 break;
             }
         }

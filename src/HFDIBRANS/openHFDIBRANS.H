@@ -132,6 +132,7 @@ class openHFDIBRANS
     void correctAlphaInSolid(volScalarField& alpha);
     void correctAlphaSurface(surfaceScalarField& alphaSurface, volScalarField& alpha, volScalarField& rhoCp);
     void correctKappaSurface(surfaceScalarField& kappaSurface, volScalarField& kappa, volScalarField& kappaEff);
+    void correctRhoCpSurface(surfaceScalarField& rhoCpSurface, volScalarField& rhoCp);
 
     // create and return surface field
     void createBaseSurface(volScalarField& surface, word surfType, scalar boundaryValue);

@@ -25,14 +25,35 @@ alphaEff.correctBoundaryConditions();
 surfaceScalarField alphaSurface = fvc::interpolate(alphaEff);
 HFDIBRANS.correctAlphaSurface(alphaSurface, alphaEff, rhoCp);
 
+// calculate thermal conductivity
+kappa = alphaEff*rhoCp;
+kappa.correctBoundaryConditions();
+surfaceScalarField kappaSurface = fvc::interpolate(kappa);
+HFDIBRANS.correctKappaSurface(kappaSurface, kappa, kappa);
+
+// interpolate rhoCp to surface
+surfaceScalarField rhoCpSurface = linearInterpolate(rhoCp);
+rhoCpSurface.correctBoundaryConditions();
+
+surfaceScalarField lambdaSurface = fvc::interpolate(lambda);
+HFDIBRANS.correctRhoCpSurface(rhoCpSurface, rhoCp);
+
 fvScalarMatrix TEqn
 (
-    (1 - lambda)*fvm::div(phi, T)
-  - fvm::laplacian(alphaSurface, T)
- ==
-    radiation->ST(rhoCpRef, T)
-  + fvOptions(T)
+    (1 - lambda)*fvm::div(rhoCpSurface*phi, T)
+  - fvm::laplacian(kappaSurface, T)
+  ==
+    rhoCp*fvOptions(T)
 );
+
+//~ fvScalarMatrix TEqn
+//~ (
+//~     (1 - lambda)*fvm::div(phi, T)
+//~   - fvm::laplacian(alphaSurface, T)
+//~  ==
+//~     radiation->ST(rhoCpRef, T)
+//~   + fvOptions(T)
+//~ );
 
 TEqn.relax();
 
@@ -62,5 +83,3 @@ radiation->correct();
 fvOptions.correct(T);
 
 rho = 1.0 - beta*(T - TRef);
-
-kappa = alphaEff*rhoCp;
