@@ -34,13 +34,13 @@ HFDIBRANS.correctKappaSurface(kappaSurface, kappa, kappa);
 // interpolate rhoCp to surface
 surfaceScalarField rhoCpSurface = linearInterpolate(rhoCp);
 rhoCpSurface.correctBoundaryConditions();
-
-surfaceScalarField lambdaSurface = fvc::interpolate(lambda);
 HFDIBRANS.correctRhoCpSurface(rhoCpSurface, rhoCp);
 
 fvScalarMatrix TEqn
 (
-    (1 - lambda)*fvm::div(rhoCpSurface*phi, T)
+    //~ (1 - lambda)*fvm::div(rhoCpSurface*phi, T)
+    //~ (1 - surfaceT)*fvm::div(rhoRef*cpRef*phi, T)
+    (1 - lambda)*fvm::div(rhoRef*cpRef*phi, T)
   - fvm::laplacian(kappaSurface, T)
   ==
     rhoCp*fvOptions(T)
