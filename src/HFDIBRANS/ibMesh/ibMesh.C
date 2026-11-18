@@ -849,7 +849,6 @@ scalar ibMesh::getCellSize
         cellSize = mag(boundSize & absSurfNorm);
     }
 
-
     return cellSize;
 }
 
