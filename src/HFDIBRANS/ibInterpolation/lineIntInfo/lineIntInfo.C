@@ -118,7 +118,7 @@ void lineIntInfo::setIntpInfo
                 intPoint cIntPoint = intPointsToSolve[proci][iInfo];
                 point cPoint = cIntPoint.iPoint_;
                 scalar intDist = ibMesh_.getCellSize(cIntPoint.iCell_, ibNormalsToSolve[proci][iInfo]);
-                intDist /= 2.0;
+                intDist /= 4.0;
 
                 do {
                     cPoint += ibNormalsToSolve[proci][iInfo]*intDist;
