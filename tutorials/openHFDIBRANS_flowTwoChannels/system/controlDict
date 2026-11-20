@@ -29,7 +29,7 @@ deltaT          1;
 
 //~ writeControl    adjustableRunTime;
 
-writeInterval   $endTime;
+writeInterval   10;
 
 purgeWrite      0;
 

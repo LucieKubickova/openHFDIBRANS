@@ -42,7 +42,7 @@ boundaryField
         value           uniform 0;
     }
 
-    "(wallInsideLambda|solidLeft|solidRight)"
+    "(wallInsideLambda|solidLeft|solidRight|solidPatch)"
     {
         type            fixedFluxPressure;
         rho             rho;

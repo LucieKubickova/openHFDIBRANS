@@ -39,7 +39,7 @@ boundaryField
         value           $internalField;
     }
 
-    "(wallInsideLambda|solidLeft|solidRight)"
+    "(wallInsideLambda|solidLeft|solidRight|solidPatch)"
     {
         type            calculated;
         value           $internalField;

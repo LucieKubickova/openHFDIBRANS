@@ -24,13 +24,13 @@ boundaryField
     inletTop
     {
         type            fixedValue;
-        value           uniform 100.0;
+        value           uniform 200.0;
     }
     
     inletBot
     {
         type            fixedValue;
-        value           uniform 300.0;
+        value           uniform 200.0;
     }
     
     "(outletTop|outletBot)"
@@ -43,7 +43,7 @@ boundaryField
         type            zeroGradient;
     }
 
-    "(wallInsideLambda|solidLeft|solidRight)"
+    "(wallInsideLambda|solidLeft|solidRight|solidPatch)"
     {
         type            zeroGradient;
     }

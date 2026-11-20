@@ -17,11 +17,11 @@ FoamFile
 
 solvers
 {
-    "(p|p_rgh)"
+    "(p|p_rgh|Phi)"
     {
         solver          GAMG;
         tolerance       1e-10;
-        relTol          0.0;
+        relTol          0.0001;
         smoother        symGaussSeidel;
         nPreSweeps      0;
         nPostSweeps     2;
@@ -36,7 +36,7 @@ solvers
     {
         $p;
         tolerance       1e-12;
-        relTol          0;
+        relTol          0.001;
     }
 
     "(U|k|epsilon|omega|R|nuTilda|D)"
@@ -44,14 +44,14 @@ solvers
         solver          PBiCG;
         preconditioner   DILU;
         tolerance       1e-10;
-        relTol          0.0;
+        relTol          0.001;
     }
     "(U|k|epsilon|omega|R|nuTilda|D)Final"
     {
         solver          PBiCG;
         preconditioner   DILU;
         tolerance       1e-10;
-        relTol          0;
+        relTol          0.001;
     }
 
     "(T)"
@@ -66,7 +66,7 @@ solvers
         solver          PBiCGStab;
         preconditioner  DILU;
         tolerance       1e-12;
-        // relTol          0.001;
+        relTol          0.001;
     }
     "(D)"
     {
@@ -80,7 +80,7 @@ solvers
         solver          PBiCGStab;
         preconditioner  DIC;
         tolerance       1e-12;
-        // relTol          0.001;
+        relTol          0.001;
     }
 }
 
@@ -149,8 +149,8 @@ relaxationFactors
 {
     fields
     {
-        p           0.2;
-        p_rgh       0.2;
+        p           0.1;
+        p_rgh       0.1;
         U           0.5;
         T           0.5;
         k           0.8;
@@ -162,7 +162,8 @@ relaxationFactors
     // }
     equations
     {
-        "(p|p_rgh|U|T|k|omega|h)" 0.75;
+        "(p|p_rgh)" 0.3;
+        "(U|T|k|omega|h)" 0.6;
     }
 }
 

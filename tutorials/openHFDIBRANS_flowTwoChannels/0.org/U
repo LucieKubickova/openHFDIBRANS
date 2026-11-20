@@ -17,14 +17,14 @@ FoamFile
 
 dimensions      [0 1 -1 0 0 0 0];
 
-internalField   uniform (100.0 0 0);
+internalField   uniform (0 0 0);
 
 boundaryField
 {
     "(inletTop|inletBot)"
     {
         type            fixedValue;
-        value           $internalField;
+        value           uniform U_INLETBOT;
     }
     
     "(outletTop|outletBot)"
@@ -37,7 +37,7 @@ boundaryField
         type            noSlip;
     }
     
-    "(wallInsideLambda|solidLeft|solidRight)"
+    "(wallInsideLambda|solidLeft|solidRight|solidPatch)"
     {
         type            noSlip;
     }

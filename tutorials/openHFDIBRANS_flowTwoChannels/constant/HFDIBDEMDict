@@ -17,12 +17,14 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 surfaceThreshold    1e-4;
-sdBasedLambda       false;
-// stlName             rectangle;
-stlName             geometryOnlyRect;
+sdBasedLambda       true;
+// stlName                 vlozka;
+// stlName                 vlozka;
+stlName                 vlozka;
 geomModel           convex;
+lambdaName            lambda;
 interfaceSpan       1.0;
-saveIntInfo         true;
+saveIntInfo         false;
 
 solidProperties
 {

@@ -35,6 +35,9 @@ cd $cwd/applications/utilities/calculateForceCoeffs
 cd $cwd/applications/utilities/generateLambda
 ./Allwmake
 
+cd $cwd/applications/utilities/combineLambda
+./Allwmake
+
 cd $cwd/applications/utilities/createLambdaBoundary
 ./Allwmake
 
