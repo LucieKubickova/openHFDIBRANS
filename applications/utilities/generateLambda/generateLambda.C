@@ -48,22 +48,7 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-	Info << "Preparing lambda\n" << endl;
 
-	// Prepare lambda field
-	volScalarField lambda
-	(
-		IOobject
-		(
-			"lambda",
-			runTime.timeName(),
-			mesh,
-			IOobject::NO_READ,
-			IOobject::AUTO_WRITE
-		),
-		mesh,
-		dimensionedScalar("zero", dimless, 0.0)
-	);
 
 	Info<< "Reading HFDIBDEMDict\n" << endl;
 
@@ -98,6 +83,25 @@ int main(int argc, char *argv[])
 		HFDIBDEMDict.lookupOrDefault<bool>("sdBasedLambda", false);
 	word geomModel =
 		HFDIBDEMDict.lookupOrDefault<word>("geomModel", "convex");
+	word lambdaName = 
+		HFDIBDEMDict.lookupOrDefault<word>("lambdaName", "lambda");
+
+	Info << "Preparing lambda field \n" << endl;
+
+	// Prepare lambda field
+	volScalarField lambda
+	(
+		IOobject
+		(
+			lambdaName,
+			runTime.timeName(),
+			mesh,
+			IOobject::NO_READ,
+			IOobject::AUTO_WRITE
+		),
+		mesh,
+		dimensionedScalar("zero", dimless, 0.0)
+	);
 
 	// Load the STL
 	Info<< "Reading the " << stlName << " file" << nl << endl;
