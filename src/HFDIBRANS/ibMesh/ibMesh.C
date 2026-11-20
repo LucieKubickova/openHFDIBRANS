@@ -69,7 +69,7 @@ ibMesh::ibMesh
 	thrSurf_ = readScalar(HFDIBDEMDict_.lookup("surfaceThreshold"));
 	intSpan_ = readScalar(HFDIBDEMDict_.lookup("interfaceSpan"));
 	sdBasedLambda_ =
-		HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLamda", false);
+		HFDIBDEMDict_.lookupOrDefault<bool>("sdBasedLambda", false);
 
 	word geomModel =
 		HFDIBDEMDict_.lookupOrDefault<word>("geomModel", "convex");
@@ -848,6 +848,7 @@ scalar ibMesh::getCellSize
         // get cell size in direction of surface normal
         cellSize = mag(boundSize & absSurfNorm);
     }
+
 
     return cellSize;
 }

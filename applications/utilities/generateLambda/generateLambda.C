@@ -159,6 +159,9 @@ int main(int argc, char *argv[])
 	// Write lambda field
 	lambda.write();
 
+    Info<< "Finished generating in = "
+        << runTime.elapsedCpuTime() << " s." << endl;
+
 	Info<< "End" << nl << endl;
 
     return 0;
