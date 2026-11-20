@@ -21,7 +21,7 @@ from writeChangeDictDict import *
 # CASE FOLDERS==========================================================
 baseCaseDir = '../tutorials/multiRegionBBFoam_flowTwoChannels/' # -- base case for simulation
 # baseCaseDir = '../ZZ_cases/94_V5_multiRegion_par/'
-outFolder = '../ZZ_cases/85_multiRegion_par_curvedRect/'
+outFolder = '../ZZ_cases/85_multiRegion_par_curvedRect_cast/'
 # expDir = os.path.join('..', 'Experiments2026') # -- when comparing experiments
 
 # WHAT TO RUN===========================================================
