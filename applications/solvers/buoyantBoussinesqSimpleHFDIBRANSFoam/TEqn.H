@@ -42,7 +42,7 @@ if (!solveTInSolid)
 // HFDIBRANS: add to T equation
 TEqn -= Tq;
 
-solve(TEqn == Tq);
+solve(TEqn);
 
 // calculate error
 scalar errorT(0.0);
