@@ -1366,18 +1366,20 @@ def createMeshMulReg(baseCase, dA = 1e-3):
     ### WRITE ###
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
 
-def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
+# def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
+
+def createMeshInsert(baseCase, x0, y0, z0, x1, y1, z1, dA = 1e-3):
     # parameters
-    lPipe = 0.3
-    wPipe = 0.05
-    wCube = 0.015
-    wSkip = 0.1
+    # lPipe = 0.3
+    # wPipe = 0.05
+    # wCube = 0.015
+    # wSkip = 0.1
 
-    dX = dY = dZ = 1.0e-3
+    dX = dY = dZ = dA
 
-    nCZ = 1
+    # print(x0, y0, z0, x1, y1, z1)
 
-    x0 = y0 = z0 = 0.0
+    # x0 = y0 = z0 = 0.0
     grX = grY = grZ = "1.0"
 
     # create mesh
@@ -1386,7 +1388,7 @@ def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
     ### BLOCKS ###
     # -- top first block
     xC, yC, zC = x0, y0, z0
-    xE, yE, zE = xC+lPipe, yC+wPipe, zC+dZ
+    xE, yE, zE = x1, y1, z1
 
     # vertices
     vertices = [
@@ -1406,6 +1408,7 @@ def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
     # number of cells
     nCX = int(round(abs(xE-xC)/dX))
     nCY = int(round(abs(yE-yC)/dY))
+    nCZ = int(round(abs(zE-zC)/dZ))
     nCells = [nCX, nCY, nCZ]
 
     # grading
@@ -1414,122 +1417,60 @@ def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
     # create the block
     fluidCold = fvMesh.addBlock(vertices, neighbours, nCells, grading, name = "fluidCold")
 
-    ### BLOCKS ###
-    # -- top first block
-    xC, yC, zC = x0, yC+wPipe, z0
-    xE, yE, zE = xC+lPipe, yC+wSkip, zC+dZ
-
-    # vertices
-    vertices = [
-            [xC, yC, zC],
-            [xE, yC, zC],
-            [xE, yE, zC],
-            [xC, yE, zC],
-            [xC, yC, zE],
-            [xE, yC, zE],
-            [xE, yE, zE],
-            [xC, yE, zE],
-        ]
-
-    # neighbouring blocks
-    neighbours = []
-
-    # number of cells
-    nCX = int(round(abs(xE-xC)/dX))
-    nCY = int(round(abs(yE-yC)/dY))
-    nCells = [nCX, nCY, nCZ]
-
-    # grading
-    grading = [grX, grY, grZ]
-
-    # create the block
-    solid = fvMesh.addBlock(vertices, neighbours, nCells, grading, name = "solid")
-
-    ### BLOCKS ###
-    # -- top first block
-    xC, yC, zC = x0, yC+wSkip, z0
-    xE, yE, zE = xC+lPipe, yC+wPipe, zC+dZ
-
-    # vertices
-    vertices = [
-            [xC, yC, zC],
-            [xE, yC, zC],
-            [xE, yE, zC],
-            [xC, yE, zC],
-            [xC, yC, zE],
-            [xE, yC, zE],
-            [xE, yE, zE],
-            [xC, yE, zE],
-        ]
-
-    # neighbouring blocks
-    neighbours = []
-
-    # number of cells
-    nCX = int(round(abs(xE-xC)/dX))
-    nCY = int(round(abs(yE-yC)/dY))
-    nCells = [nCX, nCY, nCZ]
-
-    # grading
-    grading = [grX, grY, grZ]
-
-    # create the block
-    fluidHot = fvMesh.addBlock(vertices, neighbours, nCells, grading, name = "fluidHot")
-
     ### PATCHES ###
     # -- empty
-    empty = list()
-    for block in fvMesh.blocks:
-        empty.append(block.retFXY0())
-        empty.append(block.retFXYE())
+    # empty = list()
+    # for block in fvMesh.blocks:
+    #     empty.append(block.retFXY0())
+    #     empty.append(block.retFXYE())
 
-    fvMesh.addPatch("frontAndBack", "empty", empty)
+    # fvMesh.addPatch("frontAndBack", "empty", empty)
 
     # -- inlets
-    inletTop = list()
-    inletTop.append(fluidHot.retFYZ0())
+    # inletTop = list()
+    # inletTop.append(fluidHot.retFYZ0())
     # inletTop.append(aboveFirst.retFYZ0())
 
-    fvMesh.addPatch("inletTop", "patch", inletTop)
+    # fvMesh.addPatch("inletTop", "patch", inletTop)
 
-    inletBot = list()
-    inletBot.append(fluidCold.retFYZ0())
+    # inletBot = list()
+    # inletBot.append(fluidCold.retFYZ0())
     # inletBot.append(belFirst.retFYZ0())
 
-    fvMesh.addPatch("inletBot", "patch", inletBot)
+    # fvMesh.addPatch("inletBot", "patch", inletBot)
 
     # -- outlets
-    outletTop = list()
-    outletTop.append(fluidHot.retFYZE())
+    # outletTop = list()
+    # outletTop.append(fluidHot.retFYZE())
     # outletTop.append(aboveFifth.retFYZE())
 
-    fvMesh.addPatch("outletTop", "patch", outletTop)
+    # fvMesh.addPatch("outletTop", "patch", outletTop)
 
-    outletBot = list()
-    outletBot.append(fluidCold.retFYZE())
+    # outletBot = list()
+    # outletBot.append(fluidCold.retFYZE())
     # outletBot.append(belFifth.retFYZE())
 
-    fvMesh.addPatch("outletBot", "patch", outletBot)
+    # fvMesh.addPatch("outletBot", "patch", outletBot)
 
     # -- walls
-    walls = list()
-    walls.append(fluidCold.retFXZ0())
+    # walls = list()
+    # walls.append(fluidCold.retFXZ0())
     # walls.append(topSecond.retFXZ0())
     # walls.append(topFourth.retFXZ0())
     # walls.append(topFifth.retFXZ0())
 
-    walls.append(fluidHot.retFXZE())
+    # walls.append(fluidHot.retFXZE())
 
     # -- solid walls
-    solidLeft = list()
-    solidLeft.append(solid.retFYZ0())
+    # solidLeft = list()
+    # solidLeft.append(solid.retFYZ0())
 
-    fvMesh.addPatch("solidLeft", "wall", solidLeft)
+    # fvMesh.addPatch("solidLeft", "wall", solidLeft)
 
-    solidRight = list()
-    solidRight.append(solid.retFYZE())
+    # solidRight = list()
+    # solidRight.append(solid.retFYZE())
 
-    fvMesh.addPatch("solidRight", "wall", solidRight)
+    # fvMesh.addPatch("solidRight", "wall", solidRight)
     # walls.append(aboveSecond.retFXZE())
     # walls.append(aboveThird.retFXZE())
     # walls.append(aboveFourth.retFXZE())
@@ -1549,7 +1490,7 @@ def createMeshMulRegOnlyChannels(baseCase, dA = 1e-3):
     # walls.append(lambdaBlock.retFYZ0())
     # walls.append(lambdaBlock.retFYZE())
 
-    fvMesh.addPatch("walls", "wall", walls)
+    # fvMesh.addPatch("walls", "wall", walls)
 
     ### WRITE ###
     fvMesh.writeBMD("%s/system/" % baseCase.dir)
