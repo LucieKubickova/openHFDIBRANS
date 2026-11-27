@@ -1,0 +1,24 @@
+# CMake generated files
+compile_commands.json
+
+# wmake-generated
+**/lnInclude/
+**/Make/*/
+*.dep
+*.o
+*.so
+platforms/
+
+# case outputs
+processor*/
+postProcessing/
+log.*
+*.foam
+*.OpenFOAM
+dynamicCode/
+
+# editors / Os
+.vscode/
+*.swp
+*~
+.DS_Store

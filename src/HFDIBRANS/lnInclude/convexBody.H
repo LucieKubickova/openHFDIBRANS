@@ -1,1 +1,0 @@
-../ibMesh/stlModel/convexBody.H
