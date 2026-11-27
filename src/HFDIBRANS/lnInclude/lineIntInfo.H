@@ -1,1 +1,0 @@
-../ibInterpolation/lineIntInfo/lineIntInfo.H
